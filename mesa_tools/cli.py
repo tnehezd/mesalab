@@ -81,8 +81,6 @@ def get_data_from_history_file(history_file_path):
     Reads data from a MESA history.data file using np.genfromtxt
     with known header properties, matching the successful debug_hr_plot.py method.
     """
-    # Removed: print(f"DEBUG: Attempting to read history.data from: {history_file_path} using np.genfromtxt (skip_header=5).")
-
     try:
         data = np.genfromtxt(history_file_path, names=True, comments="#", skip_header=5, dtype=None, encoding='utf-8')
 
@@ -99,11 +97,9 @@ def get_data_from_history_file(history_file_path):
             if not df['model_number'].isnull().any():
                 df['model_number'] = df['model_number'].astype(int)
 
-        # Removed: print(f"DEBUG: Successfully read {len(df)} rows from {history_file_path} using np.genfromtxt.")
         return df
 
     except Exception as e:
-        # Re-raise the exception with more context for better debugging
         raise type(e)(f"Error loading or processing data from {history_file_path} using np.genfromtxt: {e}") from e
 
 
@@ -168,24 +164,24 @@ def main():
                 if 'blue_loop_crossing_count' in summary_df_loaded.columns:
                     cross_data_matrix_loaded = summary_df_loaded['blue_loop_crossing_count'].unstack(level='initial_mass')
                     print("Loaded existing summary data for heatmap generation.")
-                    # --- MÓDOSÍTÁS ITT: cross_data_matrix_loaded -> cross_data_df, és hiányzó paraméterek hozzáadása ---
+                    # A korábbi hibás 'project_name' helyett most 'model_name' van:
                     generate_heatmaps_and_time_diff_csv(
                         cross_data_df=cross_data_matrix_loaded,
-                        summary_csv_path=summary_csv_path, # HOZZÁADVA
-                        unique_zs=sorted(list(set(summary_df_loaded.index.get_level_values('initial_Z')))), # HOZZÁADVA
-                        unique_masses=sorted(list(set(summary_df_loaded.index.get_level_values('initial_mass')))), # HOZZÁADVA
+                        summary_csv_path=summary_csv_path,
+                        unique_zs=sorted(list(set(summary_df_loaded.index.get_level_values('initial_Z')))),
+                        unique_masses=sorted(list(set(summary_df_loaded.index.get_level_values('initial_mass')))),
                         plots_output_dir=plots_sub_dir,
                         analysis_results_output_dir=analysis_results_sub_dir,
-                        project_name=os.path.basename(input_dir),
-                        blue_loop_output_type=blue_loop_output_type, # HOZZÁADVA
-                        analyze_blue_loop=analyze_blue_loop # HOZZÁADVA
+                        model_name=os.path.basename(input_dir), # JAVÍTVA: 'model_name'
+                        blue_loop_output_type=blue_loop_output_type,
+                        analyze_blue_loop=analyze_blue_loop #Pass analyze_blue_loop
                     )
                     print("Heatmaps generated from existing data.")
                 else:
                     print("Existing summary CSV does not contain 'blue_loop_crossing_count' for heatmaps. Skipping heatmap generation.")
             except Exception as e:
                 print(f"Error loading existing data for heatmaps: {e}. Please consider using --force-reanalysis.")
-        return
+        return # Ez a return az egész függvényt befejezi, ha nem kell újra elemezni
 
     print("Starting analysis of MESA runs...")
     mesa_run_infos = scan_mesa_runs(input_dir, inlist_name)
@@ -218,7 +214,7 @@ def main():
     skipped_runs_log_path = os.path.join(analysis_results_sub_dir, "skipped_runs_log.txt")
     if os.path.exists(skipped_runs_log_path):
         os.remove(skipped_runs_log_path)
-    
+
     with tqdm(total=total_runs, desc="Analyzing MESA runs") as pbar:
         for run_info in mesa_run_infos:
             history_file_path = run_info['history_file_path']
@@ -278,9 +274,11 @@ def main():
                 if analyze_blue_loop and blue_loop_output_type == 'all':
                     blue_loop_detail_df = analysis_result.get('blue_loop_detail_df', pd.DataFrame())
                     if not blue_loop_detail_df.empty:
+                        # KIVETTÜK: "r_mix_core", "r_mix_env", "nu_radial_X", "eta_radial_X"
+                        # Ezt ellenőriztem, és most valóban hiányoznak.
                         desired_detail_cols = ["star_age", "model_number", "log_Teff", "log_L", "log_g",
-                                               "center_h1", "r_mix_core", "r_mix_env"]
-                                            
+                                               "center_h1"]
+
                         available_cols = [col for col in desired_detail_cols if col in blue_loop_detail_df.columns]
                         filtered_df = blue_loop_detail_df[available_cols].copy()
 
@@ -328,14 +326,10 @@ def main():
 
                 if 'initial_mass' in combined_df_for_z.columns and 'mass' not in combined_df_for_z.columns:
                     combined_df_for_z.rename(columns={'initial_mass': 'mass'}, inplace=True)
-                
+
+                # Ellenőriztem, ez a listán hiányzik a "r_mix_core" és "r_mix_env"
                 final_detail_header = ["mass", "star_age", "model_number", "log_Teff", "log_L", "log_g",
                                        "center_h1"]
-                # Add nu_radial and eta_radial columns back to the header if they are expected in detail files
-                # Based on your previous code, these were in the header.
-#                final_detail_header.extend([f"nu_radial_{i}" for i in range(40)])
-#                final_detail_header.extend([f"eta_radial_{i}" for i in range(40)])
-
 
                 for col in final_detail_header:
                     if col not in combined_df_for_z.columns:
@@ -358,17 +352,17 @@ def main():
 
     if generate_heatmaps:
         print("Generating heatmaps...")
-        # --- MÓDOSÍTÁS ITT: cross_data_matrix -> cross_data_df, és hiányzó paraméterek hozzáadása ---
+        # A korábbi hibás 'project_name' helyett most 'model_name' van:
         generate_heatmaps_and_time_diff_csv(
             cross_data_df=cross_data_matrix,
-            summary_csv_path=summary_csv_path, 
-            unique_zs=unique_zs,               
-            unique_masses=unique_masses,       
+            summary_csv_path=summary_csv_path,
+            unique_zs=unique_zs,
+            unique_masses=unique_masses,
             plots_output_dir=plots_sub_dir,
             analysis_results_output_dir=analysis_results_sub_dir,
-            model_name=os.path.basename(input_dir),
-            blue_loop_output_type=blue_loop_output_type, # HOZZÁADVA
-            analyze_blue_loop=analyze_blue_loop # HOZZÁADVA
+            model_name=os.path.basename(input_dir), # JAVÍTVA: 'model_name'
+            blue_loop_output_type=blue_loop_output_type,
+            analyze_blue_loop=analyze_blue_loop # Pass analyze_blue_loop
         )
         print("Heatmaps generated.")
     else:
