@@ -1,160 +1,170 @@
-import numpy as np
 import pandas as pd
+import numpy as np
 import os
-import re
-from matplotlib.path import Path
+import collections # Import collections for deque
 
-# Definition of the Instability Strip (replicated from your original code, needed here)
-instability_strip_vertices = np.array([
-    [3.83, 2.4],   # Top-left (Blue edge)
-    [3.76, 4.5],   # Bottom-left
-    [3.65, 4.5],   # Bottom-right (Red edge)
-    [3.77, 2.4]    # Top-right
-])
-instability_path = Path(instability_strip_vertices)
+from mesa_tools.mesa_reader import read_history_data
+
+# Vertices defining the instability strip in the log(Teff) - log(L) plane.
+# These values are approximate and might need adjustment based on specific stellar models or literature.
+# Order: (log_Teff, log_L)
+INSTABILITY_STRIP_VERTICES = [
+    (3.85, 1.0),
+    (3.72, 1.0),
+    (3.72, 4.0),
+    (3.85, 4.0)
+]
 
 def inside_instability_strip(log_Teff, log_L):
-    """Checks if a star's (log_Teff, log_L) point is within the instability strip."""
-    return instability_path.contains_point((log_Teff, log_L))
-
-def analyze_blue_loop_and_instability(run_path):
     """
-    Analyzes a MESA run's history.data file for blue loop crossings and instability strip data.
+    Checks if a given point (log_Teff, log_L) is inside the defined instability strip.
+    This is a simplified check based on a rectangular region. For more precise analysis,
+    a proper polygon check or a more complex definition might be needed.
 
     Args:
-        run_path (str): The path to the root directory of a MESA run (e.g., 'path/to/run_Z0.014_M10.0').
+        log_Teff (float): Logarithm of effective temperature (K).
+        log_L (float): Logarithm of luminosity (Lsun).
 
     Returns:
-        dict: A dictionary containing the analysis results:
-              - 'crossing_count' (int): The number of instability strip crossings.
-              - 'state_times' (list): A list of entry/exit ages (max 6 values).
-              - 'blue_loop_detail_df' (pd.DataFrame): DataFrame with data points during the blue loop phase,
-                filtered as per your original 'detail' file logic.
-              - 'ms_end_age' (float): Age at the end of the main sequence (if identifiable).
-              - 'min_teff_post_ms_age' (float): Corresponds to the LogL local minimum used in your original script.
-              If an error occurs or data is incomplete, appropriate values will be None or NaN.
+        bool: True if the point is inside the instability strip, False otherwise.
     """
-    history_file_path = os.path.join(run_path, 'LOGS', 'history.data')
+    # Define the bounding box of the instability strip based on the vertices
+    min_log_Teff = min(v[0] for v in INSTABILITY_STRIP_VERTICES)
+    max_log_Teff = max(v[0] for v in INSTABILITY_STRIP_VERTICES)
+    min_log_L = min(v[1] for v in INSTABILITY_STRIP_VERTICES)
+    max_log_L = max(v[1] for v in INSTABILITY_STRIP_VERTICES)
+
+    return (min_log_Teff <= log_Teff <= max_log_Teff and
+            min_log_L <= log_L <= max_log_L)
+
+def analyze_blue_loop_and_instability(run_path, mesa_output_subdir="LOGS"):
+    """
+    Analyzes a MESA run's history data for blue loop behavior and instability strip crossings.
+
+    Args:
+        run_path (str): The full path to the root directory of a single MESA run.
+        mesa_output_subdir (str): The name of the subdirectory within the run_path
+                                  where output files (like history.data) are located.
+
+    Returns:
+        dict or None: A dictionary containing analysis results (crossing count, state times,
+                      and blue loop data points as a DataFrame), or None if analysis cannot be performed.
+                      Returns:
+                      {
+                          'crossing_count': int,
+                          'state_times': dict, # Dictionary of star_age at significant events
+                          'blue_loop_detail_df': pandas.DataFrame # Contains relevant data points for the loop phase
+                      }
+    """
+    history_df = read_history_data(run_path, mesa_output_subdir)
+
+    if history_df is None:
+        return None # File not found or couldn't be read successfully
+
+    # Define required columns for the analysis and for the detailed output.
+    # Note: 'center_h1' is only for internal logic, not for final output.
+    required_columns_for_logic = ['model_number', 'star_age', 'log_Teff', 'log_L', 'center_h1', 'log_g']
     
-    result = {
-        'crossing_count': np.nan,
-        'state_times': [], # This list will store the 6 age points
-        'blue_loop_detail_df': None,
-        'ms_end_age': np.nan,
-        'min_teff_post_ms_age': np.nan,
+    # Check for missing columns and report them explicitly.
+    missing_cols = [col for col in required_columns_for_logic if col not in history_df.columns]
+    if missing_cols:
+        print(f"⚠️ Missing required columns in {run_path} history.data file: {', '.join(missing_cols)}. Skipping analysis.")
+        return None
+
+    # --- Step 1: Find Main Sequence (MS) end (H depletion in core) ---
+    h1_threshold = 1e-4
+    ms_end_idx = history_df[history_df['center_h1'] < h1_threshold].index
+    
+    if ms_end_idx.empty:
+        return None
+
+    ms_end_model_number = history_df.loc[ms_end_idx[0], 'model_number']
+    ms_end_star_age = history_df.loc[ms_end_idx[0], 'star_age']
+
+    # --- Step 2: Analyze Post-MS evolution for Blue Loop and Instability Strip crossings ---
+    post_ms_df = history_df[history_df['model_number'] >= ms_end_model_number].copy()
+
+    if post_ms_df.empty:
+        return None
+
+    min_teff_post_ms = post_ms_df['log_Teff'].min()
+    min_teff_post_ms_row = post_ms_df[post_ms_df['log_Teff'] == min_teff_post_ms].iloc[0]
+
+    # Select only the specific columns requested for the detailed output DataFrame
+    # 'mass' column will be added in cli.py as it's from the run's metadata
+    columns_for_detail_df = ['star_age', 'model_number', 'log_Teff', 'log_L', 'log_g']
+    
+    # Ensure these columns exist before trying to select them
+    missing_detail_cols = [col for col in columns_for_detail_df if col not in post_ms_df.columns]
+    if missing_detail_cols:
+        print(f"⚠️ Cannot create detailed DataFrame, missing columns: {', '.join(missing_detail_cols)}")
+        blue_loop_detail_df = None # Return None or empty DataFrame if essential columns are missing
+    else:
+        blue_loop_detail_df = post_ms_df[columns_for_detail_df].copy()
+
+
+    state_times = {
+        'ms_end_age': ms_end_star_age,
+        'min_teff_post_ms_age': min_teff_post_ms_row['star_age'],
+        'first_is_entry_age': None,
+        'first_is_exit_age': None,
+        'last_is_entry_age': None,
+        'last_is_exit_age': None
     }
 
-    if not os.path.exists(history_file_path):
-        # print(f"Warning: history.data not found at {history_file_path}") # Suppress verbose warnings
-        return result
+    is_in_strip = False
+    is_crossing_count = 0
+    
+    # Iterate through the post-MS evolution to track blue loop path and instability strip crossings.
+    # This loop is specifically for populating state_times and is_crossing_count.
+    for index, row in post_ms_df.iterrows():
+        current_log_Teff = row['log_Teff']
+        current_log_L = row['log_L']
+        current_star_age = row['star_age']
 
-    try:
-        data = np.genfromtxt(history_file_path, names=True, comments="#", skip_header=5)
+        # Instability Strip Crossing Detection
+        currently_in_strip = inside_instability_strip(current_log_Teff, current_log_L)
 
-        required_columns = ['log_Teff', 'log_L', 'center_h1', 'star_age', 'model_number', 'log_g']
-        if not all(col in data.dtype.names for col in required_columns):
-            # print(f"Warning: Missing required columns in {history_file_path}")
-            return result
+        if currently_in_strip and not is_in_strip:
+            is_in_strip = True
+            is_crossing_count += 1
+            if state_times['first_is_entry_age'] is None:
+                state_times['first_is_entry_age'] = current_star_age
+            state_times['last_is_entry_age'] = current_star_age
 
-        log_Teff = np.array(data['log_Teff'])
-        log_L = np.array(data['log_L'])
-        center_h1 = np.array(data['center_h1'])
-        star_age = np.array(data['star_age'])
-        model_number = np.array(data['model_number'])
-        log_g = np.array(data['log_g'])
+        elif not currently_in_strip and is_in_strip:
+            is_in_strip = False
+            if state_times['first_is_exit_age'] is None:
+                state_times['first_is_exit_age'] = current_star_age
+            state_times['last_is_exit_age'] = current_star_age
 
-        if len(log_Teff) == 0:
-            return result
+    return {
+        'crossing_count': is_crossing_count,
+        'state_times': state_times,
+        'blue_loop_detail_df': blue_loop_detail_df # Now contains only specific columns
+    }
 
-        # 1. Identify the end of the Main Sequence (MS) (center_h1 < 1e-4)
-        hydrogen_exhaustion_idx = np.argmax(center_h1 < 1e-4)
-        if hydrogen_exhaustion_idx == 0 and center_h1[0] >= 1e-4: # If MS has not ended yet
-            return result
+# --- Example usage (for local testing of this module) ---
+if __name__ == "__main__":
+    test_run_path = "/home/tnehezd/workdir/mesa-r23.05.1/STRANGE/nad_convos_mid/run_nad_convos_mid_11.5MSUN_z0.0200"
+
+    print(f"Testing blue loop analysis for: {test_run_path}")
+    analysis_results = analyze_blue_loop_and_instability(test_run_path)
+
+    if analysis_results:
+        print("\nAnalysis Results:")
+        print(f"  Instability Strip Crossing Count: {analysis_results['crossing_count']}")
+        print("  Key State Times (Star Age):")
+        for key, value in analysis_results['state_times'].items():
+            print(f"    {key}: {value:.4e}" if value is not None else f"    {key}: N/A")
         
-        result['ms_end_age'] = star_age[hydrogen_exhaustion_idx] if hydrogen_exhaustion_idx > 0 else np.nan
-
-        # 2. Find the local minimum of LogL after MS end (to identify blue loop start)
-        # This part mimics your original script's logL_min_idx and logL_max_idx logic
-        if hydrogen_exhaustion_idx < len(log_L) - 1:
-            post_ms_log_L = log_L[hydrogen_exhaustion_idx:]
-            if len(post_ms_log_L) > 0:
-                # Find the local minimum of log_L in the post-MS phase
-                logL_min_idx_relative = np.argmin(post_ms_log_L)
-                logL_min_abs_idx = hydrogen_exhaustion_idx + logL_min_idx_relative
-                
-                result['min_teff_post_ms_age'] = star_age[logL_min_abs_idx] 
-
-                # Define the Blue Loop section for analysis: starting from the LogL minimum found
-                start_analysis_idx = logL_min_abs_idx 
-                
-                logTeff_bl = log_Teff[start_analysis_idx:]
-                logL_bl = log_L[start_analysis_idx:]
-                star_age_bl = star_age[start_analysis_idx:]
-                model_number_bl = model_number[start_analysis_idx:]
-                log_g_bl = log_g[start_analysis_idx:]
-
-                # Check if points are inside the instability strip
-                inside_flags = [inside_instability_strip(teff, l) for teff, l in zip(logTeff_bl, logL_bl)]
-
-                state_changes = 0
-                # Initialize with NaN to differentiate from 0 if no crossing happens
-                current_state_times = [np.nan] * 6 
-
-                # Search for entry/exit changes
-                # Requires at least two points to detect a change (transition)
-                if len(inside_flags) > 1:
-                    for i in range(1, len(inside_flags)):
-                        # Entry: if current point is inside and previous was outside (False -> True)
-                        if inside_flags[i] and not inside_flags[i-1]:
-                            state_changes += 1
-                            if state_changes <= 6:
-                                current_state_times[state_changes - 1] = star_age_bl[i]
-
-                        # Exit: if current point is outside and previous was inside (True -> False)
-                        elif not inside_flags[i] and inside_flags[i-1]:
-                            state_changes += 1
-                            if state_changes <= 6:
-                                current_state_times[state_changes - 1] = star_age_bl[i]
-                
-                # The number of crossings is half the number of state changes (each pair is one full crossing)
-                crossing_count = state_changes // 2
-                result['crossing_count'] = crossing_count
-                result['state_times'] = current_state_times
-
-                # Prepare data for the 'detail' DataFrame, mimicking your original script's filtering:
-                # Only include points on the bluer side of the IS blue edge.
-                blue_edge_y = np.array([instability_strip_vertices[0][1], instability_strip_vertices[1][1]]) 
-                blue_edge_x = np.array([instability_strip_vertices[0][0], instability_strip_vertices[1][0]]) 
-
-                detail_data = []
-                for i in range(len(logTeff_bl)):
-                    log_teff_point = logTeff_bl[i]
-                    log_l_point = logL_bl[i]
-                    
-                    # Interpolate the log_Teff value on the blue edge for the current log_L
-                    if log_l_point >= min(blue_edge_y) and log_l_point <= max(blue_edge_y):
-                        blue_edge_teff = np.interp(log_l_point, blue_edge_y, blue_edge_x)
-                        # Add a small buffer (0.01) as in your original code
-                        if log_teff_point > blue_edge_teff + 0.01:
-                            detail_data.append({
-                                'star_age': star_age_bl[i],
-                                'model_number': model_number_bl[i],
-                                'log_Teff': log_teff_point,
-                                'log_L': log_l_point,
-                                'log_g': log_g_bl[i],
-                                # Note: nu_radial and eta_radial are not included here as they come from
-                                # profile.data, which this analyzer currently does not read.
-                            })
-                
-                if detail_data:
-                    result['blue_loop_detail_df'] = pd.DataFrame(detail_data)
-
-            else:
-                # print(f"Warning: No post-MS data for {history_file_path}")
-                return result # No sufficient data to process
-
-    except Exception as e:
-        # print(f"Error processing {history_file_path}: {e}")
-        pass # Return the initialized 'result' dict
-
-    return result
+        # Now printing head of the DataFrame
+        if analysis_results['blue_loop_detail_df'] is not None:
+            print(f"\nFirst 5 blue loop detail data points (out of {len(analysis_results['blue_loop_detail_df'])}):")
+            print(analysis_results['blue_loop_detail_df'].head())
+            print("\nColumns in detailed DataFrame:")
+            print(analysis_results['blue_loop_detail_df'].columns.tolist())
+        else:
+            print("\nNo detailed blue loop data points DataFrame.")
+    else:
+        print("Analysis could not be performed for the test run.")
