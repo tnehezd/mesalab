@@ -168,12 +168,17 @@ def main():
                 if 'blue_loop_crossing_count' in summary_df_loaded.columns:
                     cross_data_matrix_loaded = summary_df_loaded['blue_loop_crossing_count'].unstack(level='initial_mass')
                     print("Loaded existing summary data for heatmap generation.")
+                    # --- MÓDOSÍTÁS ITT: cross_data_matrix_loaded -> cross_data_df, és hiányzó paraméterek hozzáadása ---
                     generate_heatmaps_and_time_diff_csv(
-                        cross_data_matrix=cross_data_matrix_loaded,
-                        summary_df=summary_df_loaded.reset_index(),
-                        plots_sub_dir=plots_sub_dir,
-                        analysis_results_sub_dir=analysis_results_sub_dir,
-                        project_name=os.path.basename(input_dir)
+                        cross_data_df=cross_data_matrix_loaded,
+                        summary_csv_path=summary_csv_path, # HOZZÁADVA
+                        unique_zs=sorted(list(set(summary_df_loaded.index.get_level_values('initial_Z')))), # HOZZÁADVA
+                        unique_masses=sorted(list(set(summary_df_loaded.index.get_level_values('initial_mass')))), # HOZZÁADVA
+                        plots_output_dir=plots_sub_dir,
+                        analysis_results_output_dir=analysis_results_sub_dir,
+                        project_name=os.path.basename(input_dir),
+                        blue_loop_output_type=blue_loop_output_type, # HOZZÁADVA
+                        analyze_blue_loop=analyze_blue_loop # HOZZÁADVA
                     )
                     print("Heatmaps generated from existing data.")
                 else:
@@ -274,8 +279,8 @@ def main():
                     blue_loop_detail_df = analysis_result.get('blue_loop_detail_df', pd.DataFrame())
                     if not blue_loop_detail_df.empty:
                         desired_detail_cols = ["star_age", "model_number", "log_Teff", "log_L", "log_g",
-                                             "center_h1", "r_mix_core", "r_mix_env"]
-                        
+                                               "center_h1", "r_mix_core", "r_mix_env"]
+                                            
                         available_cols = [col for col in desired_detail_cols if col in blue_loop_detail_df.columns]
                         filtered_df = blue_loop_detail_df[available_cols].copy()
 
@@ -325,11 +330,11 @@ def main():
                     combined_df_for_z.rename(columns={'initial_mass': 'mass'}, inplace=True)
                 
                 final_detail_header = ["mass", "star_age", "model_number", "log_Teff", "log_L", "log_g",
-                                       "center_h1", "r_mix_core", "r_mix_env"]
+                                       "center_h1"]
                 # Add nu_radial and eta_radial columns back to the header if they are expected in detail files
                 # Based on your previous code, these were in the header.
-                final_detail_header.extend([f"nu_radial_{i}" for i in range(40)])
-                final_detail_header.extend([f"eta_radial_{i}" for i in range(40)])
+#                final_detail_header.extend([f"nu_radial_{i}" for i in range(40)])
+#                final_detail_header.extend([f"eta_radial_{i}" for i in range(40)])
 
 
                 for col in final_detail_header:
@@ -353,12 +358,17 @@ def main():
 
     if generate_heatmaps:
         print("Generating heatmaps...")
+        # --- MÓDOSÍTÁS ITT: cross_data_matrix -> cross_data_df, és hiányzó paraméterek hozzáadása ---
         generate_heatmaps_and_time_diff_csv(
-            cross_data_matrix=cross_data_matrix,
-            summary_df=final_summary_df.reset_index(),
-            plots_sub_dir=plots_sub_dir,
-            analysis_results_sub_dir=analysis_results_sub_dir,
-            project_name=os.path.basename(input_dir)
+            cross_data_df=cross_data_matrix,
+            summary_csv_path=summary_csv_path, 
+            unique_zs=unique_zs,               
+            unique_masses=unique_masses,       
+            plots_output_dir=plots_sub_dir,
+            analysis_results_output_dir=analysis_results_sub_dir,
+            model_name=os.path.basename(input_dir),
+            blue_loop_output_type=blue_loop_output_type, # HOZZÁADVA
+            analyze_blue_loop=analyze_blue_loop # HOZZÁADVA
         )
         print("Heatmaps generated.")
     else:
