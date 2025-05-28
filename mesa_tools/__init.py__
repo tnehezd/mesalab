@@ -1,0 +1,8 @@
+# mesa_tools/__init__.py
+
+# Define the package version for easy tracking
+__version__ = "0.1.0"
+
+# You can also import key functions directly into the package namespace
+# for easier access, e.g., from mesa_tools import analyze_mesa_grid_directory
+# For now, we'll keep it minimal.

@@ -1,0 +1,20 @@
+# --- MESA Analyzer Configuration ---
+
+[paths]
+# Default subdirectory within each MESA run for output files (e.g., history.data).
+# This path is relative to the root of a single MESA run folder.
+mesa_output_subdir = "LOGS"
+
+[filenames]
+# Primary filename for the MESA inlist file used to extract parameters.
+# This will be the default value used by the inlist_parser.
+inlist_filename = "inlist" # This is the absolute fallback if no --inlist-name is given and no alternatives work
+# List of alternative inlist filenames to check if the primary is not found.
+# The program will try these in order if 'inlist_filename' doesn't exist.
+inlist_alternatives = ["inlist_project", "inlist_1.0"]
+
+# --- Additional configuration sections can go here ---
+# [analysis]
+# min_mass = 0.5
+# max_mass = 10.0
+
