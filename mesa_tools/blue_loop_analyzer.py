@@ -1,14 +1,15 @@
 import pandas as pd
 import numpy as np
 from matplotlib.path import Path
+import os # Added for potential file operations within analyzer, if needed, though not directly used in this version.
 
 # Define the vertices of the Instability Strip based on your provided values
 # The order is important for matplotlib.path.Path: (log_Teff, log_L)
 INSTABILITY_STRIP_VERTICES = np.array([
-    [3.83, 2.4],   # Blue edge, top (hottest, lowest luminosity of IS relevant for blue loop)
-    [3.76, 4.5],   # Blue edge, bottom (hottest, highest luminosity of IS relevant for blue loop)
-    [3.65, 4.5],   # Red edge, bottom (coolest, highest luminosity)
-    [3.77, 2.4]    # Red edge, top (coolest, lowest luminosity)
+    [3.83, 2.4],    # Blue edge, top (hottest, lowest luminosity of IS relevant for blue loop)
+    [3.76, 4.5],    # Blue edge, bottom (hottest, highest luminosity of IS relevant for blue loop)
+    [3.65, 4.5],    # Red edge, bottom (coolest, highest luminosity)
+    [3.77, 2.4]     # Red edge, top (coolest, lowest luminosity)
 ])
 
 # Create a Path object for efficient point-in-polygon checks
@@ -20,50 +21,82 @@ def is_in_instability_strip(log_Teff, log_L):
     """
     return instability_path.contains_point((log_Teff, log_L))
 
-def analyze_blue_loop_and_instability(history_data):
+def analyze_blue_loop_and_instability(history_df: pd.DataFrame, initial_mass: float, initial_Z: float):
     """
     Analyzes MESA history data for blue loop characteristics and Instability Strip crossings.
 
     Args:
-        history_data (pd.DataFrame): DataFrame containing MESA history data.
-                                     Must include 'log_Teff', 'log_L', 'center_h1', 'star_age', 'model_number', 'log_g'.
+        history_df (pd.DataFrame): DataFrame containing MESA history data.
+                                   Must include 'log_Teff', 'log_L', 'center_h1', 'star_age', 'model_number', 'log_g'.
+        initial_mass (float): Initial mass of the star.
+        initial_Z (float): Initial metallicity (Z) of the star.
 
     Returns:
         dict: A dictionary containing analysis results, including:
               - 'crossing_count': Number of times the star enters the Instability Strip during its relevant phase.
               - 'state_times': Dictionary of specific ages (MS end, min Teff post-MS, IS entries/exits).
               - 'blue_loop_detail_df': DataFrame with detailed data points during the relevant blue loop phase.
-              Returns None if analysis cannot be performed (e.g., missing columns, no relevant phase).
+              Returns a dictionary with NaN values if analysis cannot be performed (e.g., missing columns, no relevant phase).
     """
+    # --- REMOVED ALL DEBUG PRINTS FROM HERE ---
+    # print(f"\n--- DEBUG: Analyzing history_df for M={initial_mass}, Z={initial_Z} ---")
+    # print("History DataFrame head (first 5 rows):")
+    # print(history_df.head())
+    # print("\nNaN counts per column in history_df:")
+    # print(history_df.isnull().sum().to_string()) # .to_string() for better formatting if many columns
+    # print("\nHistory DataFrame info (dtypes and non-null counts):")
+    # history_df.info()
+    # print("\nHistory DataFrame tail (last 5 rows):")
+    # print(history_df.tail())
+    # --- END REMOVED DEBUG PRINTS ---
+
+    # Add initial_mass and initial_Z columns to the DataFrame for context within the analyzer
+    # This is done here now that the analyzer receives the raw df
+    history_df['initial_mass'] = initial_mass
+    history_df['initial_Z'] = initial_Z
+
     required_columns = ['log_Teff', 'log_L', 'center_h1', 'star_age', 'model_number', 'log_g']
     
     # Check for presence of required columns
-    if not all(col in history_data.columns for col in required_columns):
-        # print(f"Missing required columns in history_data. Required: {required_columns}, Found: {history_data.columns.tolist()}")
-        return None # Indicate failure if essential columns are missing
+    missing_cols = [col for col in required_columns if col not in history_df.columns]
+    if missing_cols:
+        print(f"ERROR: Missing required columns in history_df for M={initial_mass}, Z={initial_Z}. Missing: {missing_cols}. Skipping analysis.")
+        return {
+            'crossing_count': np.nan,
+            'state_times': {},
+            'blue_loop_detail_df': pd.DataFrame()
+        }
 
     # Ensure data is sorted by star_age for proper time series analysis
-    history_data = history_data.sort_values(by='star_age').reset_index(drop=True)
+    history_df = history_df.sort_values(by='star_age').reset_index(drop=True)
 
-    log_Teff = history_data['log_Teff'].values
-    log_L = history_data['log_L'].values
-    center_h1 = history_data['center_h1'].values
-    star_age = history_data['star_age'].values
-    model_number = history_data['model_number'].values
-    log_g = history_data['log_g'].values
+    log_Teff = history_df['log_Teff'].values
+    log_L = history_df['log_L'].values
+    center_h1 = history_df['center_h1'].values
+    star_age = history_df['star_age'].values
+    model_number = history_df['model_number'].values
+    log_g = history_df['log_g'].values
 
-    # Check for empty data
-    if len(history_data) == 0:
-        # print("History data is empty.")
-        return None
+    # Check for empty data after sorting/resetting index
+    if history_df.empty:
+        print(f"Warning: History data is empty after processing for M={initial_mass}, Z={initial_Z}.")
+        return {
+            'crossing_count': np.nan,
+            'state_times': {},
+            'blue_loop_detail_df': pd.DataFrame()
+        }
 
     # --- 1. Main Sequence End (MS_end_age) ---
     # Find the point where central hydrogen is depleted (H1 < 1e-4)
     hydrogen_exhaustion_idx = np.where(center_h1 < 1e-4)[0]
     
     if len(hydrogen_exhaustion_idx) == 0:
-        # print("No hydrogen exhaustion found (star might be too young or still on MS).")
-        return None # Star has not reached MS end or model is incomplete
+        print(f"Warning: No hydrogen exhaustion found for M={initial_mass}, Z={initial_Z} (star might be too young or still on MS).")
+        return {
+            'crossing_count': np.nan,
+            'state_times': {},
+            'blue_loop_detail_df': pd.DataFrame()
+        }
     
     ms_end_idx = hydrogen_exhaustion_idx[0]
     ms_end_age = star_age[ms_end_idx]
@@ -71,67 +104,68 @@ def analyze_blue_loop_and_instability(history_data):
     # If the MS ends at the very beginning of the track (or very close),
     # it might indicate an incomplete pre-MS or very short MS.
     if ms_end_idx < 10: # Arbitrary threshold, can be adjusted
-        # print("MS end detected too early in the track, possibly incomplete data.")
-        return None
+        print(f"Warning: MS end detected too early in the track for M={initial_mass}, Z={initial_Z}, possibly incomplete data.")
+        return {
+            'crossing_count': np.nan,
+            'state_times': {},
+            'blue_loop_detail_df': pd.DataFrame()
+        }
 
     # --- 2. Determine the relevant phase for blue loop/IS crossings (AGB phase onwards) ---
-    # Based on your original code's logic:
-    # Find the minimum log_L after MS end
-    if ms_end_idx >= len(log_L) - 1: # Ensure there's data after MS end
-        # print("Not enough data after MS end for blue loop analysis.")
-        return None
-
-    # We need to find the local minimum of log_L after MS end for the blue loop.
-    # The original code's approach:
-    # 1. Find the global minimum of log_L in the post-MS phase.
-    # 2. Find the *next* point where log_L increases (local maximum after the minimum).
-    # This identifies the start of the AGB phase before the star potentially
-    # loops to the blue.
-
-    post_ms_data = history_data.iloc[ms_end_idx:]
+    post_ms_data = history_df.iloc[ms_end_idx:].copy() # Use .copy() to avoid SettingWithCopyWarning
     
     if len(post_ms_data) < 2: # Need at least two points to find a min
-        # print("Not enough post-MS data to determine AGB phase start.")
-        return None
+        print(f"Warning: Not enough post-MS data for M={initial_mass}, Z={initial_Z} to determine AGB phase start.")
+        return {
+            'crossing_count': np.nan,
+            'state_times': {},
+            'blue_loop_detail_df': pd.DataFrame()
+        }
 
     # Find the index of the minimum log_L in the post-MS phase (relative to post_ms_data)
     logL_min_relative_idx = np.argmin(post_ms_data['log_L'].values)
     
-    # Absolute index in the original history_data
+    # Absolute index in the original history_df
     logL_min_abs_idx = ms_end_idx + logL_min_relative_idx
 
     # Find the first point *after* logL_min_abs_idx where log_L increases (local maximum)
-    # This marks the start of the "return to the red" or AGB phase.
-    # We are looking for the *first* point where the luminosity starts increasing significantly
-    # after the minimum.
-    
-    # To be robust, let's look for a sustained increase, not just one point.
-    # A simpler approach: find the first index after logL_min_abs_idx where log_L is
-    # greater than log_L at logL_min_abs_idx. This was the original logic.
-    
-    # Ensure there are points after logL_min_abs_idx
     if logL_min_abs_idx >= len(log_L) - 1:
-        # print("Not enough data after post-MS log_L minimum to determine AGB phase start.")
-        return None
+        print(f"Warning: Not enough data after post-MS log_L minimum for M={initial_mass}, Z={initial_Z} to determine AGB phase start.")
+        return {
+            'crossing_count': np.nan,
+            'state_times': {},
+            'blue_loop_detail_df': pd.DataFrame()
+        }
 
     # Look for a log_L increase after the minimum, this defines the start of the AGB-like phase
-    agb_start_relative_idx = np.argmax(log_L[logL_min_abs_idx+1:] > log_L[logL_min_abs_idx])
+    # np.argmax returns the index of the first occurrence of the maximum value.
+    # If all values are False, it returns 0. So we need to check if any are True.
+    log_L_increase_after_min = (log_L[logL_min_abs_idx+1:] > log_L[logL_min_abs_idx])
     
-    # If argmax returns 0, it means the first point after min is already greater, or no point is.
-    # If no point is found greater, it means log_L keeps decreasing or is flat.
-    # If no increase is found, the star might not undergo an AGB phase or the track is incomplete.
-    if agb_start_relative_idx == 0 and not (log_L[logL_min_abs_idx+1:] > log_L[logL_min_abs_idx]).any():
-        # print("No clear AGB phase start detected after post-MS log_L minimum.")
-        return None # No significant luminosity increase after the minimum, likely no blue loop relevant for IS crossings
-
-    # The actual absolute index where the relevant AGB-like phase begins
+    if not log_L_increase_after_min.any():
+        print(f"Warning: No clear AGB phase start detected after post-MS log_L minimum for M={initial_mass}, Z={initial_Z}. Likely no blue loop relevant for IS crossings.")
+        return {
+            'crossing_count': np.nan,
+            'state_times': {},
+            'blue_loop_detail_df': pd.DataFrame()
+        }
+    
+    agb_start_relative_idx = np.argmax(log_L_increase_after_min)
     agb_start_abs_idx = logL_min_abs_idx + 1 + agb_start_relative_idx
 
     # Define the blue loop candidate phase from this AGB start point to the end of the track.
-    blue_loop_candidate_df = history_data.iloc[agb_start_abs_idx:].copy()
+    blue_loop_candidate_df = history_df.iloc[agb_start_abs_idx:].copy()
 
     # --- 3. Instability Strip Crossing Count ---
     # Determine if each point is in the instability strip for the blue loop candidate phase
+    if blue_loop_candidate_df.empty:
+        print(f"Warning: Blue loop candidate DataFrame is empty for M={initial_mass}, Z={initial_Z}.")
+        return {
+            'crossing_count': np.nan,
+            'state_times': {},
+            'blue_loop_detail_df': pd.DataFrame()
+        }
+
     is_in_is_series = blue_loop_candidate_df.apply(
         lambda row: is_in_instability_strip(row['log_Teff'], row['log_L']), axis=1
     )
@@ -189,5 +223,8 @@ def analyze_blue_loop_and_instability(history_data):
         'state_times': state_times,
         'blue_loop_detail_df': blue_loop_candidate_df # This contains all relevant data points for detail
     }
+
+    # --- REMOVED DEBUG PRINT: Final result from analyzer ---
+    # print(f"--- DEBUG: Analyzer finished for M={initial_mass}, Z={initial_Z}. Crossing count: {crossing_count}, Detail DF empty: {blue_loop_candidate_df.empty} ---")
 
     return analysis_results

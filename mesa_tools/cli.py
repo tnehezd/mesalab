@@ -1,356 +1,368 @@
-import argparse
 import os
+import argparse
 import pandas as pd
 import numpy as np
+import glob
 import re
-import json
+import csv
 from tqdm import tqdm
-import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap, BoundaryNorm
-import zipfile
+import math
 
-# --- Import your analyzer and config functions ---
-from mesa_tools.blue_loop_analyzer import analyze_blue_loop_and_instability, INSTABILITY_STRIP_VERTICES
-from mesa_tools.config_manager import load_config
-from mesa_tools.mesa_reader import read_history_data
-from mesa_tools.grid_analyzer import analyze_mesa_grid_directory
+# --- Import your analyzer functions ---
+# Make sure these modules are accessible in your Python environment
+from mesa_tools.blue_loop_analyzer import analyze_blue_loop_and_instability
+from mesa_tools.heatmap_generator import generate_heatmaps_and_time_diff_csv
+
+
+def extract_params_from_inlist(inlist_path):
+    """
+    Extracts initial_mass and initial_Z from a MESA inlist file.
+    """
+    mass = None
+    z = None
+
+    try:
+        with open(inlist_path, 'r') as f:
+            content = f.read()
+            mass_match = re.search(r'initial_mass\s*=\s*(\d+\.?\d*)', content)
+            if mass_match:
+                mass = float(mass_match.group(1))
+            z_match = re.search(r'initial_Z\s*=\s*(\d+\.?\d*(?:e[+\-]?\d+)?)', content)
+            if z_match:
+                z = float(z_match.group(1))
+
+    except FileNotFoundError:
+        print(f"ERROR: Inlist file not found: {inlist_path}")
+    except Exception as e:
+        print(f"ERROR: Error reading inlist file {inlist_path}: {e}")
+
+    return mass, z
+
+
+def scan_mesa_runs(input_dir, inlist_name):
+    """
+    Scans the input directory for MESA run subdirectories (named 'run_*')
+    based on the presence of an inlist file within them.
+    """
+    mesa_run_infos = []
+    potential_run_dirs = [d for d in os.listdir(input_dir) if os.path.isdir(os.path.join(input_dir, d)) and d.startswith('run_')]
+
+    if not potential_run_dirs:
+        print(f"Warning: No 'run_*' subdirectories found directly in {input_dir}. "
+              "Please ensure your MESA runs are organized as subdirectories starting with 'run_'.")
+
+    for run_dir_name in potential_run_dirs:
+        run_dir_path = os.path.join(input_dir, run_dir_name)
+        inlist_path = os.path.join(run_dir_path, inlist_name)
+        history_file_path = os.path.join(run_dir_path, 'LOGS', 'history.data')
+
+        if os.path.exists(inlist_path) and os.path.exists(history_file_path):
+            mass, z = extract_params_from_inlist(inlist_path)
+            if mass is not None and z is not None:
+                mesa_run_infos.append({
+                    'history_file_path': history_file_path,
+                    'run_dir_path': run_dir_path,
+                    'mass': mass,
+                    'z': z
+                })
+            else:
+                print(f"Warning: Could not extract mass/Z from inlist file '{inlist_path}'. Skipping this run from scan.")
+        else:
+            if not os.path.exists(inlist_path):
+                print(f"Warning: Inlist file '{inlist_name}' not found in '{run_dir_path}'. Skipping this run from scan.")
+            if not os.path.exists(history_file_path):
+                print(f"Warning: history.data not found at '{history_file_path}'. Skipping this run from scan.")
+
+    return mesa_run_infos
+
+
+def get_data_from_history_file(history_file_path):
+    """
+    Reads data from a MESA history.data file using np.genfromtxt
+    with known header properties, matching the successful debug_hr_plot.py method.
+    """
+    # Removed: print(f"DEBUG: Attempting to read history.data from: {history_file_path} using np.genfromtxt (skip_header=5).")
+
+    try:
+        data = np.genfromtxt(history_file_path, names=True, comments="#", skip_header=5, dtype=None, encoding='utf-8')
+
+        if data.ndim == 0:
+            df = pd.DataFrame([data.tolist()], columns=data.dtype.names)
+        else:
+            df = pd.DataFrame(data)
+
+        for col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+
+        if 'model_number' in df.columns:
+            df.dropna(subset=['model_number'], inplace=True)
+            if not df['model_number'].isnull().any():
+                df['model_number'] = df['model_number'].astype(int)
+
+        # Removed: print(f"DEBUG: Successfully read {len(df)} rows from {history_file_path} using np.genfromtxt.")
+        return df
+
+    except Exception as e:
+        # Re-raise the exception with more context for better debugging
+        raise type(e)(f"Error loading or processing data from {history_file_path} using np.genfromtxt: {e}") from e
+
 
 def main():
     """
     Main function to parse arguments and orchestrate the grid analysis.
     """
-    parser = argparse.ArgumentParser(description="Analyze MESA stellar evolution grids.")
+    parser = argparse.ArgumentParser(description="Analyze MESA stellar evolution grid runs.")
     parser.add_argument("-i", "--input-dir", required=True,
-                        help="Path to the root directory containing MESA run subdirectories.")
+                        help="Path to the directory containing MESA run subdirectories (e.g., 'run_M2.0_Z0.01').")
     parser.add_argument("-o", "--output-dir", required=True,
-                        help="Path to the directory where analysis results will be saved.")
-    parser.add_argument("--model-name", default="mesa_grid",
-                        help="A name for the current model grid, used in output filenames (default: mesa_grid).")
+                        help="Path to the output directory where results will be saved.")
     parser.add_argument("--analyze-blue-loop", action="store_true",
-                        help="Enable blue loop analysis.")
+                        help="Enable blue loop analysis for each run.")
+    parser.add_argument("--inlist-name", default="inlist_project",
+                        help="Name of the inlist file to identify MESA run directories (default: inlist_project).")
+    parser.add_argument("--generate-heatmaps", action="store_true",
+                        help="Generate heatmaps from the cross-grid data.")
+    parser.add_argument("--force-reanalysis", action="store_true",
+                        help="Force reanalysis of all runs, even if summary files exist.")
     parser.add_argument("--blue-loop-output-type", choices=['summary', 'all'], default='all',
-                        help="Type of blue loop output: 'summary' (count only) or 'all' (detailed ages).")
+                        help="Specify blue loop output type: 'summary' (count only) or 'all' (detailed ages).")
     parser.add_argument("--generate-plots", action="store_true",
-                        help="Generate heatmap plots from the analysis results.")
-    parser.add_argument("--zip-details", action="store_true",
-                        help="Zip detail files after generation.")
+                        help="Generate plots for each run's analysis (e.g., HR diagrams).")
 
-
-    # Command line arguments for config overrides
-    parser.add_argument("--mesa-output-subdir", default=None,
-                        help="Name of the MESA output subdirectory (e.g., LOGS) (default: from config.toml or LOGS).")
-    parser.add_argument("--inlist-name", default=None,
-                        help="Primary inlist filename (default: from config.toml or inlist).")
-    parser.add_argument("--inlist-alternatives", nargs='*', default=None,
-                        help="List of alternative inlist filenames (default: from config.toml or pre-defined).")
 
     args = parser.parse_args()
 
-    # Load configuration from config.toml first
-    config = load_config()
-
-    # Override config values with command-line arguments if provided
-    mesa_output_subdir = args.mesa_output_subdir if args.mesa_output_subdir is not None \
-                         else config.get('paths', {}).get('mesa_output_subdir', 'LOGS')
-    
-    inlist_filename = args.inlist_name if args.inlist_name is not None \
-                      else config.get('filenames', {}).get('inlist_filename', 'inlist')
-    
-    inlist_alternatives = args.inlist_alternatives if args.inlist_alternatives is not None \
-                          else config.get('filenames', {}).get('inlist_alternatives', ["inlist_project", "inlist_1.0"])
-
-
     input_dir = args.input_dir
     output_dir = args.output_dir
-    model_name = args.model_name
     analyze_blue_loop = args.analyze_blue_loop
+    inlist_name = args.inlist_name
+    generate_heatmaps = args.generate_heatmaps
+    force_reanalysis = args.force_reanalysis
     blue_loop_output_type = args.blue_loop_output_type
     generate_plots = args.generate_plots
-    zip_details = args.zip_details
 
-    # Create the top-level output directory
-    os.makedirs(output_dir, exist_ok=True)
-
-    # Define paths for subdirectories for organized output
-    analysis_results_output_dir = os.path.join(output_dir, "analysis_results")
+    analysis_results_sub_dir = os.path.join(output_dir, "analysis_results")
+    plots_sub_dir = os.path.join(output_dir, "plots")
     detail_files_output_dir = os.path.join(output_dir, "detail_files")
-    plots_output_dir = os.path.join(output_dir, "plots")
 
-    # Create subdirectories
-    os.makedirs(analysis_results_output_dir, exist_ok=True)
-    os.makedirs(detail_files_output_dir, exist_ok=True)
-    if generate_plots:
-        os.makedirs(plots_output_dir, exist_ok=True)
+    os.makedirs(analysis_results_sub_dir, exist_ok=True)
+    if analyze_blue_loop and blue_loop_output_type == 'all':
+        os.makedirs(detail_files_output_dir, exist_ok=True)
+    if generate_plots or generate_heatmaps:
+        os.makedirs(plots_sub_dir, exist_ok=True)
 
-    # Define output CSV and JSON paths
-    summary_csv_path = os.path.join(analysis_results_output_dir, f"mesa_grid_analysis_summary_{model_name}.csv")
-    cross_csv_path = os.path.join(analysis_results_output_dir, f"cross_{model_name}.csv")
-    run_paths_json_path = os.path.join(analysis_results_output_dir, f"run_paths_{model_name}.json")
 
-    print(f"Scanning input directory: {input_dir} for MESA runs using inlists: '{inlist_filename}', {inlist_alternatives} and output sub-directory: '{mesa_output_subdir}'...")
-    
-    # Use the analyze_mesa_grid_directory from grid_analyzer.py
-    mesa_run_dirs_info = analyze_mesa_grid_directory(
-        input_dir,
-        mesa_output_subdir=mesa_output_subdir,
-        inlist_filename=inlist_filename,
-        inlist_alternatives=inlist_alternatives
-    )
+    summary_csv_path = os.path.join(analysis_results_sub_dir, "mesa_grid_analysis_summary.csv")
+    cross_csv_path = os.path.join(analysis_results_sub_dir, "cross_mesa_grid.csv")
 
-    if not mesa_run_dirs_info:
-        print("No MESA run directories found based on the provided criteria. Exiting.")
+    reanalysis_needed = force_reanalysis or \
+                        not os.path.exists(summary_csv_path) or \
+                        not os.path.exists(cross_csv_path)
+
+
+    if not reanalysis_needed:
+        print("Summary and/or cross-grid CSV files already exist. Use --force-reanalysis to re-run analysis.")
+        if generate_heatmaps:
+            try:
+                summary_df_loaded = pd.read_csv(summary_csv_path, index_col=['initial_Z', 'initial_mass'])
+                if 'blue_loop_crossing_count' in summary_df_loaded.columns:
+                    cross_data_matrix_loaded = summary_df_loaded['blue_loop_crossing_count'].unstack(level='initial_mass')
+                    print("Loaded existing summary data for heatmap generation.")
+                    generate_heatmaps_and_time_diff_csv(
+                        cross_data_matrix=cross_data_matrix_loaded,
+                        summary_df=summary_df_loaded.reset_index(),
+                        plots_sub_dir=plots_sub_dir,
+                        analysis_results_sub_dir=analysis_results_sub_dir,
+                        project_name=os.path.basename(input_dir)
+                    )
+                    print("Heatmaps generated from existing data.")
+                else:
+                    print("Existing summary CSV does not contain 'blue_loop_crossing_count' for heatmaps. Skipping heatmap generation.")
+            except Exception as e:
+                print(f"Error loading existing data for heatmaps: {e}. Please consider using --force-reanalysis.")
         return
 
-    # Store run paths for JSON export in a structured, sorted way
-    # Create a dictionary of dictionaries: {Z_val: {Mass_val: path}}
-    run_paths_structured = {}
-    for run_info in mesa_run_dirs_info:
-        z_val = run_info['z']
-        mass_val = run_info['mass']
-        path_val = run_info['path']
-        
-        if z_val not in run_paths_structured:
-            run_paths_structured[z_val] = {}
-        run_paths_structured[z_val][mass_val] = path_val
-    
-    # Sort the outer dictionary by Z keys
-    sorted_zs_keys = sorted(run_paths_structured.keys())
-    # Prepare the final JSON output with formatted keys
-    json_output_dict = {}
-    for z_key in sorted_zs_keys:
-        # Sort the inner dictionary by Mass keys
-        sorted_masses_for_z = sorted(run_paths_structured[z_key].keys())
-        
-        # Format the Z key
-        formatted_z_key = f"Z{z_key:.4f}" # e.g., Z0.0015
-        json_output_dict[formatted_z_key] = {}
-        
-        for mass_key in sorted_masses_for_z:
-            # Format the Mass key
-            formatted_mass_key = f"{mass_key:.1f}MSUN" # e.g., 15.0MSUN
-            json_output_dict[formatted_z_key][formatted_mass_key] = run_paths_structured[z_key][mass_key]
+    print("Starting analysis of MESA runs...")
+    mesa_run_infos = scan_mesa_runs(input_dir, inlist_name)
 
-    # Save the run paths to a JSON file
-    with open(run_paths_json_path, 'w') as f:
-        json.dump(json_output_dict, f, indent=4)
-    print(f"Run paths saved to {run_paths_json_path}")
+    if not mesa_run_infos:
+        print("No MESA runs found in the input directory. Exiting.")
+        return
 
+    unique_masses = sorted(list(set([run['mass'] for run in mesa_run_infos])))
+    unique_zs = sorted(list(set([run['z'] for run in mesa_run_infos])))
 
-    # Extract unique Z values and Masses for structured output
-    unique_zs = sorted(list(set(run['z'] for run in mesa_run_dirs_info)))
-    unique_masses = sorted(list(set(run['mass'] for run in mesa_run_dirs_info)))
-    
-    print(f"Found {len(mesa_run_dirs_info)} MESA runs covering Z={unique_zs} and Mass={unique_masses}")
+    if not unique_masses:
+        print("Error: No unique masses could be determined from runs. Exiting.")
+        return
+    if not unique_zs:
+        print("Error: No unique metallicities (Z) could be determined from runs. Exiting.")
+        return
 
-    all_summary_results_data = [] # For the main summary CSV
-    
-    # List to hold paths of detail files for zipping later
-    detail_file_paths_for_zipping = []
+    cross_data_matrix = pd.DataFrame(np.nan, index=unique_zs, columns=unique_masses)
+    cross_data_matrix.index.name = "Z"
+    cross_data_matrix.columns.name = "Mass"
 
-    total_runs = len(mesa_run_dirs_info)
+    summary_data = []
+    grouped_detailed_dfs = {z_val: [] for z_val in unique_zs}
+
+    total_runs = len(mesa_run_infos)
+    print(f"Found {total_runs} MESA runs for Z={unique_zs} and Mass={unique_masses}")
     print(f"Starting analysis of {total_runs} MESA runs...")
 
-    # Initialize a DataFrame for the cross-section data for the heatmap
-    # Use unique_zs as index and unique_masses as columns
-    cross_data_df = pd.DataFrame(index=unique_zs, columns=unique_masses, dtype=float)
-
-
+    skipped_runs_log_path = os.path.join(analysis_results_sub_dir, "skipped_runs_log.txt")
+    if os.path.exists(skipped_runs_log_path):
+        os.remove(skipped_runs_log_path)
+    
     with tqdm(total=total_runs, desc="Analyzing MESA runs") as pbar:
-        for i, run_info in enumerate(mesa_run_dirs_info):
-            run_path = run_info['path']
+        for run_info in mesa_run_infos:
+            history_file_path = run_info['history_file_path']
+            run_dir_path = run_info['run_dir_path']
             current_mass = run_info['mass']
             current_z = run_info['z']
-            
-            run_result = {
-                'initial_mass': current_mass,
-                'initial_Z': current_z
+
+            analysis_result = {
+                'crossing_count': np.nan,
+                'state_times': {},
+                'blue_loop_detail_df': pd.DataFrame()
             }
 
-            analysis_result = None
-            history_data = read_history_data(run_path, mesa_output_subdir) 
+            try:
+                if not os.path.exists(history_file_path):
+                    print(f"Warning: history.data not found at {history_file_path}. Skipping analysis for this run. (Path issue suspected.)")
+                    if current_z in cross_data_matrix.index and current_mass in cross_data_matrix.columns:
+                        cross_data_matrix.loc[current_z, current_mass] = np.nan
+                    with open(skipped_runs_log_path, "a") as log_file:
+                        log_file.write(f"Z={current_z}, M={current_mass}, Path: {history_file_path}, Error: history.data not found.\n")
+                    pbar.update(1)
+                    continue
 
-            if history_data is not None:
+                # Get the DataFrame from history.data using the proven np.genfromtxt method
+                history_df = get_data_from_history_file(history_file_path)
+
+                if history_df.empty:
+                    print(f"Warning: DataFrame from {history_file_path} is empty. Skipping analysis for this run.")
+                    if current_z in cross_data_matrix.index and current_mass in cross_data_matrix.columns:
+                        cross_data_matrix.loc[current_z, current_mass] = np.nan
+                    with open(skipped_runs_log_path, "a") as log_file:
+                        log_file.write(f"Z={current_z}, M={current_mass}, Path: {history_file_path}, Error: Empty DataFrame.\n")
+                    pbar.update(1)
+                    continue
+
                 if analyze_blue_loop:
-                    analysis_result = analyze_blue_loop_and_instability(history_data) 
+                    # PASS THE DATAFRAME and current_mass, current_z to the analyzer
+                    analysis_result = analyze_blue_loop_and_instability(history_df, current_mass, current_z)
 
-                if analysis_result:
-                    # Update summary results
-                    if blue_loop_output_type == 'summary':
-                        run_result['blue_loop_crossing_count'] = analysis_result['crossing_count']
-                    elif blue_loop_output_type == 'all':
-                        run_result['blue_loop_crossing_count'] = analysis_result['crossing_count']
-                        # Use .get() with a default of np.nan for state_times
-                        run_result['ms_end_age'] = analysis_result['state_times'].get('ms_end_age', np.nan)
-                        run_result['min_teff_post_ms_age'] = analysis_result['state_times'].get('min_teff_post_ms_age', np.nan)
-                        run_result['first_is_entry_age'] = analysis_result['state_times'].get('first_is_entry_age', np.nan)
-                        run_result['first_is_exit_age'] = analysis_result['state_times'].get('first_is_exit_age', np.nan)
-                        run_result['last_is_entry_age'] = analysis_result['state_times'].get('last_is_entry_age', np.nan)
-                        run_result['last_is_exit_age'] = analysis_result['state_times'].get('last_is_exit_age', np.nan)
-                    
-                    # Store crossing count for cross_data_df (heatmap source)
-                    # Use .loc with specific Z and Mass values to ensure correct placement
-                    cross_data_df.loc[current_z, current_mass] = analysis_result['crossing_count']
+                summary_data.append({
+                    'initial_mass': current_mass,
+                    'initial_Z': current_z,
+                    'blue_loop_crossing_count': analysis_result.get('crossing_count', np.nan),
+                    'blue_loop_start_age': analysis_result['state_times'].get('blue_loop_start_age', np.nan),
+                    'blue_loop_end_age': analysis_result['state_times'].get('blue_loop_end_age', np.nan),
+                    'blue_loop_duration': analysis_result['state_times'].get('blue_loop_duration', np.nan),
+                    'instability_start_age': analysis_result['state_times'].get('instability_start_age', np.nan),
+                    'instability_end_age': analysis_result['state_times'].get('instability_end_age', np.nan),
+                    'instability_duration': analysis_result['state_times'].get('instability_duration', np.nan),
+                })
 
-                    # Prepare detailed DataFrame for saving - SAVE INDIVIDUALLY HERE
-                    if 'blue_loop_detail_df' in analysis_result and analysis_result['blue_loop_detail_df'] is not None:
-                        detailed_df_for_saving = analysis_result['blue_loop_detail_df'].copy()
-                        detailed_df_for_saving.insert(0, 'initial_mass', current_mass)
-                        detailed_df_for_saving.insert(1, 'initial_Z', current_z)
-                        
-                        # --- Apply the specific filter for detail files: log_Teff > blue_edge_teff + 0.01 ---
-                        blue_edge_teff_at_L = lambda log_L: np.interp(log_L, 
-                                                                    [INSTABILITY_STRIP_VERTICES[0][1], INSTABILITY_STRIP_VERTICES[1][1]], 
-                                                                    [INSTABILITY_STRIP_VERTICES[0][0], INSTABILITY_STRIP_VERTICES[1][0]])
-                        
-                        is_blue_edge_relevant = (detailed_df_for_saving['log_L'] >= min(INSTABILITY_STRIP_VERTICES[:,1])) & \
-                                                (detailed_df_for_saving['log_L'] <= max(INSTABILITY_STRIP_VERTICES[:,1]))
-                        
-                        temp_blue_edge_teff_series = pd.Series(np.nan, index=detailed_df_for_saving.index)
-                        temp_blue_edge_teff_series.loc[is_blue_edge_relevant] = detailed_df_for_saving.loc[is_blue_edge_relevant, 'log_L'].apply(blue_edge_teff_at_L)
-                        
-                        blueward_of_blue_edge_filter = (detailed_df_for_saving['log_Teff'] > temp_blue_edge_teff_series + 0.01) & is_blue_edge_relevant
-                        
-                        filtered_detail_df = detailed_df_for_saving[blueward_of_blue_edge_filter].copy()
+                if current_z in cross_data_matrix.index and current_mass in cross_data_matrix.columns:
+                    cross_data_matrix.loc[current_z, current_mass] = analysis_result.get('crossing_count', np.nan)
+                else:
+                    print(f"Warning: Run Z={current_z:.4f}, M={current_mass:.1f} is outside the determined grid. It will not be included in the cross-grid summary.")
 
-                        if not filtered_detail_df.empty:
-                            # Format Z and Mass for filename
-                            formatted_z = f"{current_z:.4f}".replace('.', '') # e.g., 0.001 -> 0001
-                            formatted_mass = f"{current_mass:.1f}".replace('.', '') # e.g., 15.0 -> 150
+                if analyze_blue_loop and blue_loop_output_type == 'all':
+                    blue_loop_detail_df = analysis_result.get('blue_loop_detail_df', pd.DataFrame())
+                    if not blue_loop_detail_df.empty:
+                        desired_detail_cols = ["star_age", "model_number", "log_Teff", "log_L", "log_g",
+                                             "center_h1", "r_mix_core", "r_mix_env"]
+                        
+                        available_cols = [col for col in desired_detail_cols if col in blue_loop_detail_df.columns]
+                        filtered_df = blue_loop_detail_df[available_cols].copy()
 
-                            detail_filename = f"detail_Z{formatted_z}_M{formatted_mass}_{model_name}.csv"
-                            detail_file_path = os.path.join(detail_files_output_dir, detail_filename)
-                            
-                            # Sort columns and save individually
-                            desired_order = ['initial_mass', 'initial_Z', 'star_age', 'model_number', 'log_Teff', 'log_L', 'log_g']
-                            # Add nu_radial_X and eta_radial_X columns if they exist in the filtered_detail_df
-                            for col in filtered_detail_df.columns:
-                                if re.match(r'nu_radial_\d+', col) or re.match(r'eta_radial_\d+', col):
-                                    if col not in desired_order:
-                                        desired_order.append(col)
-                            
-                            # CORRECTED LINE: Removed 'axis=1'
-                            filtered_detail_df = filtered_detail_df.reindex(columns=desired_order) 
-                            filtered_detail_df.to_csv(detail_file_path, index=False)
-                            detail_file_paths_for_zipping.append(detail_file_path) # Add to list for zipping
-                            # print(f"Saved individual detail file: {detail_file_path}") # Optional: enable for verbose output
-                    
-                else: # Analysis result is None (e.g., missing data from analyzer)
-                    run_result['blue_loop_crossing_count'] = np.nan
-                    if blue_loop_output_type == 'all':
-                        run_result['ms_end_age'] = np.nan
-                        run_result['min_teff_post_ms_age'] = np.nan
-                        run_result['first_is_entry_age'] = np.nan
-                        run_result['first_is_exit_age'] = np.nan
-                        run_result['last_is_entry_age'] = np.nan
-                        run_result['last_is_exit_age'] = np.nan
-                    cross_data_df.loc[current_z, current_mass] = np.nan # Ensure NaN for heatmap source
-            else: # History data could not be read
-                print(f"Warning: Could not read history data for run at {run_path}. Skipping analysis for this run.")
-                run_result['blue_loop_crossing_count'] = np.nan
-                if blue_loop_output_type == 'all':
-                    run_result['ms_end_age'] = np.nan
-                    run_result['min_teff_post_ms_age'] = np.nan
-                    run_result['first_is_entry_age'] = np.nan
-                    run_result['first_is_exit_age'] = np.nan
-                    run_result['last_is_entry_age'] = np.nan
-                    run_result['last_is_exit_age'] = np.nan
-                cross_data_df.loc[current_z, current_mass] = np.nan # Ensure NaN for heatmap source
+                        for col in desired_detail_cols:
+                            if col not in filtered_df.columns:
+                                filtered_df[col] = np.nan
 
-            all_summary_results_data.append(run_result)
+                        filtered_df = filtered_df[desired_detail_cols]
+                        filtered_df.insert(0, 'mass', current_mass)
+
+                        grouped_detailed_dfs[current_z].append(filtered_df)
+
+                if generate_plots:
+                    pass # Plotting logic would go here, or in a separate function call
+
+            except Exception as load_e:
+                print(f"⚠️ Error loading or processing data for run Z={current_z:.4f}, M={current_mass:.1f} from {history_file_path}: {load_e}. Skipping this run.")
+                with open(skipped_runs_log_path, "a") as log_file:
+                    log_file.write(f"Z={current_z}, M={current_mass}, Path: {history_file_path}, Error: {load_e}\n")
+
+                if current_z in cross_data_matrix.index and current_mass in cross_data_matrix.columns:
+                    cross_data_matrix.loc[current_z, current_mass] = np.nan
             pbar.update(1)
 
-    print("\nAnalysis complete. Compiling summary results...")
-    
-    # Save the main summary CSV file
-    final_results_df = pd.DataFrame(all_summary_results_data)
-    final_results_df = final_results_df.set_index(['initial_Z', 'initial_mass']).sort_index()
-    final_results_df.to_csv(summary_csv_path)
+    print("\nAnalysis complete. Saving results...")
+
+    summary_df = pd.DataFrame(summary_data)
+    full_grid_index = pd.MultiIndex.from_product([unique_zs, unique_masses],
+                                                  names=['initial_Z', 'initial_mass'])
+    final_summary_df = summary_df.set_index(['initial_Z', 'initial_mass']).reindex(full_grid_index).sort_index()
+    final_summary_df.to_csv(summary_csv_path)
     print(f"Summary results saved to {summary_csv_path}")
 
-    # Save the cross-section data for the heatmap
-    cross_data_df = cross_data_df.reindex(index=unique_zs, columns=unique_masses)
-    cross_data_df.index.name = "Z \ M" 
-    cross_data_df.fillna('N/A', inplace=True) 
 
-    cross_data_df.to_csv(cross_csv_path)
-    print(f"Cross-section data for heatmap saved to {cross_csv_path}")
-
-    # Zip the individual detailed dataframes if requested
-    if analyze_blue_loop and detail_file_paths_for_zipping and zip_details:
-        print(f"Zipping individual detail files into {detail_files_output_dir}/detail_files_{model_name}.zip ...")
-        zip_filename = os.path.join(detail_files_output_dir, f"detail_files_{model_name}.zip")
-        # Create a ZipFile object with write mode
-        with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            for file_path in detail_file_paths_for_zipping:
-                # Calculate relative path inside the zip to avoid including full system paths
-                arcname = os.path.basename(file_path)
-                zipf.write(file_path, arcname) 
-                os.remove(file_path) # Optionally remove individual files after zipping
-        print(f"Individual detail files zipped to {zip_filename}. Original individual files removed.")
-    elif analyze_blue_loop and not detail_file_paths_for_zipping:
-        print("No individual detailed blue loop data files were generated to zip.")
-    elif analyze_blue_loop and not zip_details:
-        print(f"Individual detail files saved to '{detail_files_output_dir}'. Zipping was not requested.")
+    cross_data_matrix = cross_data_matrix.loc[unique_zs, unique_masses]
+    cross_data_matrix.to_csv(cross_csv_path, index=True, index_label="Z / Mass")
+    print(f"Cross-grid results saved to {cross_csv_path}")
 
 
-    # Generate heatmap if requested (logic directly in CLI for now)
-    if generate_plots:
-        print("\nGenerating heatmap...")
-        try:
-            # Reload cross_csv_path, ensuring N/A values are handled correctly if they are strings
-            heatmap_df = pd.read_csv(cross_csv_path, index_col=0, na_values='N/A')
-            
-            # Convert columns and index to float for proper numeric operations
-            heatmap_df.columns = heatmap_df.columns.astype(float)
-            heatmap_df.index = heatmap_df.index.astype(float)
+    if analyze_blue_loop and blue_loop_output_type == 'all':
+        print(f"Saving detailed per-metallicity files to '{detail_files_output_dir}'...")
+        for z_val, list_of_dfs in grouped_detailed_dfs.items():
+            if list_of_dfs:
+                combined_df_for_z = pd.concat(list_of_dfs, ignore_index=True)
 
-            # Reindex to ensure consistency, filling any missing Z/Mass combinations with NaN
-            heatmap_data_matrix = heatmap_df.reindex(index=unique_zs, columns=unique_masses).values
-
-            # Define colors and normalization for the heatmap
-            colors = ["#440154", "#3b528b", "#21918c", "#5ec962", "#fde725", "#ffb14e"]
-            cmap = ListedColormap(colors)
-            cmap.set_bad(color="lightgray") # Color for NaN values
-
-            bounds = [-0.5, 0.5, 1.5, 2.5, 3.5, 4.5, 5.5] # Bounds for color bins
-            norm = BoundaryNorm(bounds, cmap.N)
-
-            plt.figure(figsize=(20, 12))
-            plt.imshow(heatmap_data_matrix, aspect='equal', origin='lower', cmap=cmap, norm=norm)
-
-            cbar = plt.colorbar(ticks=[0, 1, 2, 3, 4, 5])
-            cbar.set_label("Number of IS Crossing Segments")
-            cbar.ax.set_yticklabels(["0", "1", "2", "3", "4", "5+"])
-
-            plt.xticks(np.arange(len(unique_masses)), [f'{m:.1f}' for m in unique_masses], rotation=90)
-            # Adjust y-axis ticks for better readability if unique_zs is very large
-            num_yticks = min(10, len(unique_zs)) # Max 10 ticks, or less if fewer Zs
-            tick_positions = np.linspace(0, len(unique_zs) - 1, num_yticks, dtype=int)
-            tick_labels = [f'{unique_zs[i]:.4f}' for i in tick_positions]
-            plt.yticks(tick_positions, tick_labels)
-            plt.xlabel("Mass [M$_\odot$]")
-            plt.ylabel("Metallicity (Z)")
-            plt.title(f"Heatmap: Number of Instability Strip Crossings ({model_name})")
-
-            # Add text labels to heatmap cells
-            for i in range(heatmap_data_matrix.shape[0]):
-                for j in range(heatmap_data_matrix.shape[1]):
-                    val = heatmap_data_matrix[i, j]
-                    if not np.isnan(val):
-                        # Ensure value is an integer for display
-                        plt.text(j, i, int(val), ha='center', va='center', color='black', fontsize=8)
-                    else:
-                        plt.text(j, i, 'N/A', ha='center', va='center', color='gray', fontsize=8)
+                if 'initial_mass' in combined_df_for_z.columns and 'mass' not in combined_df_for_z.columns:
+                    combined_df_for_z.rename(columns={'initial_mass': 'mass'}, inplace=True)
+                
+                final_detail_header = ["mass", "star_age", "model_number", "log_Teff", "log_L", "log_g",
+                                       "center_h1", "r_mix_core", "r_mix_env"]
+                # Add nu_radial and eta_radial columns back to the header if they are expected in detail files
+                # Based on your previous code, these were in the header.
+                final_detail_header.extend([f"nu_radial_{i}" for i in range(40)])
+                final_detail_header.extend([f"eta_radial_{i}" for i in range(40)])
 
 
-            image_file_name = f"heatmap_mass_metallicity_{model_name}.png"
-            image_file_path = os.path.join(plots_output_dir, image_file_name)
-            plt.savefig(image_file_path, bbox_inches='tight', dpi=300)
-            print(f"Heatmap saved to {image_file_path}")
-            plt.close()
-        except Exception as e:
-            print(f"Error generating heatmap: {e}")
-            print("Please ensure the 'matplotlib' library is installed and verify data integrity.")
+                for col in final_detail_header:
+                    if col not in combined_df_for_z.columns:
+                        combined_df_for_z[col] = np.nan
+
+                final_combined_df_sorted = combined_df_for_z[final_detail_header].sort_values(by=['mass', 'star_age'])
+
+                detail_filename_z = f"detail_Z{z_val:.4f}.csv"
+                detail_file_path_z = os.path.join(detail_files_output_dir, detail_filename_z)
+                final_combined_df_sorted.to_csv(detail_file_path_z, index=False)
+                print(f"    Saved: {detail_file_path_z}")
+
+                final_summary_df.loc[final_summary_df.index.get_level_values('initial_Z') == z_val,
+                                     'aggregated_detail_file'] = os.path.relpath(detail_file_path_z, output_dir)
+            else:
+                print(f"    No detailed data to save for Z={z_val}.")
+                final_summary_df.loc[final_summary_df.index.get_level_values('initial_Z') == z_val,
+                                     'aggregated_detail_file'] = np.nan
+
+
+    if generate_heatmaps:
+        print("Generating heatmaps...")
+        generate_heatmaps_and_time_diff_csv(
+            cross_data_matrix=cross_data_matrix,
+            summary_df=final_summary_df.reset_index(),
+            plots_sub_dir=plots_sub_dir,
+            analysis_results_sub_dir=analysis_results_sub_dir,
+            project_name=os.path.basename(input_dir)
+        )
+        print("Heatmaps generated.")
+    else:
+        print("Heatmap generation skipped (use --generate-heatmaps).")
 
 
 if __name__ == "__main__":
