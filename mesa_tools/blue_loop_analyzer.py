@@ -26,14 +26,14 @@ def analyze_blue_loop_and_instability(history_data):
 
     Args:
         history_data (pd.DataFrame): DataFrame containing MESA history data.
-                                     Must include 'log_Teff', 'log_L', 'center_h1', 'star_age', 'model_number'.
+                                     Must include 'log_Teff', 'log_L', 'center_h1', 'star_age', 'model_number', 'log_g'.
 
     Returns:
         dict: A dictionary containing analysis results, including:
-              - 'crossing_count': Number of times the star enters the Instability Strip during its blue loop.
+              - 'crossing_count': Number of times the star enters the Instability Strip during its relevant phase.
               - 'state_times': Dictionary of specific ages (MS end, min Teff post-MS, IS entries/exits).
               - 'blue_loop_detail_df': DataFrame with detailed data points during the relevant blue loop phase.
-              Returns None if analysis cannot be performed (e.g., missing columns, no blue loop).
+              Returns None if analysis cannot be performed (e.g., missing columns, no relevant phase).
     """
     required_columns = ['log_Teff', 'log_L', 'center_h1', 'star_age', 'model_number', 'log_g']
     
@@ -41,6 +41,9 @@ def analyze_blue_loop_and_instability(history_data):
     if not all(col in history_data.columns for col in required_columns):
         # print(f"Missing required columns in history_data. Required: {required_columns}, Found: {history_data.columns.tolist()}")
         return None # Indicate failure if essential columns are missing
+
+    # Ensure data is sorted by star_age for proper time series analysis
+    history_data = history_data.sort_values(by='star_age').reset_index(drop=True)
 
     log_Teff = history_data['log_Teff'].values
     log_L = history_data['log_L'].values
@@ -71,43 +74,63 @@ def analyze_blue_loop_and_instability(history_data):
         # print("MS end detected too early in the track, possibly incomplete data.")
         return None
 
-    # --- 2. Post-MS Minimum Teff (min_teff_post_ms_age) ---
-    # Look for the minimum Teff after MS end
-    # This identifies the bluest point before the star turns back towards the red giant branch
-    
-    # Filter data from MS end onwards
-    post_ms_log_Teff = log_Teff[ms_end_idx:]
-    post_ms_star_age = star_age[ms_end_idx:]
-    post_ms_log_L = log_L[ms_end_idx:]
-    post_ms_model_number = model_number[ms_end_idx:]
-    post_ms_log_g = log_g[ms_end_idx:]
-
-    if len(post_ms_log_Teff) == 0:
-        # print("No post-MS data available.")
+    # --- 2. Determine the relevant phase for blue loop/IS crossings (AGB phase onwards) ---
+    # Based on your original code's logic:
+    # Find the minimum log_L after MS end
+    if ms_end_idx >= len(log_L) - 1: # Ensure there's data after MS end
+        # print("Not enough data after MS end for blue loop analysis.")
         return None
 
-    # Find the index of the minimum Teff in the post-MS phase
-    min_teff_post_ms_relative_idx = np.argmin(post_ms_log_Teff)
-    min_teff_post_ms_age = post_ms_star_age[min_teff_post_ms_relative_idx]
+    # We need to find the local minimum of log_L after MS end for the blue loop.
+    # The original code's approach:
+    # 1. Find the global minimum of log_L in the post-MS phase.
+    # 2. Find the *next* point where log_L increases (local maximum after the minimum).
+    # This identifies the start of the AGB phase before the star potentially
+    # loops to the blue.
+
+    post_ms_data = history_data.iloc[ms_end_idx:]
     
-    # The actual index in the original history_data DataFrame
-    min_teff_post_ms_abs_idx = ms_end_idx + min_teff_post_ms_relative_idx
+    if len(post_ms_data) < 2: # Need at least two points to find a min
+        # print("Not enough post-MS data to determine AGB phase start.")
+        return None
 
-    # --- 3. Define Blue Loop Candidate Phase ---
-    # The blue loop relevant phase is typically from the point of MS end to the minimum Teff post-MS,
-    # and potentially beyond if the star evolves further.
-    # A common approach is to consider the segment *after* the bluest point of the blue loop
-    # as the relevant part for crossing the instability strip.
-    # Let's consider the relevant part for crossings as the segment from MS end up to the end of the track.
-    # The Instability Strip is "passed" on the way back to the red.
-
-    # A simpler approach for the "blue loop candidate" is often from the bluest point (min_teff_post_ms_abs_idx)
-    # up to the end of the track. This is where most IS crossings occur.
+    # Find the index of the minimum log_L in the post-MS phase (relative to post_ms_data)
+    logL_min_relative_idx = np.argmin(post_ms_data['log_L'].values)
     
-    # For blue loop detail: take data from MS end
-    blue_loop_candidate_df = history_data.iloc[ms_end_idx:].copy()
+    # Absolute index in the original history_data
+    logL_min_abs_idx = ms_end_idx + logL_min_relative_idx
 
-    # --- 4. Instability Strip Crossing Count ---
+    # Find the first point *after* logL_min_abs_idx where log_L increases (local maximum)
+    # This marks the start of the "return to the red" or AGB phase.
+    # We are looking for the *first* point where the luminosity starts increasing significantly
+    # after the minimum.
+    
+    # To be robust, let's look for a sustained increase, not just one point.
+    # A simpler approach: find the first index after logL_min_abs_idx where log_L is
+    # greater than log_L at logL_min_abs_idx. This was the original logic.
+    
+    # Ensure there are points after logL_min_abs_idx
+    if logL_min_abs_idx >= len(log_L) - 1:
+        # print("Not enough data after post-MS log_L minimum to determine AGB phase start.")
+        return None
+
+    # Look for a log_L increase after the minimum, this defines the start of the AGB-like phase
+    agb_start_relative_idx = np.argmax(log_L[logL_min_abs_idx+1:] > log_L[logL_min_abs_idx])
+    
+    # If argmax returns 0, it means the first point after min is already greater, or no point is.
+    # If no point is found greater, it means log_L keeps decreasing or is flat.
+    # If no increase is found, the star might not undergo an AGB phase or the track is incomplete.
+    if agb_start_relative_idx == 0 and not (log_L[logL_min_abs_idx+1:] > log_L[logL_min_abs_idx]).any():
+        # print("No clear AGB phase start detected after post-MS log_L minimum.")
+        return None # No significant luminosity increase after the minimum, likely no blue loop relevant for IS crossings
+
+    # The actual absolute index where the relevant AGB-like phase begins
+    agb_start_abs_idx = logL_min_abs_idx + 1 + agb_start_relative_idx
+
+    # Define the blue loop candidate phase from this AGB start point to the end of the track.
+    blue_loop_candidate_df = history_data.iloc[agb_start_abs_idx:].copy()
+
+    # --- 3. Instability Strip Crossing Count ---
     # Determine if each point is in the instability strip for the blue loop candidate phase
     is_in_is_series = blue_loop_candidate_df.apply(
         lambda row: is_in_instability_strip(row['log_Teff'], row['log_L']), axis=1
@@ -119,22 +142,24 @@ def analyze_blue_loop_and_instability(history_data):
     last_is_entry_age = np.nan
     last_is_exit_age = np.nan
 
-    # Special case: if the track starts inside the IS for the blue loop candidate phase, count it as one entry
+    currently_inside = False
+
+    # Check the very first point of the relevant phase
     if not is_in_is_series.empty and is_in_is_series.iloc[0]:
+        # If the segment starts inside, count it as an entry.
         crossing_count += 1
+        currently_inside = True
         first_is_entry_age = blue_loop_candidate_df['star_age'].iloc[0]
-        # Treat the start as an entry, so we are 'inside'
-        currently_inside = True 
-    else:
-        currently_inside = False
+        last_is_entry_age = blue_loop_candidate_df['star_age'].iloc[0] # Initialize last_entry
 
     # Iterate through the series to count entries into the IS and record ages
     for i in range(1, len(is_in_is_series)):
+        current_age = blue_loop_candidate_df['star_age'].iloc[i]
+        
         if is_in_is_series.iloc[i] and not currently_inside:
             # Transition from outside to inside - this is an entry
             crossing_count += 1
             currently_inside = True
-            current_age = blue_loop_candidate_df['star_age'].iloc[i]
             if np.isnan(first_is_entry_age):
                 first_is_entry_age = current_age
             last_is_entry_age = current_age # Always update last entry
@@ -142,7 +167,6 @@ def analyze_blue_loop_and_instability(history_data):
         elif not is_in_is_series.iloc[i] and currently_inside:
             # Transition from inside to outside - this is an exit
             currently_inside = False
-            current_age = blue_loop_candidate_df['star_age'].iloc[i]
             if np.isnan(first_is_exit_age): # First exit is the first time we leave
                 first_is_exit_age = current_age
             last_is_exit_age = current_age # Always update last exit
@@ -153,7 +177,7 @@ def analyze_blue_loop_and_instability(history_data):
     # --- State Times Dictionary ---
     state_times = {
         'ms_end_age': ms_end_age,
-        'min_teff_post_ms_age': min_teff_post_ms_age,
+        'min_teff_post_ms_age': star_age[logL_min_abs_idx], # This is the age at the minimum L
         'first_is_entry_age': first_is_entry_age,
         'first_is_exit_age': first_is_exit_age,
         'last_is_entry_age': last_is_entry_age,
