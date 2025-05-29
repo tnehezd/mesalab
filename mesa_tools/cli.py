@@ -2,21 +2,17 @@ import os
 import argparse
 import pandas as pd
 import numpy as np
-import glob
 import re
-import csv
 from tqdm import tqdm
-import math
 
 # --- Import your analyzer functions ---
-# Make sure these modules are accessible in your Python environment
 from mesa_tools.blue_loop_analyzer import analyze_blue_loop_and_instability
 from mesa_tools.heatmap_generator import generate_heatmaps_and_time_diff_csv
 
 
 def extract_params_from_inlist(inlist_path):
     """
-    Extracts initial_mass and initial_Z from a MESA inlist file.
+    Extract initial_mass and initial_Z from a MESA inlist file.
     """
     mass = None
     z = None
@@ -30,7 +26,6 @@ def extract_params_from_inlist(inlist_path):
             z_match = re.search(r'initial_Z\s*=\s*(\d+\.?\d*(?:e[+\-]?\d+)?)', content)
             if z_match:
                 z = float(z_match.group(1))
-
     except FileNotFoundError:
         print(f"ERROR: Inlist file not found: {inlist_path}")
     except Exception as e:
@@ -41,15 +36,15 @@ def extract_params_from_inlist(inlist_path):
 
 def scan_mesa_runs(input_dir, inlist_name):
     """
-    Scans the input directory for MESA run subdirectories (named 'run_*')
-    based on the presence of an inlist file within them.
+    Scan input directory for MESA run subdirectories ('run_*') containing inlist and history.data files.
     """
     mesa_run_infos = []
-    potential_run_dirs = [d for d in os.listdir(input_dir) if os.path.isdir(os.path.join(input_dir, d)) and d.startswith('run_')]
+    potential_run_dirs = [d for d in os.listdir(input_dir)
+                         if os.path.isdir(os.path.join(input_dir, d)) and d.startswith('run_')]
 
     if not potential_run_dirs:
         print(f"Warning: No 'run_*' subdirectories found directly in {input_dir}. "
-              "Please ensure your MESA runs are organized as subdirectories starting with 'run_'.")
+              "Ensure MESA runs are organized as 'run_*' folders.")
 
     for run_dir_name in potential_run_dirs:
         run_dir_path = os.path.join(input_dir, run_dir_name)
@@ -66,24 +61,23 @@ def scan_mesa_runs(input_dir, inlist_name):
                     'z': z
                 })
             else:
-                print(f"Warning: Could not extract mass/Z from inlist file '{inlist_path}'. Skipping this run from scan.")
+                print(f"Warning: Could not extract mass/Z from inlist '{inlist_path}'. Skipping this run.")
         else:
             if not os.path.exists(inlist_path):
-                print(f"Warning: Inlist file '{inlist_name}' not found in '{run_dir_path}'. Skipping this run from scan.")
+                print(f"Warning: Inlist file '{inlist_name}' not found in '{run_dir_path}'. Skipping this run.")
             if not os.path.exists(history_file_path):
-                print(f"Warning: history.data not found at '{history_file_path}'. Skipping this run from scan.")
+                print(f"Warning: history.data not found at '{history_file_path}'. Skipping this run.")
 
     return mesa_run_infos
 
 
 def get_data_from_history_file(history_file_path):
     """
-    Reads data from a MESA history.data file using np.genfromtxt
-    with known header properties, matching the successful debug_hr_plot.py method.
+    Reads MESA history.data file into a pandas DataFrame using np.genfromtxt.
     """
     try:
-        data = np.genfromtxt(history_file_path, names=True, comments="#", skip_header=5, dtype=None, encoding='utf-8')
-
+        data = np.genfromtxt(history_file_path, names=True, comments="#", skip_header=5,
+                             dtype=None, encoding='utf-8')
         if data.ndim == 0:
             df = pd.DataFrame([data.tolist()], columns=data.dtype.names)
         else:
@@ -100,31 +94,27 @@ def get_data_from_history_file(history_file_path):
         return df
 
     except Exception as e:
-        raise type(e)(f"Error loading or processing data from {history_file_path} using np.genfromtxt: {e}") from e
+        raise type(e)(f"Error loading or processing {history_file_path} using np.genfromtxt: {e}") from e
 
 
 def main():
-    """
-    Main function to parse arguments and orchestrate the grid analysis.
-    """
     parser = argparse.ArgumentParser(description="Analyze MESA stellar evolution grid runs.")
     parser.add_argument("-i", "--input-dir", required=True,
-                        help="Path to the directory containing MESA run subdirectories (e.g., 'run_M2.0_Z0.01').")
+                        help="Directory containing MESA run subdirectories (e.g., 'run_M2.0_Z0.01').")
     parser.add_argument("-o", "--output-dir", required=True,
-                        help="Path to the output directory where results will be saved.")
+                        help="Output directory for results.")
     parser.add_argument("--analyze-blue-loop", action="store_true",
-                        help="Enable blue loop analysis for each run.")
+                        help="Perform blue loop analysis.")
     parser.add_argument("--inlist-name", default="inlist_project",
-                        help="Name of the inlist file to identify MESA run directories (default: inlist_project).")
+                        help="Inlist filename to identify runs (default: inlist_project).")
     parser.add_argument("--generate-heatmaps", action="store_true",
-                        help="Generate heatmaps from the cross-grid data.")
+                        help="Generate heatmaps from cross-grid data.")
     parser.add_argument("--force-reanalysis", action="store_true",
-                        help="Force reanalysis of all runs, even if summary files exist.")
+                        help="Force reanalysis even if summary files exist.")
     parser.add_argument("--blue-loop-output-type", choices=['summary', 'all'], default='all',
-                        help="Specify blue loop output type: 'summary' (count only) or 'all' (detailed ages).")
+                        help="Blue loop output type: 'summary' or 'all'.")
     parser.add_argument("--generate-plots", action="store_true",
-                        help="Generate plots for each run's analysis (e.g., HR diagrams).")
-
+                        help="Generate plots for analysis.")
 
     args = parser.parse_args()
 
@@ -147,24 +137,20 @@ def main():
     if generate_plots or generate_heatmaps:
         os.makedirs(plots_sub_dir, exist_ok=True)
 
-
     summary_csv_path = os.path.join(analysis_results_sub_dir, "mesa_grid_analysis_summary.csv")
     cross_csv_path = os.path.join(analysis_results_sub_dir, "cross_mesa_grid.csv")
 
-    reanalysis_needed = force_reanalysis or \
-                        not os.path.exists(summary_csv_path) or \
-                        not os.path.exists(cross_csv_path)
-
+    reanalysis_needed = force_reanalysis or not os.path.exists(summary_csv_path) or not os.path.exists(cross_csv_path)
 
     if not reanalysis_needed:
-        print("Summary and/or cross-grid CSV files already exist. Use --force-reanalysis to re-run analysis.")
+        print("Summary and cross-grid CSV files already exist. Use --force-reanalysis to re-run analysis.")
         if generate_heatmaps:
             try:
                 summary_df_loaded = pd.read_csv(summary_csv_path, index_col=['initial_Z', 'initial_mass'])
                 if 'blue_loop_crossing_count' in summary_df_loaded.columns:
                     cross_data_matrix_loaded = summary_df_loaded['blue_loop_crossing_count'].unstack(level='initial_mass')
                     print("Loaded existing summary data for heatmap generation.")
-                    # A korábbi hibás 'project_name' helyett most 'model_name' van:
+
                     generate_heatmaps_and_time_diff_csv(
                         cross_data_df=cross_data_matrix_loaded,
                         summary_csv_path=summary_csv_path,
@@ -172,32 +158,29 @@ def main():
                         unique_masses=sorted(list(set(summary_df_loaded.index.get_level_values('initial_mass')))),
                         plots_output_dir=plots_sub_dir,
                         analysis_results_output_dir=analysis_results_sub_dir,
-                        model_name=os.path.basename(input_dir), # JAVÍTVA: 'model_name'
+                        model_name=os.path.basename(input_dir),  # javított: 'model_name'
                         blue_loop_output_type=blue_loop_output_type,
-                        analyze_blue_loop=analyze_blue_loop #Pass analyze_blue_loop
+                        analyze_blue_loop=analyze_blue_loop
                     )
                     print("Heatmaps generated from existing data.")
                 else:
-                    print("Existing summary CSV does not contain 'blue_loop_crossing_count' for heatmaps. Skipping heatmap generation.")
+                    print("Summary CSV lacks 'blue_loop_crossing_count'; skipping heatmap generation.")
             except Exception as e:
-                print(f"Error loading existing data for heatmaps: {e}. Please consider using --force-reanalysis.")
-        return # Ez a return az egész függvényt befejezi, ha nem kell újra elemezni
+                print(f"Error loading data for heatmaps: {e}. Use --force-reanalysis to retry.")
+        return
 
     print("Starting analysis of MESA runs...")
     mesa_run_infos = scan_mesa_runs(input_dir, inlist_name)
 
     if not mesa_run_infos:
-        print("No MESA runs found in the input directory. Exiting.")
+        print("No MESA runs found. Exiting.")
         return
 
-    unique_masses = sorted(list(set([run['mass'] for run in mesa_run_infos])))
-    unique_zs = sorted(list(set([run['z'] for run in mesa_run_infos])))
+    unique_masses = sorted(set(run['mass'] for run in mesa_run_infos))
+    unique_zs = sorted(set(run['z'] for run in mesa_run_infos))
 
-    if not unique_masses:
-        print("Error: No unique masses could be determined from runs. Exiting.")
-        return
-    if not unique_zs:
-        print("Error: No unique metallicities (Z) could be determined from runs. Exiting.")
+    if not unique_masses or not unique_zs:
+        print("Error: Could not determine unique masses or metallicities from runs. Exiting.")
         return
 
     cross_data_matrix = pd.DataFrame(np.nan, index=unique_zs, columns=unique_masses)
@@ -208,8 +191,7 @@ def main():
     grouped_detailed_dfs = {z_val: [] for z_val in unique_zs}
 
     total_runs = len(mesa_run_infos)
-    print(f"Found {total_runs} MESA runs for Z={unique_zs} and Mass={unique_masses}")
-    print(f"Starting analysis of {total_runs} MESA runs...")
+    print(f"Found {total_runs} runs for Z={unique_zs} and Mass={unique_masses}")
 
     skipped_runs_log_path = os.path.join(analysis_results_sub_dir, "skipped_runs_log.txt")
     if os.path.exists(skipped_runs_log_path):
@@ -218,156 +200,111 @@ def main():
     with tqdm(total=total_runs, desc="Analyzing MESA runs") as pbar:
         for run_info in mesa_run_infos:
             history_file_path = run_info['history_file_path']
-            run_dir_path = run_info['run_dir_path']
             current_mass = run_info['mass']
             current_z = run_info['z']
 
             analysis_result = {
-                'crossing_count': np.nan,
-                'state_times': {},
-                'blue_loop_detail_df': pd.DataFrame()
+                'crossing_count': 0,
+                'duration': np.nan,
+                'max_luminosity': np.nan,
+                'max_teff': np.nan,
+                'max_radius': np.nan,
+                'first_model_number': None,
+                'last_model_number': None,
+                'first_age': np.nan,
+                'last_age': np.nan,
             }
 
             try:
-                if not os.path.exists(history_file_path):
-                    print(f"Warning: history.data not found at {history_file_path}. Skipping analysis for this run. (Path issue suspected.)")
-                    if current_z in cross_data_matrix.index and current_mass in cross_data_matrix.columns:
-                        cross_data_matrix.loc[current_z, current_mass] = np.nan
-                    with open(skipped_runs_log_path, "a") as log_file:
-                        log_file.write(f"Z={current_z}, M={current_mass}, Path: {history_file_path}, Error: history.data not found.\n")
-                    pbar.update(1)
-                    continue
-
-                # Get the DataFrame from history.data using the proven np.genfromtxt method
-                history_df = get_data_from_history_file(history_file_path)
-
-                if history_df.empty:
-                    print(f"Warning: DataFrame from {history_file_path} is empty. Skipping analysis for this run.")
-                    if current_z in cross_data_matrix.index and current_mass in cross_data_matrix.columns:
-                        cross_data_matrix.loc[current_z, current_mass] = np.nan
-                    with open(skipped_runs_log_path, "a") as log_file:
-                        log_file.write(f"Z={current_z}, M={current_mass}, Path: {history_file_path}, Error: Empty DataFrame.\n")
-                    pbar.update(1)
-                    continue
+                df = get_data_from_history_file(history_file_path)
 
                 if analyze_blue_loop:
-                    # PASS THE DATAFRAME and current_mass, current_z to the analyzer
-                    analysis_result = analyze_blue_loop_and_instability(history_df, current_mass, current_z)
+                    analyze_blue_loop_and_instability(df, current_mass, current_z)
 
+                    # Read summary CSV generated by analyze_blue_loop (assumed path)
+                    run_name = os.path.basename(run_info['run_dir_path'])
+                    summary_file_path = os.path.join(analysis_results_sub_dir, f"{run_name}_blue_loop_summary.csv")
+
+                    if os.path.exists(summary_file_path):
+                        summary_df = pd.read_csv(summary_file_path)
+                        if not summary_df.empty:
+                            # Assuming summary_df has relevant columns, take first row:
+                            row = summary_df.iloc[0]
+                            analysis_result['crossing_count'] = int(row.get('blue_loop_crossing_count', 0))
+                            analysis_result['duration'] = float(row.get('blue_loop_duration', np.nan))
+                            analysis_result['max_luminosity'] = float(row.get('max_log_L', np.nan))
+                            analysis_result['max_teff'] = float(row.get('max_log_Teff', np.nan))
+                            analysis_result['max_radius'] = float(row.get('max_log_R', np.nan))
+                            analysis_result['first_model_number'] = int(row.get('first_model_number', 0))
+                            analysis_result['last_model_number'] = int(row.get('last_model_number', 0))
+                            analysis_result['first_age'] = float(row.get('first_age_yr', np.nan))
+                            analysis_result['last_age'] = float(row.get('last_age_yr', np.nan))
+
+                            cross_data_matrix.at[current_z, current_mass] = analysis_result['crossing_count']
+
+                    else:
+                        print(f"Warning: Summary file not found for run {run_info['run_dir_path']}. Skipping summary extraction.")
+
+                else:
+                    # If no blue loop analysis, you can fill summary info from df if needed
+                    pass
+
+                # Store summary data for output CSV
                 summary_data.append({
                     'initial_mass': current_mass,
                     'initial_Z': current_z,
-                    'blue_loop_crossing_count': analysis_result.get('crossing_count', np.nan),
-                    'blue_loop_start_age': analysis_result['state_times'].get('blue_loop_start_age', np.nan),
-                    'blue_loop_end_age': analysis_result['state_times'].get('blue_loop_end_age', np.nan),
-                    'blue_loop_duration': analysis_result['state_times'].get('blue_loop_duration', np.nan),
-                    'instability_start_age': analysis_result['state_times'].get('instability_start_age', np.nan),
-                    'instability_end_age': analysis_result['state_times'].get('instability_end_age', np.nan),
-                    'instability_duration': analysis_result['state_times'].get('instability_duration', np.nan),
+                    **analysis_result
                 })
 
-                if current_z in cross_data_matrix.index and current_mass in cross_data_matrix.columns:
-                    cross_data_matrix.loc[current_z, current_mass] = analysis_result.get('crossing_count', np.nan)
-                else:
-                    print(f"Warning: Run Z={current_z:.4f}, M={current_mass:.1f} is outside the determined grid. It will not be included in the cross-grid summary.")
+                # Store detailed df per Z for potential concatenation later
+                grouped_detailed_dfs[current_z].append(df)
 
-                if analyze_blue_loop and blue_loop_output_type == 'all':
-                    blue_loop_detail_df = analysis_result.get('blue_loop_detail_df', pd.DataFrame())
-                    if not blue_loop_detail_df.empty:
-                        # KIVETTÜK: "r_mix_core", "r_mix_env", "nu_radial_X", "eta_radial_X"
-                        # Ezt ellenőriztem, és most valóban hiányoznak.
-                        desired_detail_cols = ["star_age", "model_number", "log_Teff", "log_L", "log_g",
-                                               "center_h1"]
+            except Exception as err:
+                with open(skipped_runs_log_path, 'a') as log_file:
+                    log_file.write(f"Skipped run {run_info['run_dir_path']} due to error: {err}\n")
+                print(f"Skipped run {run_info['run_dir_path']} due to error: {err}")
 
-                        available_cols = [col for col in desired_detail_cols if col in blue_loop_detail_df.columns]
-                        filtered_df = blue_loop_detail_df[available_cols].copy()
-
-                        for col in desired_detail_cols:
-                            if col not in filtered_df.columns:
-                                filtered_df[col] = np.nan
-
-                        filtered_df = filtered_df[desired_detail_cols]
-                        filtered_df.insert(0, 'mass', current_mass)
-
-                        grouped_detailed_dfs[current_z].append(filtered_df)
-
-                if generate_plots:
-                    pass # Plotting logic would go here, or in a separate function call
-
-            except Exception as load_e:
-                print(f"⚠️ Error loading or processing data for run Z={current_z:.4f}, M={current_mass:.1f} from {history_file_path}: {load_e}. Skipping this run.")
-                with open(skipped_runs_log_path, "a") as log_file:
-                    log_file.write(f"Z={current_z}, M={current_mass}, Path: {history_file_path}, Error: {load_e}\n")
-
-                if current_z in cross_data_matrix.index and current_mass in cross_data_matrix.columns:
-                    cross_data_matrix.loc[current_z, current_mass] = np.nan
             pbar.update(1)
 
-    print("\nAnalysis complete. Saving results...")
-
+    # Write summary CSV
     summary_df = pd.DataFrame(summary_data)
-    full_grid_index = pd.MultiIndex.from_product([unique_zs, unique_masses],
-                                                  names=['initial_Z', 'initial_mass'])
-    final_summary_df = summary_df.set_index(['initial_Z', 'initial_mass']).reindex(full_grid_index).sort_index()
-    final_summary_df.to_csv(summary_csv_path)
-    print(f"Summary results saved to {summary_csv_path}")
+    summary_df.sort_values(['initial_Z', 'initial_mass'], inplace=True)
+    summary_df.set_index(['initial_Z', 'initial_mass'], inplace=True)
+    summary_df.to_csv(summary_csv_path)
+    print(f"Summary CSV written to {summary_csv_path}")
 
+    # Write cross-grid CSV
+    cross_data_matrix.to_csv(cross_csv_path)
+    print(f"Cross-grid CSV written to {cross_csv_path}")
 
-    cross_data_matrix = cross_data_matrix.loc[unique_zs, unique_masses]
-    cross_data_matrix.to_csv(cross_csv_path, index=True, index_label="Z / Mass")
-    print(f"Cross-grid results saved to {cross_csv_path}")
+    # Write concatenated detail files per Z
+    for z_val, dfs_list in grouped_detailed_dfs.items():
+        if dfs_list:
+            try:
+                combined_df = pd.concat(dfs_list, ignore_index=True)
+                detail_filename = os.path.join(detail_files_output_dir, f"detail_z{z_val:.4f}_{blue_loop_output_type}.csv")
+                combined_df.to_csv(detail_filename, index=False)
+                print(f"Written concatenated detail CSV for Z={z_val} to {detail_filename}")
+            except Exception as e:
+                print(f"Error writing detail CSV for Z={z_val}: {e}")
 
-
-    if analyze_blue_loop and blue_loop_output_type == 'all':
-        print(f"Saving detailed per-metallicity files to '{detail_files_output_dir}'...")
-        for z_val, list_of_dfs in grouped_detailed_dfs.items():
-            if list_of_dfs:
-                combined_df_for_z = pd.concat(list_of_dfs, ignore_index=True)
-
-                if 'initial_mass' in combined_df_for_z.columns and 'mass' not in combined_df_for_z.columns:
-                    combined_df_for_z.rename(columns={'initial_mass': 'mass'}, inplace=True)
-
-                # Ellenőriztem, ez a listán hiányzik a "r_mix_core" és "r_mix_env"
-                final_detail_header = ["mass", "star_age", "model_number", "log_Teff", "log_L", "log_g",
-                                       "center_h1"]
-
-                for col in final_detail_header:
-                    if col not in combined_df_for_z.columns:
-                        combined_df_for_z[col] = np.nan
-
-                final_combined_df_sorted = combined_df_for_z[final_detail_header].sort_values(by=['mass', 'star_age'])
-
-                detail_filename_z = f"detail_Z{z_val:.4f}.csv"
-                detail_file_path_z = os.path.join(detail_files_output_dir, detail_filename_z)
-                final_combined_df_sorted.to_csv(detail_file_path_z, index=False)
-                print(f"    Saved: {detail_file_path_z}")
-
-                final_summary_df.loc[final_summary_df.index.get_level_values('initial_Z') == z_val,
-                                     'aggregated_detail_file'] = os.path.relpath(detail_file_path_z, output_dir)
-            else:
-                print(f"    No detailed data to save for Z={z_val}.")
-                final_summary_df.loc[final_summary_df.index.get_level_values('initial_Z') == z_val,
-                                     'aggregated_detail_file'] = np.nan
-
-
+    # Generate heatmaps if requested
     if generate_heatmaps:
-        print("Generating heatmaps...")
-        # A korábbi hibás 'project_name' helyett most 'model_name' van:
-        generate_heatmaps_and_time_diff_csv(
-            cross_data_df=cross_data_matrix,
-            summary_csv_path=summary_csv_path,
-            unique_zs=unique_zs,
-            unique_masses=unique_masses,
-            plots_output_dir=plots_sub_dir,
-            analysis_results_output_dir=analysis_results_sub_dir,
-            model_name=os.path.basename(input_dir), # JAVÍTVA: 'model_name'
-            blue_loop_output_type=blue_loop_output_type,
-            analyze_blue_loop=analyze_blue_loop # Pass analyze_blue_loop
-        )
-        print("Heatmaps generated.")
-    else:
-        print("Heatmap generation skipped (use --generate-heatmaps).")
-
+        try:
+            generate_heatmaps_and_time_diff_csv(
+                cross_data_df=cross_data_matrix,
+                summary_csv_path=summary_csv_path,
+                unique_zs=unique_zs,
+                unique_masses=unique_masses,
+                plots_output_dir=plots_sub_dir,
+                analysis_results_output_dir=analysis_results_sub_dir,
+                model_name=os.path.basename(input_dir),
+                blue_loop_output_type=blue_loop_output_type,
+                analyze_blue_loop=analyze_blue_loop
+            )
+            print("Heatmaps generated successfully.")
+        except Exception as e:
+            print(f"Error generating heatmaps: {e}")
 
 if __name__ == "__main__":
     main()
