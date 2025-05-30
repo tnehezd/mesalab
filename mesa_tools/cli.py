@@ -4,11 +4,11 @@ import pandas as pd
 import numpy as np
 import re
 from tqdm import tqdm
-import yaml # <-- ÚJ: YAML modul importálása
+import yaml
 
-# Import your analyzer functions
 from .blue_loop_analyzer import analyze_blue_loop_and_instability
 from .heatmap_generator import generate_heatmaps_and_time_diff_csv
+from .plot_generator import generate_hrd_plots
 
 
 def extract_params_from_inlist(inlist_path):
@@ -129,12 +129,10 @@ def main():
     blue_loop_output_type = args.blue_loop_output_type
     generate_plots = args.generate_plots
 
-    # Define output subdirectories
     analysis_results_sub_dir = os.path.join(output_dir, "analysis_results")
     plots_sub_dir = os.path.join(output_dir, "plots")
     detail_files_output_dir = os.path.join(output_dir, "detail_files")
 
-    # Create output directories
     os.makedirs(analysis_results_sub_dir, exist_ok=True)
     if analyze_blue_loop:
         os.makedirs(detail_files_output_dir, exist_ok=True)
@@ -180,34 +178,28 @@ def main():
         print("No MESA runs found. Exiting.")
         return
 
-    # --- ÚJ RÉSZ: YAML fájl generálása a feldolgozott futásokról ---
-    # Rendezés Z és M szerint
     mesa_run_infos_sorted = sorted(mesa_run_infos, key=lambda x: (x['z'], x['mass']))
 
-    # Strukturált adatok előkészítése YAML-hez
     yaml_data = {}
     for run_info in mesa_run_infos_sorted:
         z_key = f"Z_{run_info['z']:.4f}"
         if z_key not in yaml_data:
             yaml_data[z_key] = {}
-        
+
         mass_key = f"M_{run_info['mass']:.1f}"
         yaml_data[z_key][mass_key] = {
             'run_directory': os.path.basename(run_info['run_dir_path']),
             'history_file': os.path.basename(run_info['history_file_path']),
-            # További infók, amiket szeretnél (pl. inlist_name, analysis_status stb.)
         }
-    
+
     yaml_file_path = os.path.join(analysis_results_sub_dir, "processed_runs_overview.yaml")
     try:
         with open(yaml_file_path, 'w') as f:
-            yaml.dump(yaml_data, f, indent=4, sort_keys=False) # sort_keys=False megőrzi a M-rendezést Z-n belül
+            yaml.dump(yaml_data, f, indent=4, sort_keys=False)
         print(f"Generated YAML overview of processed runs: {yaml_file_path}")
     except Exception as e:
         print(f"ERROR: Could not write YAML overview file: {e}")
-    # --- ÚJ RÉSZ VÉGE ---
 
-    # Extract unique masses and metallicities to define the grid
     unique_masses = sorted(set(run['mass'] for run in mesa_run_infos))
     unique_zs = sorted(set(run['z'] for run in mesa_run_infos))
 
@@ -215,7 +207,6 @@ def main():
         print("Error: Could not determine unique masses or metallicities from runs. Exiting.")
         return
 
-    # Initialize DataFrame for cross-grid summary (e.g., crossing counts)
     cross_data_matrix = pd.DataFrame(np.nan, index=unique_zs, columns=unique_masses)
     cross_data_matrix.index.name = "Z"
     cross_data_matrix.columns.name = "Mass"
@@ -270,14 +261,14 @@ def main():
 
                         analysis_result_summary['blue_loop_start_age'] = state_times.get('first_is_entry_age', np.nan)
                         analysis_result_summary['blue_loop_end_age'] = state_times.get('last_is_exit_age', np.nan)
-                        
+
                         if pd.notna(analysis_result_summary['blue_loop_start_age']) and pd.notna(analysis_result_summary['blue_loop_end_age']):
                             analysis_result_summary['calculated_blue_loop_duration'] = analysis_result_summary['blue_loop_end_age'] - analysis_result_summary['blue_loop_start_age']
                             analysis_result_summary['blue_loop_duration_yr'] = analysis_result_summary['calculated_blue_loop_duration']
 
                         analysis_result_summary['instability_start_age'] = state_times.get('instability_start_age', np.nan)
                         analysis_result_summary['instability_end_age'] = state_times.get('instability_end_age', np.nan)
-                        
+
                         if pd.notna(analysis_result_summary['instability_start_age']) and pd.notna(analysis_result_summary['instability_end_age']):
                             analysis_result_summary['calculated_instability_duration'] = analysis_result_summary['instability_end_age'] - analysis_result_summary['instability_start_age']
 
@@ -315,8 +306,6 @@ def main():
 
             pbar.update(1)
 
-    # Post-processing: Writing aggregated results
-
     summary_df = pd.DataFrame(summary_data)
     summary_df.sort_values(['initial_Z', 'initial_mass'], inplace=True)
     summary_df.set_index(['initial_Z', 'initial_mass'], inplace=True)
@@ -329,7 +318,7 @@ def main():
     if analyze_blue_loop:
         concise_detail_columns = [
             'initial_mass', 'initial_Z', 'star_age', 'model_number',
-            'log_Teff', 'log_L', 'log_g'
+            'log_Teff', 'log_L', 'log_g', 'profile_number' # Added profile_number here
         ]
 
         for z_val, dfs_list in grouped_detailed_dfs.items():
@@ -342,11 +331,11 @@ def main():
                         output_type_label = "all columns"
                     else:
                         existing_desired_cols = [col for col in concise_detail_columns if col in combined_df.columns]
-                        
+
                         if not existing_desired_cols:
                             print(f"Warning: No desired columns found for concise detail CSV for Z={z_val}. Skipping.")
                             continue
-                        
+
                         filtered_combined_df = combined_df[existing_desired_cols]
                         output_type_label = "selected columns"
 
@@ -374,6 +363,29 @@ def main():
             print("Heatmaps generated successfully.")
         except Exception as e:
             print(f"Error generating heatmaps: {e}")
+
+    if generate_plots:
+        try:
+            # Instability strip coordinates
+            inst_strip_blue_edge_logT = [3.76, 3.83]
+            inst_strip_blue_edge_logL = [4.5, 2.4]
+            inst_strip_red_edge_logT = [3.65, 3.77]
+            inst_strip_red_edge_logL = [4.5, 2.4]
+
+            current_model_name = os.path.basename(input_dir)
+
+            generate_hrd_plots(
+                grouped_detailed_dfs=grouped_detailed_dfs,
+                plots_output_dir=plots_sub_dir,
+                model_name=current_model_name,
+                inst_strip_blue_edge_logT=inst_strip_blue_edge_logT,
+                inst_strip_blue_edge_logL=inst_strip_blue_edge_logL,
+                inst_strip_red_edge_logT=inst_strip_red_edge_logT,
+                inst_strip_red_edge_logL=inst_strip_red_edge_logL
+            )
+            print("General plots (HRD etc.) generated successfully.")
+        except Exception as e:
+            print(f"Error generating general plots: {e}")
 
 if __name__ == "__main__":
     main()
