@@ -5,7 +5,7 @@ import numpy as np
 import re
 from tqdm import tqdm
 
-# --- Import your analyzer functions ---
+# Import your analyzer functions
 # Use relative imports for modules within the same package.
 # The '.' signifies "from the current package".
 from .blue_loop_analyzer import analyze_blue_loop_and_instability
@@ -94,7 +94,6 @@ def get_data_from_history_file(history_file_path):
 
         # Convert all columns to numeric, coercing errors to NaN
         for col in df.columns:
-            # Corrected: Use df[col] to access the Series, not just the column name 'col'
             df[col] = pd.to_numeric(df[col], errors='coerce')
 
         # Drop rows where 'model_number' is NaN and convert to int
@@ -153,7 +152,7 @@ def main():
         os.makedirs(plots_sub_dir, exist_ok=True)
 
     summary_csv_path = os.path.join(analysis_results_sub_dir, "mesa_grid_analysis_summary.csv")
-    cross_csv_path = os.path.join(analysis_results_sub_dir, "cross_mesa_grid.csv")
+    cross_csv_path = os.path.join(analysis_results_sub_dir, "mesa_grid_cross.csv") # Renamed for consistency
 
     # Determine if reanalysis is needed
     reanalysis_needed = force_reanalysis or not os.path.exists(summary_csv_path) or not os.path.exists(cross_csv_path)
@@ -178,9 +177,9 @@ def main():
                         unique_masses=sorted(list(set(summary_df_loaded.index.get_level_values('initial_mass')))),
                         plots_output_dir=plots_sub_dir,
                         analysis_results_output_dir=analysis_results_sub_dir,
-                        model_name=os.path.basename(input_dir),
+                        model_name=os.path.basename(input_dir), # Keep model_name for other heatmap titles, but time_diff file name is fixed
                         blue_loop_output_type=blue_loop_output_type,
-                        analyze_blue_loop=analyze_blue_loop # Passed for completeness, though its internal use might vary
+                        analyze_blue_loop=analyze_blue_loop
                     )
                     print("Heatmaps generated from existing data.")
                 else:
@@ -230,7 +229,8 @@ def main():
             current_z = run_info['z']
 
             # Initialize a dictionary for the current run's summary results
-            # Default to NaN or appropriate empty values
+            # Default to NaN or appropriate empty values.
+            # IMPORTANT: Added columns for time differences and instability
             analysis_result_summary = {
                 'initial_mass': current_mass,
                 'initial_Z': current_z,
@@ -243,6 +243,12 @@ def main():
                 'last_model_number': np.nan,
                 'first_age_yr': np.nan,
                 'last_age_yr': np.nan,
+                'blue_loop_start_age': np.nan, # New column
+                'blue_loop_end_age': np.nan,   # New column
+                'instability_start_age': np.nan, # New column
+                'instability_end_age': np.nan,   # New column
+                'calculated_blue_loop_duration': np.nan, # New column, will be derived
+                'calculated_instability_duration': np.nan # New column, will be derived
             }
             current_detail_df = pd.DataFrame() # Initialize empty DataFrame for detailed data
 
@@ -260,9 +266,25 @@ def main():
                         analysis_result_summary['blue_loop_crossing_count'] = int(analyzer_output['crossing_count'])
 
                         state_times = analyzer_output['state_times']
-                        # Calculate duration only if both entry and exit ages are available
-                        if not pd.isna(state_times.get('first_is_entry_age')) and not pd.isna(state_times.get('last_is_exit_age')):
-                            analysis_result_summary['blue_loop_duration_yr'] = (state_times['last_is_exit_age'] - state_times['first_is_entry_age'])
+
+                        # Populate blue loop start/end ages
+                        analysis_result_summary['blue_loop_start_age'] = state_times.get('first_is_entry_age', np.nan)
+                        analysis_result_summary['blue_loop_end_age'] = state_times.get('last_is_exit_age', np.nan)
+                        
+                        # Calculate blue loop duration if both start and end ages are available
+                        if pd.notna(analysis_result_summary['blue_loop_start_age']) and pd.notna(analysis_result_summary['blue_loop_end_age']):
+                            analysis_result_summary['calculated_blue_loop_duration'] = analysis_result_summary['blue_loop_end_age'] - analysis_result_summary['blue_loop_start_age']
+                            # Also update the original 'blue_loop_duration_yr' for consistency with older code logic
+                            analysis_result_summary['blue_loop_duration_yr'] = analysis_result_summary['calculated_blue_loop_duration']
+
+
+                        # Populate instability start/end ages (assuming blue_loop_analyzer provides them)
+                        analysis_result_summary['instability_start_age'] = state_times.get('instability_start_age', np.nan)
+                        analysis_result_summary['instability_end_age'] = state_times.get('instability_end_age', np.nan)
+                        
+                        # Calculate instability duration if both start and end ages are available
+                        if pd.notna(analysis_result_summary['instability_start_age']) and pd.notna(analysis_result_summary['instability_end_age']):
+                            analysis_result_summary['calculated_instability_duration'] = analysis_result_summary['instability_end_age'] - analysis_result_summary['instability_start_age']
 
                         # If detailed output ('all') is requested, extract more metrics and the detailed DataFrame
                         if blue_loop_output_type == 'all' and not analyzer_output['blue_loop_detail_df'].empty:
@@ -346,7 +368,7 @@ def main():
                 unique_masses=unique_masses,
                 plots_output_dir=plots_sub_dir,
                 analysis_results_output_dir=analysis_results_sub_dir,
-                model_name=os.path.basename(input_dir),
+                model_name=os.path.basename(input_dir), # Pass input_dir base name for potential other heatmap titles
                 blue_loop_output_type=blue_loop_output_type,
                 analyze_blue_loop=analyze_blue_loop
             )

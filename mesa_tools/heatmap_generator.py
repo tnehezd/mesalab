@@ -8,7 +8,7 @@ from matplotlib.colors import ListedColormap, BoundaryNorm
 
 def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_zs, unique_masses,
                                          plots_output_dir, analysis_results_output_dir,
-                                         model_name="MESA Grid Analysis",
+                                         model_name="MESA Grid Analysis", # Kept for potential use in plot titles
                                          blue_loop_output_type='all', analyze_blue_loop=False):
     """
     Generates heatmaps from the cross-grid data (e.g., blue loop crossing counts)
@@ -21,7 +21,7 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
         unique_masses (list): Sorted list of unique mass values in the grid.
         plots_output_dir (str): Directory to save generated heatmaps.
         analysis_results_output_dir (str): Directory to save time difference CSV.
-        model_name (str): Name of the MESA grid project for plot titles.
+        model_name (str): Name of the MESA grid project for plot titles (e.g., from input_dir basename).
         blue_loop_output_type (str): 'summary' or 'all', affects what data is available.
         analyze_blue_loop (bool): True if blue loop analysis was performed.
     """
@@ -78,7 +78,9 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
     plt.ylabel("Metallicity (Z)", fontsize=14)
     plt.title(f"Heatmap: Mass vs. Metallicity ({model_name})", fontsize=16)
 
-    heatmap_filename = f"{model_name}_blue_loop_heatmap.png"
+    # Use a generic filename for the heatmap now, not directly based on model_name
+    # unless you want model_name in heatmap title only, and not in the filename.
+    heatmap_filename = "mesa_grid_blue_loop_heatmap.png" # Changed filename
     plt.tight_layout()
     plt.savefig(os.path.join(plots_output_dir, heatmap_filename), dpi=300)
     plt.close()
@@ -89,18 +91,36 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
         try:
             summary_df = pd.read_csv(summary_csv_path)
 
+            # Ensure columns are numeric for calculation
             summary_df['blue_loop_start_age'] = pd.to_numeric(summary_df['blue_loop_start_age'], errors='coerce')
             summary_df['blue_loop_end_age'] = pd.to_numeric(summary_df['blue_loop_end_age'], errors='coerce')
             summary_df['instability_start_age'] = pd.to_numeric(summary_df['instability_start_age'], errors='coerce')
             summary_df['instability_end_age'] = pd.to_numeric(summary_df['instability_end_age'], errors='coerce')
+            # Ensure crossing count is also numeric
+            summary_df['blue_loop_crossing_count'] = pd.to_numeric(summary_df['blue_loop_crossing_count'], errors='coerce')
 
-            summary_df['calculated_blue_loop_duration'] = summary_df['blue_loop_end_age'] - summary_df['blue_loop_start_age']
-            summary_df['calculated_instability_duration'] = summary_df['instability_end_age'] - summary_df['instability_start_age']
 
+            # Round durations
             summary_df['calculated_blue_loop_duration'] = summary_df['calculated_blue_loop_duration'].apply(lambda x: round(x, 4) if pd.notna(x) else np.nan)
             summary_df['calculated_instability_duration'] = summary_df['calculated_instability_duration'].apply(lambda x: round(x, 4) if pd.notna(x) else np.nan)
 
-            time_diff_csv_path = os.path.join(analysis_results_output_dir, f"{model_name}_time_differences.csv")
+            # --- NEW FILTERING LOGIC ---
+            # Filter out rows where 'blue_loop_crossing_count' is NaN or 0
+            # or where blue_loop_start_age/end_age are NaN (indicating no valid blue loop)
+            initial_rows = len(summary_df)
+            filtered_df = summary_df[
+                (summary_df['blue_loop_crossing_count'].notna()) &
+                (summary_df['blue_loop_crossing_count'] > 0) &
+                (summary_df['blue_loop_start_age'].notna()) &
+                (summary_df['blue_loop_end_age'].notna())
+            ].copy() # Use .copy() to avoid SettingWithCopyWarning
+
+            if initial_rows > 0 and len(filtered_df) < initial_rows:
+                print(f"Filtered out {initial_rows - len(filtered_df)} rows from time_differences CSV where no valid blue loop was detected.")
+            # --- END NEW FILTERING LOGIC ---
+
+            # Renamed output file for consistency
+            time_diff_csv_path = os.path.join(analysis_results_output_dir, "mesa_grid_time_differences.csv")
 
             output_cols = [
                 'initial_mass', 'initial_Z',
@@ -108,12 +128,19 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
                 'instability_start_age', 'instability_end_age', 'calculated_instability_duration'
             ]
 
-            output_cols_existing = [col for col in output_cols if col in summary_df.columns]
+            # Filter for columns that actually exist in the DataFrame before selecting
+            # Use the filtered_df here!
+            output_cols_existing = [col for col in output_cols if col in filtered_df.columns]
 
-            summary_df[output_cols_existing].to_csv(time_diff_csv_path, index=False)
-            print(f"Time differences CSV generated: {time_diff_csv_path}")
+            if not output_cols_existing:
+                print(f"Warning: No relevant time difference columns found in filtered data. Skipping generation of time differences CSV.")
+            else:
+                # Save the filtered DataFrame
+                filtered_df[output_cols_existing].to_csv(time_diff_csv_path, index=False)
+                print(f"Time differences CSV generated: {time_diff_csv_path}")
 
         except Exception as e:
             print(f"Error generating time differences CSV: {e}")
     else:
         print("Summary CSV not found or blue loop analysis not enabled. Skipping time differences CSV generation.")
+
