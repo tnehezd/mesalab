@@ -4,10 +4,9 @@ import pandas as pd
 import numpy as np
 import re
 from tqdm import tqdm
+import yaml # <-- ÚJ: YAML modul importálása
 
 # Import your analyzer functions
-# Use relative imports for modules within the same package.
-# The '.' signifies "from the current package".
 from .blue_loop_analyzer import analyze_blue_loop_and_instability
 from .heatmap_generator import generate_heatmaps_and_time_diff_csv
 
@@ -78,34 +77,25 @@ def get_data_from_history_file(history_file_path):
     Reads MESA history.data file into a pandas DataFrame using np.genfromtxt.
     """
     try:
-        # np.genfromtxt is good for fixed-width/delimiter-separated files.
-        # skip_header=5 for MESA history.data format usually skips comments and column description.
-        # names=True auto-detects column names from the first meaningful row.
         data = np.genfromtxt(history_file_path, names=True, comments="#", skip_header=5,
                              dtype=None, encoding='utf-8')
 
-        # Handle cases where genfromtxt reads a single row as a 0-dimensional array
         if data.ndim == 0:
-            # Convert single row to a list of tuples, then to DataFrame
             df = pd.DataFrame([data.tolist()], columns=data.dtype.names)
         else:
-            # For multiple rows, directly convert to DataFrame
             df = pd.DataFrame(data)
 
-        # Convert all columns to numeric, coercing errors to NaN
         for col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce')
 
-        # Drop rows where 'model_number' is NaN and convert to int
         if 'model_number' in df.columns:
             df.dropna(subset=['model_number'], inplace=True)
-            if not df['model_number'].isnull().any(): # Check again after dropping NaNs
+            if not df['model_number'].isnull().any():
                 df['model_number'] = df['model_number'].astype(int)
 
         return df
 
     except Exception as e:
-        # Re-raise with more context to help debugging
         raise type(e)(f"Error loading or processing {history_file_path} using np.genfromtxt: {e}") from e
 
 
@@ -146,39 +136,33 @@ def main():
 
     # Create output directories
     os.makedirs(analysis_results_sub_dir, exist_ok=True)
-    # Detail files directory is created only if analysis is enabled and output type is 'all'
-    if analyze_blue_loop: # Detail files are only relevant if blue loop analysis happens
+    if analyze_blue_loop:
         os.makedirs(detail_files_output_dir, exist_ok=True)
     if generate_plots or generate_heatmaps:
         os.makedirs(plots_sub_dir, exist_ok=True)
 
     summary_csv_path = os.path.join(analysis_results_sub_dir, "mesa_grid_analysis_summary.csv")
-    cross_csv_path = os.path.join(analysis_results_sub_dir, "mesa_grid_cross.csv") # Renamed for consistency
+    cross_csv_path = os.path.join(analysis_results_sub_dir, "mesa_grid_cross.csv")
 
-    # Determine if reanalysis is needed
     reanalysis_needed = force_reanalysis or not os.path.exists(summary_csv_path) or not os.path.exists(cross_csv_path)
 
     if not reanalysis_needed:
         print("Summary and cross-grid CSV files already exist. Use --force-reanalysis to re-run analysis.")
         if generate_heatmaps:
             try:
-                # Attempt to load existing summary data for heatmap generation
                 summary_df_loaded = pd.read_csv(summary_csv_path, index_col=['initial_Z', 'initial_mass'])
-                # Ensure the column used for heatmaps exists
                 if 'blue_loop_crossing_count' in summary_df_loaded.columns:
-                    # Unstack to get the matrix format for heatmap (Z rows, Mass columns)
                     cross_data_matrix_loaded = summary_df_loaded['blue_loop_crossing_count'].unstack(level='initial_mass')
                     print("Loaded existing summary data for heatmap generation.")
 
-                    # Call the heatmap generator with loaded data
                     generate_heatmaps_and_time_diff_csv(
                         cross_data_df=cross_data_matrix_loaded,
-                        summary_csv_path=summary_csv_path, # This is the full summary CSV
+                        summary_csv_path=summary_csv_path,
                         unique_zs=sorted(list(set(summary_df_loaded.index.get_level_values('initial_Z')))),
                         unique_masses=sorted(list(set(summary_df_loaded.index.get_level_values('initial_mass')))),
                         plots_output_dir=plots_sub_dir,
                         analysis_results_output_dir=analysis_results_sub_dir,
-                        model_name=os.path.basename(input_dir), # Keep model_name for other heatmap titles, but time_diff file name is fixed
+                        model_name=os.path.basename(input_dir),
                         blue_loop_output_type=blue_loop_output_type,
                         analyze_blue_loop=analyze_blue_loop
                     )
@@ -187,7 +171,7 @@ def main():
                     print("Summary CSV lacks 'blue_loop_crossing_count'; skipping heatmap generation from existing data.")
             except Exception as e:
                 print(f"Error loading data for heatmaps: {e}. Use --force-reanalysis to retry analysis and generation.")
-        return # Exit if reanalysis is not needed and heatmaps are generated/attempted
+        return
 
     print("Starting analysis of MESA runs...")
     mesa_run_infos = scan_mesa_runs(input_dir, inlist_name)
@@ -195,6 +179,33 @@ def main():
     if not mesa_run_infos:
         print("No MESA runs found. Exiting.")
         return
+
+    # --- ÚJ RÉSZ: YAML fájl generálása a feldolgozott futásokról ---
+    # Rendezés Z és M szerint
+    mesa_run_infos_sorted = sorted(mesa_run_infos, key=lambda x: (x['z'], x['mass']))
+
+    # Strukturált adatok előkészítése YAML-hez
+    yaml_data = {}
+    for run_info in mesa_run_infos_sorted:
+        z_key = f"Z_{run_info['z']:.4f}"
+        if z_key not in yaml_data:
+            yaml_data[z_key] = {}
+        
+        mass_key = f"M_{run_info['mass']:.1f}"
+        yaml_data[z_key][mass_key] = {
+            'run_directory': os.path.basename(run_info['run_dir_path']),
+            'history_file': os.path.basename(run_info['history_file_path']),
+            # További infók, amiket szeretnél (pl. inlist_name, analysis_status stb.)
+        }
+    
+    yaml_file_path = os.path.join(analysis_results_sub_dir, "processed_runs_overview.yaml")
+    try:
+        with open(yaml_file_path, 'w') as f:
+            yaml.dump(yaml_data, f, indent=4, sort_keys=False) # sort_keys=False megőrzi a M-rendezést Z-n belül
+        print(f"Generated YAML overview of processed runs: {yaml_file_path}")
+    except Exception as e:
+        print(f"ERROR: Could not write YAML overview file: {e}")
+    # --- ÚJ RÉSZ VÉGE ---
 
     # Extract unique masses and metallicities to define the grid
     unique_masses = sorted(set(run['mass'] for run in mesa_run_infos))
@@ -209,29 +220,22 @@ def main():
     cross_data_matrix.index.name = "Z"
     cross_data_matrix.columns.name = "Mass"
 
-    # Lists to collect data for final summary and detailed DataFrames
     summary_data = []
-    # Dictionary to group detailed DataFrames by Z for later concatenation
     grouped_detailed_dfs = {z_val: [] for z_val in unique_zs}
 
     total_runs = len(mesa_run_infos)
     print(f"Found {total_runs} runs for Z={unique_zs} and Mass={unique_masses}")
 
-    # Prepare log file for skipped runs
     skipped_runs_log_path = os.path.join(analysis_results_sub_dir, "skipped_runs_log.txt")
     if os.path.exists(skipped_runs_log_path):
-        os.remove(skipped_runs_log_path) # Clear previous log
+        os.remove(skipped_runs_log_path)
 
-    # Iterate through MESA runs with a progress bar
     with tqdm(total=total_runs, desc="Analyzing MESA runs") as pbar:
         for run_info in mesa_run_infos:
             history_file_path = run_info['history_file_path']
             current_mass = run_info['mass']
             current_z = run_info['z']
 
-            # Initialize a dictionary for the current run's summary results
-            # Default to NaN or appropriate empty values.
-            # IMPORTANT: Added columns for time differences and instability
             analysis_result_summary = {
                 'initial_mass': current_mass,
                 'initial_Z': current_z,
@@ -244,55 +248,42 @@ def main():
                 'last_model_number': np.nan,
                 'first_age_yr': np.nan,
                 'last_age_yr': np.nan,
-                'blue_loop_start_age': np.nan, # New column
-                'blue_loop_end_age': np.nan,   # New column
-                'instability_start_age': np.nan, # New column
-                'instability_end_age': np.nan,   # New column
-                'calculated_blue_loop_duration': np.nan, # New column, will be derived
-                'calculated_instability_duration': np.nan # New column, will be derived
+                'blue_loop_start_age': np.nan,
+                'blue_loop_end_age': np.nan,
+                'instability_start_age': np.nan,
+                'instability_end_age': np.nan,
+                'calculated_blue_loop_duration': np.nan,
+                'calculated_instability_duration': np.nan
             }
-            current_detail_df = pd.DataFrame() # Initialize empty DataFrame for detailed data
+            current_detail_df = pd.DataFrame()
 
             try:
-                # Get history data for the current run
                 df = get_data_from_history_file(history_file_path)
 
                 if analyze_blue_loop:
-                    # Capture the output of the analyzer!
                     analyzer_output = analyze_blue_loop_and_instability(df, current_mass, current_z)
 
-                    # Check if analysis was successful (e.g., crossing_count is not NaN)
                     if not pd.isna(analyzer_output['crossing_count']):
-                        # Populate the summary dictionary directly from the analyzer's output
                         analysis_result_summary['blue_loop_crossing_count'] = int(analyzer_output['crossing_count'])
 
                         state_times = analyzer_output['state_times']
 
-                        # Populate blue loop start/end ages
                         analysis_result_summary['blue_loop_start_age'] = state_times.get('first_is_entry_age', np.nan)
                         analysis_result_summary['blue_loop_end_age'] = state_times.get('last_is_exit_age', np.nan)
                         
-                        # Calculate blue loop duration if both start and end ages are available
                         if pd.notna(analysis_result_summary['blue_loop_start_age']) and pd.notna(analysis_result_summary['blue_loop_end_age']):
                             analysis_result_summary['calculated_blue_loop_duration'] = analysis_result_summary['blue_loop_end_age'] - analysis_result_summary['blue_loop_start_age']
-                            # Also update the original 'blue_loop_duration_yr' for consistency with older code logic
                             analysis_result_summary['blue_loop_duration_yr'] = analysis_result_summary['calculated_blue_loop_duration']
 
-
-                        # Populate instability start/end ages (assuming blue_loop_analyzer provides them)
                         analysis_result_summary['instability_start_age'] = state_times.get('instability_start_age', np.nan)
                         analysis_result_summary['instability_end_age'] = state_times.get('instability_end_age', np.nan)
                         
-                        # Calculate instability duration if both start and end ages are available
                         if pd.notna(analysis_result_summary['instability_start_age']) and pd.notna(analysis_result_summary['instability_end_age']):
                             analysis_result_summary['calculated_instability_duration'] = analysis_result_summary['instability_end_age'] - analysis_result_summary['instability_start_age']
 
-                        # If detailed output is requested AND blue loop analysis was successful
                         if not analyzer_output['blue_loop_detail_df'].empty:
                             bl_df = analyzer_output['blue_loop_detail_df']
-                            # Only fill these summary metrics if 'all' output type is chosen,
-                            # as they rely on the detailed DataFrame which might be very large.
-                            if blue_loop_output_type == 'all': # This check is only for populating these specific summary metrics
+                            if blue_loop_output_type == 'all':
                                 analysis_result_summary['max_log_L'] = bl_df['log_L'].max()
                                 analysis_result_summary['max_log_Teff'] = bl_df['log_Teff'].max()
 
@@ -306,44 +297,36 @@ def main():
                                 analysis_result_summary['first_age_yr'] = bl_df['star_age'].min()
                                 analysis_result_summary['last_age_yr'] = bl_df['star_age'].max()
 
-                            current_detail_df = bl_df # Store the detailed DF returned by the analyzer
+                            current_detail_df = bl_df
 
-                        # Update the cross-grid matrix with the crossing count for this run
                         cross_data_matrix.at[current_z, current_mass] = analysis_result_summary['blue_loop_crossing_count']
                     else:
                         print(f"Warning: Blue loop analysis failed or returned no valid crossings for M={current_mass}, Z={current_z}. Results for this run will be NaN in summary.")
 
-                # Add the summary dictionary for the current run to the list
                 summary_data.append(analysis_result_summary)
 
-                # Append the detailed DataFrame (if it's not empty and blue loop analysis was enabled)
                 if analyze_blue_loop and not current_detail_df.empty:
                     grouped_detailed_dfs[current_z].append(current_detail_df)
 
             except Exception as err:
-                # Log errors for skipped runs
                 with open(skipped_runs_log_path, 'a') as log_file:
                     log_file.write(f"Skipped run {run_info['run_dir_path']} due to error: {err}\n")
                 print(f"Skipped run {run_info['run_dir_path']} due to error: {err}")
 
-            pbar.update(1) # Update progress bar
+            pbar.update(1)
 
     # Post-processing: Writing aggregated results
 
-    # Convert collected summary data to DataFrame and save to CSV
     summary_df = pd.DataFrame(summary_data)
     summary_df.sort_values(['initial_Z', 'initial_mass'], inplace=True)
-    summary_df.set_index(['initial_Z', 'initial_mass'], inplace=True) # Set a multi-index for easy unstacking later
+    summary_df.set_index(['initial_Z', 'initial_mass'], inplace=True)
     summary_df.to_csv(summary_csv_path)
     print(f"Summary CSV written to {summary_csv_path}")
 
-    # Save the cross-grid matrix to CSV
     cross_data_matrix.to_csv(cross_csv_path)
     print(f"Cross-grid CSV written to {cross_csv_path}")
 
-    # Write concatenated detail files per Z, if requested (based on blue_loop_output_type)
-    if analyze_blue_loop: # Only attempt to write detail files if blue loop analysis was performed
-        # Define the desired columns for the 'summary' detail output
+    if analyze_blue_loop:
         concise_detail_columns = [
             'initial_mass', 'initial_Z', 'star_age', 'model_number',
             'log_Teff', 'log_L', 'log_g'
@@ -352,21 +335,17 @@ def main():
         for z_val, dfs_list in grouped_detailed_dfs.items():
             if dfs_list:
                 try:
-                    # Concatenate all detailed DataFrames for the current Z value
                     combined_df = pd.concat(dfs_list, ignore_index=True)
 
                     if blue_loop_output_type == 'all':
-                        # For 'all' output type, use the DataFrame as returned by the analyzer.
-                        # It already contains the full set of columns from the blue loop phase.
                         filtered_combined_df = combined_df
                         output_type_label = "all columns"
-                    else: # blue_loop_output_type is 'summary'
-                        # For 'summary' output type, filter to only the concise columns
+                    else:
                         existing_desired_cols = [col for col in concise_detail_columns if col in combined_df.columns]
                         
                         if not existing_desired_cols:
                             print(f"Warning: No desired columns found for concise detail CSV for Z={z_val}. Skipping.")
-                            continue # Skip saving if no desired columns are present
+                            continue
                         
                         filtered_combined_df = combined_df[existing_desired_cols]
                         output_type_label = "selected columns"
@@ -379,18 +358,16 @@ def main():
             else:
                 print(f"No detailed data to write for Z={z_val}.")
 
-    # Generate heatmaps if requested (using the newly created cross_data_matrix or the saved summary_csv)
     if generate_heatmaps:
         try:
-            # Use the computed `cross_data_matrix` directly for heatmap generation as it's already in the correct format.
             generate_heatmaps_and_time_diff_csv(
                 cross_data_df=cross_data_matrix,
-                summary_csv_path=summary_csv_path, # Path to the generated summary (might be used for other heatmap functions)
+                summary_csv_path=summary_csv_path,
                 unique_zs=unique_zs,
                 unique_masses=unique_masses,
                 plots_output_dir=plots_sub_dir,
                 analysis_results_output_dir=analysis_results_sub_dir,
-                model_name=os.path.basename(input_dir), # Pass input_dir base name for potential other heatmap titles
+                model_name=os.path.basename(input_dir),
                 blue_loop_output_type=blue_loop_output_type,
                 analyze_blue_loop=analyze_blue_loop
             )
