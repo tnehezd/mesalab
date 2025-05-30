@@ -1,15 +1,15 @@
 import pandas as pd
 import numpy as np
 from matplotlib.path import Path
-import os # Added for potential file operations within analyzer, if needed, though not directly used in this version.
+import os
 
 # Define the vertices of the Instability Strip based on your provided values
 # The order is important for matplotlib.path.Path: (log_Teff, log_L)
 INSTABILITY_STRIP_VERTICES = np.array([
-    [3.83, 2.4],    # Blue edge, top (hottest, lowest luminosity of IS relevant for blue loop)
-    [3.76, 4.5],    # Blue edge, bottom (hottest, highest luminosity of IS relevant for blue loop)
-    [3.65, 4.5],    # Red edge, bottom (coolest, highest luminosity)
-    [3.77, 2.4]     # Red edge, top (coolest, lowest luminosity)
+    [3.83, 2.4],     # Blue edge, top (hottest, lowest luminosity of IS relevant for blue loop)
+    [3.76, 4.5],     # Blue edge, bottom (hottest, highest luminosity of IS relevant for blue loop)
+    [3.65, 4.5],     # Red edge, bottom (coolest, highest luminosity)
+    [3.77, 2.4]      # Red edge, top (coolest, lowest luminosity)
 ])
 
 # Create a Path object for efficient point-in-polygon checks
@@ -38,20 +38,6 @@ def analyze_blue_loop_and_instability(history_df: pd.DataFrame, initial_mass: fl
               - 'blue_loop_detail_df': DataFrame with detailed data points during the relevant blue loop phase.
               Returns a dictionary with NaN values if analysis cannot be performed (e.g., missing columns, no relevant phase).
     """
-    # --- REMOVED ALL DEBUG PRINTS FROM HERE ---
-    # print(f"\n--- DEBUG: Analyzing history_df for M={initial_mass}, Z={initial_Z} ---")
-    # print("History DataFrame head (first 5 rows):")
-    # print(history_df.head())
-    # print("\nNaN counts per column in history_df:")
-    # print(history_df.isnull().sum().to_string()) # .to_string() for better formatting if many columns
-    # print("\nHistory DataFrame info (dtypes and non-null counts):")
-    # history_df.info()
-    # print("\nHistory DataFrame tail (last 5 rows):")
-    # print(history_df.tail())
-    # --- END REMOVED DEBUG PRINTS ---
-
-    # Add initial_mass and initial_Z columns to the DataFrame for context within the analyzer
-    # This is done here now that the analyzer receives the raw df
     history_df['initial_mass'] = initial_mass
     history_df['initial_Z'] = initial_Z
 
@@ -212,10 +198,16 @@ def analyze_blue_loop_and_instability(history_df: pd.DataFrame, initial_mass: fl
     state_times = {
         'ms_end_age': ms_end_age,
         'min_teff_post_ms_age': star_age[logL_min_abs_idx], # This is the age at the minimum L
-        'first_is_entry_age': first_is_entry_age,
-        'first_is_exit_age': first_is_exit_age,
-        'last_is_entry_age': last_is_entry_age,
-        'last_is_exit_age': last_is_exit_age,
+        'first_is_entry_age': first_is_entry_age, # This is the first blue loop IS entry
+        'first_is_exit_age': first_is_exit_age,   # This is the first blue loop IS exit
+        'last_is_entry_age': last_is_entry_age,   # This is the last blue loop IS entry
+        'last_is_exit_age': last_is_exit_age,     # This is the last blue loop IS exit
+
+        # --- NEW ADDITIONS FOR INSTABILITY STRIP AGES ---
+        # Map the blue loop IS ages to the names expected by cli.py for general instability
+        'instability_start_age': first_is_entry_age,
+        'instability_end_age': last_is_exit_age,
+        # --- END NEW ADDITIONS ---
     }
 
     analysis_results = {
@@ -223,8 +215,5 @@ def analyze_blue_loop_and_instability(history_df: pd.DataFrame, initial_mass: fl
         'state_times': state_times,
         'blue_loop_detail_df': blue_loop_candidate_df # This contains all relevant data points for detail
     }
-
-    # --- REMOVED DEBUG PRINT: Final result from analyzer ---
-    # print(f"--- DEBUG: Analyzer finished for M={initial_mass}, Z={initial_Z}. Crossing count: {crossing_count}, Detail DF empty: {blue_loop_candidate_df.empty} ---")
 
     return analysis_results

@@ -124,7 +124,7 @@ def main():
     parser.add_argument("--force-reanalysis", action="store_true",
                         help="Force reanalysis even if summary files exist.")
     parser.add_argument("--blue-loop-output-type", choices=['summary', 'all'], default='all',
-                        help="Blue loop output type: 'summary' or 'all'. 'summary' provides basic counts, 'all' includes detailed Blue Loop DataFrame.")
+                        help="Blue loop output type for detail files: 'summary' includes selected key columns, 'all' includes all columns from the relevant blue loop phase. Default: 'all'.")
     parser.add_argument("--generate-plots", action="store_true",
                         help="Generate plots for analysis (beyond heatmaps).")
 
@@ -146,7 +146,8 @@ def main():
 
     # Create output directories
     os.makedirs(analysis_results_sub_dir, exist_ok=True)
-    if analyze_blue_loop and blue_loop_output_type == 'all':
+    # Detail files directory is created only if analysis is enabled and output type is 'all'
+    if analyze_blue_loop: # Detail files are only relevant if blue loop analysis happens
         os.makedirs(detail_files_output_dir, exist_ok=True)
     if generate_plots or generate_heatmaps:
         os.makedirs(plots_sub_dir, exist_ok=True)
@@ -286,26 +287,24 @@ def main():
                         if pd.notna(analysis_result_summary['instability_start_age']) and pd.notna(analysis_result_summary['instability_end_age']):
                             analysis_result_summary['calculated_instability_duration'] = analysis_result_summary['instability_end_age'] - analysis_result_summary['instability_start_age']
 
-                        # If detailed output ('all') is requested, extract more metrics and the detailed DataFrame
-                        if blue_loop_output_type == 'all' and not analyzer_output['blue_loop_detail_df'].empty:
+                        # If detailed output is requested AND blue loop analysis was successful
+                        if not analyzer_output['blue_loop_detail_df'].empty:
                             bl_df = analyzer_output['blue_loop_detail_df']
-                            analysis_result_summary['max_log_L'] = bl_df['log_L'].max()
-                            analysis_result_summary['max_log_Teff'] = bl_df['log_Teff'].max()
+                            # Only fill these summary metrics if 'all' output type is chosen,
+                            # as they rely on the detailed DataFrame which might be very large.
+                            if blue_loop_output_type == 'all': # This check is only for populating these specific summary metrics
+                                analysis_result_summary['max_log_L'] = bl_df['log_L'].max()
+                                analysis_result_summary['max_log_Teff'] = bl_df['log_Teff'].max()
 
-                            # Max log_R needs to be handled.
-                            # If 'log_R' is available in the detailed blue loop DF:
-                            if 'log_R' in bl_df.columns:
-                                analysis_result_summary['max_log_R'] = bl_df['log_R'].max()
-                            # Otherwise, if it's not part of the detailed bl_df but exists in the full history_df:
-                            elif 'log_R' in df.columns:
-                                # This takes the max log_R from the *entire* history.
-                                # If you need it *only* for the blue loop, ensure it's in bl_df.
-                                analysis_result_summary['max_log_R'] = df['log_R'].max()
+                                if 'log_R' in bl_df.columns:
+                                    analysis_result_summary['max_log_R'] = bl_df['log_R'].max()
+                                elif 'log_R' in df.columns:
+                                    analysis_result_summary['max_log_R'] = df['log_R'].max()
 
-                            analysis_result_summary['first_model_number'] = bl_df['model_number'].min()
-                            analysis_result_summary['last_model_number'] = bl_df['model_number'].max()
-                            analysis_result_summary['first_age_yr'] = bl_df['star_age'].min()
-                            analysis_result_summary['last_age_yr'] = bl_df['star_age'].max()
+                                analysis_result_summary['first_model_number'] = bl_df['model_number'].min()
+                                analysis_result_summary['last_model_number'] = bl_df['model_number'].max()
+                                analysis_result_summary['first_age_yr'] = bl_df['star_age'].min()
+                                analysis_result_summary['last_age_yr'] = bl_df['star_age'].max()
 
                             current_detail_df = bl_df # Store the detailed DF returned by the analyzer
 
@@ -317,8 +316,8 @@ def main():
                 # Add the summary dictionary for the current run to the list
                 summary_data.append(analysis_result_summary)
 
-                # Append the detailed DataFrame (if it's not empty and 'all' output type is chosen)
-                if blue_loop_output_type == 'all' and not current_detail_df.empty:
+                # Append the detailed DataFrame (if it's not empty and blue loop analysis was enabled)
+                if analyze_blue_loop and not current_detail_df.empty:
                     grouped_detailed_dfs[current_z].append(current_detail_df)
 
             except Exception as err:
@@ -342,20 +341,43 @@ def main():
     cross_data_matrix.to_csv(cross_csv_path)
     print(f"Cross-grid CSV written to {cross_csv_path}")
 
-    # Write concatenated detail files per Z, if requested
-    if blue_loop_output_type == 'all': # Only write detail files if 'all' output type is chosen
+    # Write concatenated detail files per Z, if requested (based on blue_loop_output_type)
+    if analyze_blue_loop: # Only attempt to write detail files if blue loop analysis was performed
+        # Define the desired columns for the 'summary' detail output
+        concise_detail_columns = [
+            'initial_mass', 'initial_Z', 'star_age', 'model_number',
+            'log_Teff', 'log_L', 'log_g'
+        ]
+
         for z_val, dfs_list in grouped_detailed_dfs.items():
             if dfs_list:
                 try:
                     # Concatenate all detailed DataFrames for the current Z value
-                    # The analyzer already adds 'initial_mass' and 'initial_Z' to each detail_df
                     combined_df = pd.concat(dfs_list, ignore_index=True)
-                    # The detail filename should reflect the Z value.
+
+                    if blue_loop_output_type == 'all':
+                        # For 'all' output type, use the DataFrame as returned by the analyzer.
+                        # It already contains the full set of columns from the blue loop phase.
+                        filtered_combined_df = combined_df
+                        output_type_label = "all columns"
+                    else: # blue_loop_output_type is 'summary'
+                        # For 'summary' output type, filter to only the concise columns
+                        existing_desired_cols = [col for col in concise_detail_columns if col in combined_df.columns]
+                        
+                        if not existing_desired_cols:
+                            print(f"Warning: No desired columns found for concise detail CSV for Z={z_val}. Skipping.")
+                            continue # Skip saving if no desired columns are present
+                        
+                        filtered_combined_df = combined_df[existing_desired_cols]
+                        output_type_label = "selected columns"
+
                     detail_filename = os.path.join(detail_files_output_dir, f"detail_z{z_val:.4f}.csv")
-                    combined_df.to_csv(detail_filename, index=False)
-                    print(f"Written concatenated detail CSV for Z={z_val} to {detail_filename}")
+                    filtered_combined_df.to_csv(detail_filename, index=False)
+                    print(f"Written concatenated detail CSV for Z={z_val} with {output_type_label} to {detail_filename}")
                 except Exception as e:
                     print(f"Error writing detail CSV for Z={z_val}: {e}")
+            else:
+                print(f"No detailed data to write for Z={z_val}.")
 
     # Generate heatmaps if requested (using the newly created cross_data_matrix or the saved summary_csv)
     if generate_heatmaps:
