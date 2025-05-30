@@ -1,13 +1,17 @@
-# MESA Blue Loop Analyzer
+# MESA Grid Analyzer
 
-This project provides a command-line tool (`mesa_grid_analyzer`) to easily extract and summarize stellar evolution parameters (like mass and metallicity) from a grid of MESA (Modules for Experiments in Stellar Astrophysics) simulation runs.
+This project provides a command-line tool (`mesa_grid_analyzer`) designed to analyze and visualize results from a grid of MESA (Modules for Experiments in Stellar Astrophysics) stellar evolution simulations. It helps automate the extraction of key parameters, perform blue loop analysis, and generate plots like HR Diagrams and heatmaps across your simulation grid.
 
 ---
 
 ## Features
 
-* **Automated Parameter Extraction**: Scans through a specified directory to find MESA run folders.
-* **Mass and Metallicity Detection**: Identifies mass (`M`) and metallicity (`Z`) parameters from `inlist` files.
+* **Automated Parameter Extraction**: Scans through specified directories to find MESA run folders and extract initial mass (`M`) and metallicity (`Z`) from `inlist` files.
+* **Blue Loop Analysis**: Identifies and quantifies blue loop characteristics, such as crossing counts and key evolutionary ages (e.g., blue loop entry/exit, instability strip crossing).
+* **Detailed Output**: Generates summary CSVs for the entire grid (`mesa_grid_analysis_summary.csv`, `mesa_grid_cross.csv`) and detailed CSVs for blue loop phases per metallicity group (`detail_z*.csv`).
+* **Heatmap Generation**: Creates visual heatmaps of blue loop crossing counts across the M-Z grid, providing a quick overview of blue loop presence.
+* **HR Diagram (HRD) Plotting**: Generates high-quality Hertzsprung-Russell Diagrams for individual stellar evolution tracks, grouped by metallicity, with optional instability strip visualization.
+* **Robust Data Reading**: Utilizes a robust data reader designed to handle common variations in MESA's `history.data` file format and gracefully skip malformed or incomplete data lines, ensuring analysis can proceed even with imperfect outputs.
 * **Command-Line Interface**: Easy to use via the `mesa_grid_analyzer` command in your terminal.
 * **Python Package**: Designed as a reusable Python package (`mesa_tools`).
 
@@ -17,18 +21,19 @@ This project provides a command-line tool (`mesa_grid_analyzer`) to easily extra
 
 To get started with the `mesa_tools` package and the `mesa_grid_analyzer` tool, follow these steps:
 
-1.  **Clone the repository (if applicable):**
+1.  **Clone the repository:**
     ```bash
-    git clone [https://github.com/your-username/mesa_blue_loop.git](https://github.com/your-username/mesa_blue_loop.git) # Replace with your repo URL
+    git clone [https://github.com/tnehezd/mesa_blue_loop.git](https://github.com/tnehezd/mesa_blue_loop.git) # Replace with your actual repository URL
     cd mesa_blue_loop
     ```
 
 2.  **Create and activate a Conda environment (recommended):**
-    It's best practice to use a dedicated environment to avoid conflicts.
+    Using a dedicated environment is best practice to avoid dependency conflicts.
     ```bash
-    conda create -n mesa_loop_py37 python=3.7
-    conda activate mesa_loop_py37
+    conda create -n mesa_loop_env python=3.7 pandas numpy matplotlib pyyaml tqdm
+    conda activate mesa_loop_env
     ```
+    *(Note: You can adjust `python=3.7` to your preferred Python version, ensuring it's compatible with your MESA setup.)*
 
 3.  **Install the package in editable mode:**
     This allows you to make changes to the source code and see them reflected without re-installation.
@@ -40,45 +45,63 @@ To get started with the `mesa_tools` package and the `mesa_grid_analyzer` tool, 
 
 ## Usage
 
-Once installed, you can use the `mesa_grid_analyzer` command to process your MESA data.
+Once installed and your Conda environment is active, you can use the `mesa_grid_analyzer` command to process and visualize your MESA data.
 
-### Running the Analyzer
-
-Execute the tool from your terminal, specifying the input MESA grid directory and an output file for results:
+### Basic Command Structure
 
 ```bash
-mesa_grid_analyzer -i /path/to/your/mesa/grid/directory -o results.txt
+mesa_grid_analyzer -i <input_mesa_grid_dir> -o <output_results_dir> [options]
+-i or --input-dir (Required): Path to the root directory containing your MESA run subdirectories (e.g., run_M2.0_Z0.01).
+-o or --output-dir (Required): Path to the directory where all analysis results (CSVs, plots, heatmaps) will be saved.
+--inlist-name (Default: inlist_project): The name of the inlist file used to identify valid MESA run directories.
+Common Use Cases
 ```
 
 
+Here are some common ways to run the mesa_grid_analyzer tool:
 
+1. Perform a Full Grid Analysis
 
+This command will scan all MESA runs, perform the blue loop analysis, generate summary CSVs, create detailed blue loop CSVs per Z-value, generate heatmaps of blue loop crossing counts, and produce HR Diagrams for each metallicity group.
 
----
-## Grid Analysis with `mesa_grid_analyzer`
+Bash
+mesa_grid_analyzer \
+    -i /path/to/your/mesa/grid/runs \
+    -o /path/to/output/results \
+    --inlist-name inlist_project \
+    --analyze-blue-loop \
+    --generate-heatmaps \
+    --generate-plots \
+    --force-reanalysis # Use this to re-run all analysis even if summary files exist
+2. Generate Only HR Diagrams (from existing data)
 
-This project includes a command-line tool, `mesa_grid_analyzer`, designed to automate the analysis of MESA stellar evolution grids. It scans specified directories for MESA run outputs, extracts key parameters (like initial mass and metallicity) from run paths, and applies custom analysis functions (e.g., for blue loop characteristics).
+If you've already run the analysis and your summary/cross CSVs exist, you can efficiently regenerate just the HRD plots without re-running the full blue loop analysis. The tool will simply load the necessary history.data files for plotting.
 
-### Usage
-
-To run the grid analyzer, navigate to the root of your `mesa_blue_loop` project and execute:
-
-```bash
-conda activate mesa_loop_py37 # Or your MESA analysis environment
-mesa_grid_analyzer -i /path/to/your/mesa/runs -o /path/to/output/results --inlist-name inlist_project --analyze-blue-loop
+Bash
 ```
 
+mesa_grid_analyzer \
+    -i /path/to/your/mesa/grid/runs \
+    -o /path/to/output/results \
+    --inlist-name inlist_project \
+    --generate-plots
+```
 
+3. Generate Only Heatmaps (from existing summary data)
 
-## Key Arguments:
+Similarly, if your summary.csv and cross.csv files are already generated, you can recreate just the heatmaps.
 
--i or --input-dir: (Required) Path to the root directory containing your MESA run subdirectories.
--o or --output-dir: (Required) Path to the directory where the analysis results (e.g., CSV files) will be saved.
---inlist-name: The name of the inlist file (e.g., inlist_project) used to identify valid MESA run directories. (Default: inlist_project)
---analyze-blue-loop: A flag to enable the blue loop analysis. When set, the tool will calculate metrics like the number of blue loop crossings and key evolutionary ages.
---blue-loop-output-type: (Choices: summary, all) Specifies the detail level for blue loop output.
-summary: Outputs only the blue loop crossing count.
-all: Outputs the crossing count along with detailed age information (e.g., ms_end_age, first_is_entry_age, etc.). (Default: all)
-Robust history.data Reading
+Bash
+```
+mesa_grid_analyzer \
+    -i /path/to/your/mesa/grid/runs \
+    -o /path/to/output/results \
+    --inlist-name inlist_project \
+    --generate-heatmaps
+Advanced Options
 
-The mesa_grid_analyzer utilizes a robust mesa_reader module. This module is designed to handle common variations in MESA's history.data file format, including different header line structures. Crucially, it incorporates error handling to gracefully skip malformed or incomplete data lines within history.data files, preventing crashes during large grid analyses where individual runs might have terminated unexpectedly or produced corrupted output. This ensures that the analysis can proceed even if some history files are not perfectly formed.
+--blue-loop-output-type (Choices: summary, all; Default: all):
+When --analyze-blue-loop is enabled, this controls the detail level for the detail_z*.csv files:
+summary: Outputs only selected key columns relevant to the blue loop phase.
+all: Outputs all columns from the history.data for the identified blue loop phase.
+```
