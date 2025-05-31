@@ -7,10 +7,15 @@ import numpy as np
 import re
 from tqdm import tqdm
 import yaml
+import logging # Added logging import for better output
+
+# Set up basic logging for the entire script
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+
 
 from .blue_loop_analyzer import analyze_blue_loop_and_instability
 from .heatmap_generator import generate_heatmaps_and_time_diff_csv
-from .blue_loop_cmd_plotter import generate_blue_loop_plots_with_bc
+from .blue_loop_cmd_plotter import generate_blue_loop_plots_with_bc, load_and_group_data # Added load_and_group_data import
 
 
 def extract_params_from_inlist(inlist_path):
@@ -30,9 +35,9 @@ def extract_params_from_inlist(inlist_path):
             if z_match:
                 z = float(z_match.group(1))
     except FileNotFoundError:
-        print(f"ERROR: Inlist file not found: {inlist_path}")
+        logging.error(f"Inlist file not found: {inlist_path}")
     except Exception as e:
-        print(f"ERROR: Error reading inlist file {inlist_path}: {e}")
+        logging.error(f"Error reading inlist file {inlist_path}: {e}")
 
     return mass, z
 
@@ -46,8 +51,8 @@ def scan_mesa_runs(input_dir, inlist_name):
                           if os.path.isdir(os.path.join(input_dir, d)) and d.startswith('run_')]
 
     if not potential_run_dirs:
-        print(f"Warning: No 'run_*' subdirectories found directly in {input_dir}. "
-              "Ensure MESA runs are organized as 'run_*' folders.")
+        logging.warning(f"No 'run_*' subdirectories found directly in {input_dir}. "
+                        "Ensure MESA runs are organized as 'run_*' folders.")
 
     for run_dir_name in potential_run_dirs:
         run_dir_path = os.path.join(input_dir, run_dir_name)
@@ -64,12 +69,12 @@ def scan_mesa_runs(input_dir, inlist_name):
                     'z': z
                 })
             else:
-                print(f"Warning: Could not extract mass/Z from inlist '{inlist_path}'. Skipping this run.")
+                logging.warning(f"Could not extract mass/Z from inlist '{inlist_path}'. Skipping this run.")
         else:
             if not os.path.exists(inlist_path):
-                print(f"Warning: Inlist file '{inlist_name}' not found in '{run_dir_path}'. Skipping this run.")
+                logging.warning(f"Inlist file '{inlist_name}' not found in '{run_dir_path}'. Skipping this run.")
             if not os.path.exists(history_file_path):
-                print(f"Warning: history.data not found at '{history_file_path}'. Skipping this run.")
+                logging.warning(f"history.data not found at '{history_file_path}'. Skipping this run.")
 
     return mesa_run_infos
 
@@ -105,7 +110,7 @@ def get_data_from_history_file(history_file_path):
 
 def main():
     parser = argparse.ArgumentParser(description="Analyze MESA stellar evolution grid runs.")
-    
+
     parser.add_argument("--config", type=str,
                         help="Path to a YAML configuration file. Command-line arguments will override file settings.")
 
@@ -136,7 +141,7 @@ def main():
         try:
             with open(args.config, 'r') as f:
                 config_data = yaml.safe_load(f)
-            
+
             if config_data:
                 for key, value in config_data.items():
                     # This logic ensures command-line arguments always take precedence.
@@ -149,10 +154,10 @@ def main():
                     elif isinstance(getattr(args, key), bool) and getattr(args, key) is True and value is False:
                         continue
         except FileNotFoundError:
-            print(f"ERROR: Configuration file not found: {args.config}. Proceeding with command-line/default arguments.")
+            logging.error(f"Configuration file not found: {args.config}. Proceeding with command-line/default arguments.")
         except yaml.YAMLError as e:
-            print(f"ERROR: Error parsing YAML configuration file {args.config}: {e}. Proceeding with command-line/default arguments.")
-    
+            logging.error(f"Error parsing YAML configuration file {args.config}: {e}. Proceeding with command-line/default arguments.")
+
     # Make input_dir and output_dir mandatory after config loading
     if args.input_dir is None:
         parser.error("--input-dir is required if not specified in the config file.")
@@ -168,6 +173,7 @@ def main():
     blue_loop_output_type = args.blue_loop_output_type
     should_generate_plots = args.generate_plots
     should_generate_blue_loop_plots_with_bc = args.generate_blue_loop_plots_with_bc
+
 
     analysis_results_sub_dir = os.path.join(output_dir, "analysis_results")
     plots_sub_dir = os.path.join(output_dir, "plots")
@@ -190,9 +196,10 @@ def main():
 
     grouped_full_history_dfs_for_plotting = {}
     grouped_detailed_dfs_for_analysis_raw = {} # Changed name to reflect it's a list of DFs
-    
-    # This will be the dictionary passed to the plotter: Z -> single concatenated DataFrame
-    concatenated_detailed_dfs_for_plotting = {} 
+
+    # This will be the single DataFrame passed to the plotter (formerly concatenated_detailed_dfs_for_plotting was a dict)
+    # Now, this will be the final, fully combined DataFrame for plotting
+    combined_detail_data_for_plotting = pd.DataFrame()
 
 
     mesa_run_infos = []
@@ -204,19 +211,19 @@ def main():
     load_history_data = reanalysis_needed or should_generate_plots or should_generate_heatmaps or analyze_blue_loop
 
     if load_history_data:
-        print(f"Scanning MESA runs and loading history data from {input_dir}...")
+        logging.info(f"Scanning MESA runs and loading history data from {input_dir}...")
         mesa_run_infos = scan_mesa_runs(input_dir, inlist_name)
         if not mesa_run_infos:
-            print("No MESA runs found. Exiting.")
+            logging.info("No MESA runs found. Exiting.")
             return
 
         total_runs = len(mesa_run_infos)
-        print(f"Found {total_runs} runs for analysis/plotting.")
+        logging.info(f"Found {total_runs} runs for analysis/plotting.")
 
         skipped_runs_log_path = os.path.join(analysis_results_sub_dir, "skipped_runs_log.txt")
         if os.path.exists(skipped_runs_log_path):
             os.remove(skipped_runs_log_path)
-        
+
         # Load all history files if any operation requires them
         with tqdm(total=total_runs, desc="Loading history.data files") as pbar:
             for run_info in mesa_run_infos:
@@ -227,79 +234,55 @@ def main():
                     df_full_history = get_data_from_history_file(history_file_path)
                     df_full_history['initial_mass'] = current_mass
                     df_full_history['initial_Z'] = current_z
-                    
+
                     if current_z not in grouped_full_history_dfs_for_plotting:
                         grouped_full_history_dfs_for_plotting[current_z] = []
                     grouped_full_history_dfs_for_plotting[current_z].append(df_full_history)
                 except Exception as err:
                     with open(skipped_runs_log_path, 'a') as log_file:
                         log_file.write(f"Skipped loading history.data for {run_info['run_dir_path']} due to error: {err}\n")
-                    print(f"Skipped loading history.data for {run_info['run_dir_path']} due to error: {err}")
+                    logging.warning(f"Skipped loading history.data for {run_info['run_dir_path']} due to error: {err}")
                 pbar.update(1)
     else:
-        print("Skipping MESA run scan and history.data loading as no operations require it based on config.")
+        logging.info("Skipping MESA run scan and history.data loading as no operations require it based on config.")
 
 
     # Analysis and Plotting Orchestration
     summary_df_loaded = pd.DataFrame() # Initialize empty DataFrame
     if not reanalysis_needed:
-        print("Summary and cross-grid CSV files already exist. Skipping full reanalysis.")
+        logging.info("Summary and cross-grid CSV files already exist. Skipping full reanalysis.")
         try:
             summary_df_loaded = pd.read_csv(summary_csv_path, index_col=['initial_Z', 'initial_mass'])
             if should_generate_blue_loop_plots_with_bc:
-                print(f"Loading existing blue loop detail files from {detail_files_output_dir} for plotting...")
-                unique_zs_from_summary = sorted(set(summary_df_loaded.index.get_level_values('initial_Z')))
-                grouped_detailed_dfs_for_analysis_raw = {z_val: [] for z_val in unique_zs_from_summary}
-                found_detail_files = False
-                for fn in os.listdir(detail_files_output_dir):
-                    if fn.startswith("detail_z") and fn.endswith(".csv"):
-                        file_path = os.path.join(detail_files_output_dir, fn)
-                        try:
-                            detail_df = pd.read_csv(file_path)
-                            z_match = re.search(r'detail_z([\d\.]+)\.csv', fn)
-                            if z_match:
-                                current_z = float(z_match.group(1))
-                                if current_z in unique_zs_from_summary:
-                                    if current_z not in grouped_detailed_dfs_for_analysis_raw:
-                                        grouped_detailed_dfs_for_analysis_raw[current_z] = []
-                                    grouped_detailed_dfs_for_analysis_raw[current_z].append(detail_df)
-                                    found_detail_files = True
-                                else:
-                                    print(f"Warning: Z={current_z} from detail file {fn} not found in summary. Skipping.")
-                            else:
-                                print(f"Warning: Could not parse Z from filename {fn}. Skipping.")
-                        except Exception as e:
-                            print(f"Error loading detail file {fn}: {e}. Skipping.")
-                
-                if found_detail_files:
-                    # Concatenate the lists of DataFrames for plotting
-                    for z_val, dfs_list in grouped_detailed_dfs_for_analysis_raw.items():
-                        if dfs_list:
-                            concatenated_detailed_dfs_for_plotting[z_val] = pd.concat(dfs_list, ignore_index=True)
-                else:
-                    print(f"No detail files found in {detail_files_output_dir}. Cannot generate blue loop BC plots without them. Please ensure 'analyze_blue_loop: True' was run previously or detail files are present.")
+                logging.info(f"Loading existing blue loop detail files from {detail_files_output_dir} for plotting...")
+                # Call load_and_group_data directly to get the single combined DataFrame
+                combined_detail_data_for_plotting = load_and_group_data(detail_files_output_dir)
+
+                if combined_detail_data_for_plotting.empty:
+                    logging.warning(f"No detail files found in {detail_files_output_dir}. Cannot generate blue loop BC plots without them. Please ensure 'analyze_blue_loop: True' was run previously or detail files are present.")
+
         except FileNotFoundError:
-            print(f"Summary CSV not found at {summary_csv_path}. Full reanalysis will be forced.")
+            logging.warning(f"Summary CSV not found at {summary_csv_path}. Full reanalysis will be forced.")
             reanalysis_needed = True # Force reanalysis if summary not found
         except Exception as e:
-            print(f"Error loading summary CSV for existing data check: {e}. Full reanalysis will be forced.")
+            logging.error(f"Error loading summary CSV for existing data check: {e}. Full reanalysis will be forced.")
             reanalysis_needed = True
 
 
     if reanalysis_needed:
-        print("Starting full analysis of MESA runs (reanalysis_needed is True)...")
+        logging.info("Starting full analysis of MESA runs (reanalysis_needed is True)...")
         # Ensure mesa_run_infos is populated if it wasn't already by load_history_data
         if not mesa_run_infos:
             mesa_run_infos = scan_mesa_runs(input_dir, inlist_name)
             if not mesa_run_infos:
-                print("No MESA runs found for full analysis. Exiting.")
+                logging.info("No MESA runs found for full analysis. Exiting.")
                 return
 
         unique_masses = sorted(set(run['mass'] for run in mesa_run_infos))
         unique_zs = sorted(set(run['z'] for run in mesa_run_infos))
 
         if not unique_masses or not unique_zs:
-            print("Error: Could not determine unique masses or metallicities from runs. Exiting.")
+            logging.error("Error: Could not determine unique masses or metallicities from runs. Exiting.")
             return
 
         cross_data_matrix = pd.DataFrame(np.nan, index=unique_zs, columns=unique_masses)
@@ -307,7 +290,8 @@ def main():
         cross_data_matrix.columns.name = "Mass"
 
         summary_data = []
-        grouped_detailed_dfs_for_analysis_raw = {z_val: [] for z_val in unique_zs} # Initialize for analysis
+        # Reinitialize for analysis if reanalysis is forced
+        grouped_detailed_dfs_for_analysis_raw = {z_val: [] for z_val in unique_zs}
 
         # Generate YAML overview (this uses mesa_run_infos which should be populated now)
         yaml_data = {}
@@ -324,9 +308,9 @@ def main():
         try:
             with open(yaml_file_path, 'w') as f:
                 yaml.dump(yaml_data, f, indent=4, sort_keys=False)
-            print(f"Generated YAML overview of processed runs: {yaml_file_path}")
+            logging.info(f"Generated YAML overview of processed runs: {yaml_file_path}")
         except Exception as e:
-            print(f"ERROR: Could not write YAML overview file: {e}")
+            logging.error(f"Could not write YAML overview file: {e}")
 
         # Full analysis loop (using grouped_full_history_dfs_for_plotting if loaded)
         total_runs_for_analysis = len(mesa_run_infos)
@@ -334,7 +318,7 @@ def main():
             for run_info in mesa_run_infos:
                 current_mass = run_info['mass']
                 current_z = run_info['z']
-                
+
                 # Retrieve the full history DataFrame for the current run
                 df_full_history_for_analysis = None
                 if current_z in grouped_full_history_dfs_for_plotting:
@@ -394,11 +378,11 @@ def main():
 
                             cross_data_matrix.at[current_z, current_mass] = analysis_result_summary['blue_loop_crossing_count']
                         else:
-                            print(f"Warning: Blue loop analysis failed or returned no valid crossings for M={current_mass}, Z={current_z}. Results for this run will be NaN in summary.")
+                            logging.warning(f"Blue loop analysis failed or returned no valid crossings for M={current_mass}, Z={current_z}. Results for this run will be NaN in summary.")
                     elif not analyze_blue_loop:
-                        print(f"Skipping blue loop analysis for M={current_mass}, Z={current_z} as analyze_blue_loop is False.")
+                        logging.info(f"Skipping blue loop analysis for M={current_mass}, Z={current_z} as analyze_blue_loop is False.")
                     else:
-                            print(f"Warning: Full history data not found for M={current_mass}, Z={current_z}. Skipping blue loop analysis for this run.")
+                        logging.warning(f"Full history data not found for M={current_mass}, Z={current_z}. Skipping blue loop analysis for this run.")
 
                     summary_data.append(analysis_result_summary)
 
@@ -410,7 +394,7 @@ def main():
                 except Exception as err:
                     with open(skipped_runs_log_path, 'a') as log_file:
                         log_file.write(f"Skipped run {run_info['run_dir_path']} due to error: {err}\n")
-                    print(f"Skipped run {run_info['run_dir_path']} due to error: {err}")
+                    logging.error(f"Skipped run {run_info['run_dir_path']} due to error: {err}")
 
                 pbar.update(1)
 
@@ -418,16 +402,17 @@ def main():
         summary_df.sort_values(['initial_Z', 'initial_mass'], inplace=True)
         summary_df.set_index(['initial_Z', 'initial_mass'], inplace=True)
         summary_df.to_csv(summary_csv_path)
-        print(f"Summary CSV written to {summary_csv_path}")
+        logging.info(f"Summary CSV written to {summary_csv_path}")
 
         cross_data_matrix.to_csv(cross_csv_path)
-        print(f"Cross-grid CSV written to {cross_csv_path}")
+        logging.info(f"Cross-grid CSV written to {cross_csv_path}")
 
         if analyze_blue_loop:
             concise_detail_columns = [
                 'initial_mass', 'initial_Z', 'star_age', 'model_number',
                 'log_Teff', 'log_L', 'log_g', 'profile_number'
             ]
+            # This loop is to save detail files for *each Z group*
             for z_val, dfs_list in grouped_detailed_dfs_for_analysis_raw.items():
                 if dfs_list:
                     try:
@@ -436,7 +421,7 @@ def main():
                                 mass = df_item['initial_mass'].iloc[0] if 'initial_mass' in df_item.columns else None
                                 z = df_item['initial_Z'].iloc[0] if 'initial_Z' in df_item.columns else None
                                 if mass is None or z is None:
-                                    print(f"Warning: initial_mass/Z not found in blue loop detail DF for Z={z_val} before concat. This might affect BC calculation.")
+                                    logging.warning(f"initial_mass/Z not found in blue loop detail DF for Z={z_val} before concat. This might affect BC calculation.")
                                     df_item['initial_mass'] = df_item.get('initial_mass', np.nan)
                                     df_item['initial_Z'] = df_item.get('initial_Z', np.nan)
 
@@ -448,21 +433,26 @@ def main():
                         else:
                             existing_desired_cols = [col for col in concise_detail_columns if col in combined_df_bl.columns]
                             if not existing_desired_cols:
-                                print(f"Warning: No desired columns found for concise detail CSV for Z={z_val}. Skipping.")
+                                logging.warning(f"No desired columns found for concise detail CSV for Z={z_val}. Skipping.")
                                 continue
                             filtered_combined_df_bl = combined_df_bl[existing_desired_cols]
                             output_type_label = "selected columns"
 
                         detail_filename = os.path.join(detail_files_output_dir, f"detail_z{z_val:.4f}.csv")
                         filtered_combined_df_bl.to_csv(detail_filename, index=False)
-                        print(f"Written concatenated detail CSV for Z={z_val} with {output_type_label} to {detail_filename}")
-                        
-                        # Populate the concatenated_detailed_dfs_for_plotting here as well
-                        concatenated_detailed_dfs_for_plotting[z_val] = filtered_combined_df_bl
+                        logging.info(f"Written concatenated detail CSV for Z={z_val} with {output_type_label} to {detail_filename}")
+
+                        # If reanalysis happens and analyze_blue_loop is true, we should populate combined_detail_data_for_plotting
+                        # as a single DataFrame containing all data
+                        if combined_detail_data_for_plotting.empty:
+                            combined_detail_data_for_plotting = filtered_combined_df_bl.copy()
+                        else:
+                            combined_detail_data_for_plotting = pd.concat([combined_detail_data_for_plotting, filtered_combined_df_bl], ignore_index=True)
+
                     except Exception as e:
-                        print(f"Error writing detail CSV for Z={z_val}: {e}")
+                        logging.error(f"Error writing detail CSV for Z={z_val}: {e}")
                 else:
-                    print(f"No detailed data to write for Z={z_val}.")
+                    logging.info(f"No detailed data to write for Z={z_val}.")
 
 
     if should_generate_heatmaps:
@@ -471,7 +461,7 @@ def main():
                 summary_df_loaded = pd.read_csv(summary_csv_path, index_col=['initial_Z', 'initial_mass'])
             if 'blue_loop_crossing_count' in summary_df_loaded.columns:
                 cross_data_matrix_loaded = summary_df_loaded['blue_loop_crossing_count'].unstack(level='initial_mass')
-                print("Loaded existing summary data for heatmap generation.")
+                logging.info("Loaded existing summary data for heatmap generation.")
 
                 unique_zs_for_heatmap = sorted(list(set(summary_df_loaded.index.get_level_values('initial_Z'))))
                 unique_masses_for_heatmap = sorted(list(set(summary_df_loaded.index.get_level_values('initial_mass'))))
@@ -487,64 +477,44 @@ def main():
                     blue_loop_output_type=blue_loop_output_type,
                     analyze_blue_loop=analyze_blue_loop
                 )
-                print("Heatmaps generated successfully.")
+                logging.info("Heatmaps generated successfully.")
             else:
-                print("Summary CSV lacks 'blue_loop_crossing_count'; skipping heatmap generation from existing data.")
+                logging.warning("Summary CSV lacks 'blue_loop_crossing_count'; skipping heatmap generation from existing data.")
         except Exception as e:
-            print(f"Error generating heatmaps: {e}. Use --force-reanalysis to retry analysis and generation.")
+            logging.error(f"Error generating heatmaps: {e}. Use --force-reanalysis to retry analysis and generation.")
 
     # Plotting section for general HRD plots (Note: generate_general_hrd_plots is not imported/defined currently)
     if should_generate_plots:
-        # This section will currently cause an error because generate_general_hrd_plots is not imported.
-        # If you intend to use this, you will need to add it back to imports and ensure it's defined
-        # either in blue_loop_cmd_plotter.py or a new dedicated general plotting module.
-        print("Warning: Attempted to generate general HRD plots, but 'generate_general_hrd_plots' is not currently imported or defined.")
-        print("Please ensure 'generate_general_hrd_plots' is available if you wish to use the '--generate-plots' flag.")
+        logging.warning("Attempted to generate general HRD plots, but 'generate_general_hrd_plots' is not currently imported or defined.")
+        logging.warning("Please ensure 'generate_general_hrd_plots' is available if you wish to use the '--generate-plots' flag.")
 
 
-    # Plotting section for blue loop specific plots with BCs (using generate_blue_loop_plots_with_bc)
+    # --- Plotting section for blue loop specific plots with BCs ---
     if should_generate_blue_loop_plots_with_bc:
         try:
-            if not concatenated_detailed_dfs_for_plotting: # Check if the concatenated dict is empty
-                print("Warning: No blue loop detail data available for BC plots. Ensure --analyze-blue-loop was used, or detail files exist.")
-                # Attempt to load detail files directly and concatenate if analyze_blue_loop was false but plotting is requested
-                # This handles the case where analyze_blue_loop was run previously, but not in this current run
-                print(f"Attempting to load detail files directly from {detail_files_output_dir}...")
-                temp_grouped_dfs = {} # Temporary dict to hold lists of DFs during loading
-                found_detail_files_on_load = False
-                for fn in os.listdir(detail_files_output_dir):
-                    if fn.startswith("detail_z") and fn.endswith(".csv"):
-                        file_path = os.path.join(detail_files_output_dir, fn)
-                        try:
-                            detail_df = pd.read_csv(file_path)
-                            z_match = re.search(r'detail_z([\d\.]+)\.csv', fn)
-                            if z_match:
-                                current_z = float(z_match.group(1))
-                                if current_z not in temp_grouped_dfs:
-                                    temp_grouped_dfs[current_z] = []
-                                temp_grouped_dfs[current_z].append(detail_df)
-                                found_detail_files_on_load = True
-                        except Exception as e:
-                            print(f"Error loading detail file {fn}: {e}. Skipping.")
-                
-                if found_detail_files_on_load:
-                    # Concatenate the newly loaded lists of DataFrames
-                    for z_val, dfs_list in temp_grouped_dfs.items():
-                        if dfs_list:
-                            concatenated_detailed_dfs_for_plotting[z_val] = pd.concat(dfs_list, ignore_index=True)
-                
-                if not concatenated_detailed_dfs_for_plotting:
-                    print("No detail files could be loaded. Cannot generate blue loop BC plots.")
-                    return # Exit if no data to plot
-            
-            # Call the dedicated blue loop BC plotting function
-            generate_blue_loop_plots_with_bc(
-                grouped_detailed_dfs=concatenated_detailed_dfs_for_plotting, # <-- CORRECTED: Pass the concatenated dict
-                output_dir=blue_loop_plots_bc_sub_dir,
-            )
-            print("Blue loop specific plots with BCs generated successfully.")
+            # If combined_detail_data_for_plotting is still empty at this point,
+            # it means either analyze_blue_loop was False AND detail files weren't loaded
+            # or there were no valid detail files.
+            if combined_detail_data_for_plotting.empty:
+                logging.info(f"Attempting to load detail files directly from {detail_files_output_dir} for plotting (if not already loaded during reanalysis)...")
+                # load_and_group_data function will now directly return a single combined DataFrame
+                combined_detail_data_for_plotting = load_and_group_data(detail_files_output_dir)
+
+            if not combined_detail_data_for_plotting.empty:
+                # Call the dedicated blue loop BC plotting function with the single combined DataFrame
+                generate_blue_loop_plots_with_bc(
+                    combined_df_all_data=combined_detail_data_for_plotting, # <--- THIS IS THE KEY CHANGE
+                    output_dir=blue_loop_plots_bc_sub_dir,
+                    output_type_label="all_blue_loop_data" # Added this for consistency with plotter function
+                )
+                logging.info("Blue loop specific plots with BCs generated successfully.")
+            else:
+                logging.warning("No blue loop detail data available for BC plots. Cannot generate plots.")
+
         except Exception as e:
-            print(f"Error generating blue loop specific plots with BCs: {e}")
+            logging.error(f"Error generating blue loop specific plots with BCs: {e}")
+            logging.error("Please ensure your 'blue_loop_cmd_plotter.py' is updated to expect 'combined_df_all_data' as its first parameter.")
+
 
 if __name__ == "__main__":
     main()
