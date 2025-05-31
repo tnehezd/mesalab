@@ -7,9 +7,9 @@ setup(
     author="A Te Neved",
     author_email="email@example.com",
     description="A collection of tools for analyzing MESA stellar evolution simulation data.",
-    long_description=open("README.md").read(), # Ezt próbálja olvasni!
+    long_description=open("README.md").read(), 
     long_description_content_type="text/markdown",
-    url="https://github.com/a_te_github_felhasznaloneved/mesa_tools",
+    url="https://github.com/tnehezd/mesa_blue_loop",
     packages=find_packages(),
     install_requires=[
         # No external dependencies currently for parsing, but you might add 'pandas' later
@@ -26,5 +26,5 @@ setup(
         "Topic :: Scientific/Engineering :: Astronomy",
         "Topic :: Scientific/Engineering :: Physics",
     ],
-    python_requires='>=3.6', # Ez a Python 3.7-nek megfelel
+    python_requires='>=3.6', 
 )

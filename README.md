@@ -105,3 +105,33 @@ When --analyze-blue-loop is enabled, this controls the detail level for the deta
 summary: Outputs only selected key columns relevant to the blue loop phase.
 all: Outputs all columns from the history.data for the identified blue loop phase.
 ```
+
+
+
+
+
+## Installation
+
+To get started with the `mesa_tools` package and the `mesa_grid_analyzer` tool, follow these steps:
+
+1.  **Clone the repository:**
+    ```bash
+    git clone [https://github.com/tnehezd/mesa_blue_loop.git](https://github.com/tnehezd/mesa_blue_loop.git) # Replace with your actual repository URL
+    cd mesa_blue_loop
+    ```
+
+2.  **Create and activate a Conda environment (recommended):**
+    Using a dedicated environment is best practice to avoid dependency conflicts.
+    ```bash
+    conda create -n mesa_loop_env python=3.7 pandas numpy matplotlib pyyaml tqdm scipy astropy beautifulsoup4 requests isochrones
+    conda activate mesa_loop_env
+    ```
+    *(Note: You can adjust `python=3.7` to your preferred Python version, ensuring it's compatible with your MESA setup.)*
+
+3.  **Install the package in editable mode:**
+    This allows you to make changes to the source code and see them reflected without re-installation.
+    ```bash
+    python -m pip install -e .
+    ```
+    
+    idna, scipy, astropy,beautifulsoup4

@@ -1,0 +1,69 @@
+# This file contains the parameters required to run the `mesa_grid_analyzer` program.
+# You can use it by running the command: `mesa_grid_analyzer --config config.yaml`,
+# where `config.yaml` is the path to your configuration file.
+# Note that any parameters provided directly on the command line (e.g., `--force-reanalysis`)
+# will override the values set in this configuration file.
+
+# --- Input and Output Directories ---
+# These settings define where the program should find your MESA simulations
+# and where it should save the analysis results and generated plots.
+
+# The absolute path to the main input directory containing your MESA run subdirectories
+# (e.g., 'run_M2.0_Z0.01'). Each 'run_*' folder should contain an 'inlist' file
+# and the 'LOGS/history.data' file for a specific MESA simulation.
+input_dir: /home/tnehezd/workdir/mesa-r23.05.1/STRANGE/nad_convos_mid
+
+# The absolute path to the output directory where all analysis results (CSV files)
+# and generated plots will be saved. The program will create subdirectories here
+# for organization (e.g., 'analysis_results', 'plots', 'blue_loop_plots_bc').
+output_dir: /d5/tnehezd/mesa_blue_loop/output
+
+# The filename of the inlist file found within each MESA run directory
+# (e.g., 'inlist_project'). This file is used to extract initial parameters
+# like 'initial_mass' and 'initial_Z' for each simulation.
+# Ensure this matches the actual inlist filename used in your MESA runs.
+inlist_name: inlist_project
+
+# --- Analysis and Plot Generation Options ---
+# These are boolean (True/False) flags that determine which analysis steps
+# and plot generation tasks the program will execute.
+
+# If `True`, the program will perform the blue loop analysis phase for
+# each MESA stellar evolution simulation. This step generates detailed
+# blue loop specific CSV files (e.g., 'detail_z0.01.csv'), which are
+# essential for the bolometric correction plots.
+# This is a crucial setting if you want to analyze blue loops.
+analyze_blue_loop: True
+
+# If `True`, the program will generate **heatmap** plots.
+# These heatmaps typically visualize metrics like the number of blue loop crossings
+# across the grid of initial masses and metallicities.
+generate_heatmaps: True
+
+# If `True`, the program will generate **general plots**, such as
+# standard Hertzsprung-Russell (H-R) diagrams. These plots usually show
+# the full evolutionary tracks directly from the 'history.data' files.
+generate_plots: True
+
+# If `True`, the program will generate **specific blue loop related plots**
+# (e.g., HRD, CMD, logg-L diagrams) that include **bolometric corrections (BCs)**
+# applied using the `isochrones` library.
+# **Important:** This option requires `analyze_blue_loop: True` to be set,
+# as these plots rely on the detailed blue loop data generated during the analysis step.
+generate_blue_loop_plots_with_bc: True
+
+# --- Other Settings ---
+
+# If `True`, the program will ignore any existing analysis result CSV files
+# (e.g., 'mesa_grid_analysis_summary.csv') in the 'analysis_results' directory.
+# It will then re-run the entire analysis from scratch by re-reading all
+# 'history.data' files. Useful if you've modified your MESA runs or found
+# an error in a previous analysis.
+# If `False` and the result files already exist, the program will attempt to load them.
+force_reanalysis: False
+
+# Determines the level of detail saved in the individual blue loop detail CSV files
+# (e.g., 'detail_z*.csv').
+# - 'all': Includes all columns from the relevant blue loop phases of the history file.
+# - 'summary': Includes only a concise set of key columns (e.g., star_age, log_Teff, log_L).
+blue_loop_output_type: all
