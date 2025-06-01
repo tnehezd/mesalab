@@ -135,3 +135,4 @@ To get started with the `mesa_tools` package and the `mesa_grid_analyzer` tool, 
     ```
     
     idna, scipy, astropy,beautifulsoup4
+    holoview, pymultinest

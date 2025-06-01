@@ -3,37 +3,39 @@ import sys
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+from matplotlib.path import Path # Import Path
 from isochrones.mist.bc import MISTBolometricCorrectionGrid
 import pkg_resources
+from tqdm.auto import tqdm
 
 # Initialize the bolometric correction grid ONCE when this module is loaded.
-# Include Gaia bands (G, BP, RP) along with UBVRI.
-try:
-    bc_grid = MISTBolometricCorrectionGrid(['U', 'B', 'V', 'R', 'I', 'G', 'BP', 'RP'])
-except Exception as e:
-    print(f"ERROR: Error initializing MISTBolometricCorrectionGrid: {e}", file=sys.stderr)
-    print("WARNING: Bolometric corrections will not be available for CMD plots.", file=sys.stderr)
-    bc_grid = None
+print("INFO: Initializing MIST Bolometric Correction Grid... (This happens once)")
+bc_grid = MISTBolometricCorrectionGrid(['J', 'H', 'K', 'G', 'BP', 'RP', 'g', 'r', 'i'])
+print("INFO: MIST Bolometric Correction Grid initialized.")
+
+# Helper function to calculate BC for a single row.
+def _calculate_bc_for_single_point(args):
+    original_idx, teff_i, logg_i, feh_i, av_i = args
+    
+    if not (np.isfinite(teff_i) and np.isfinite(logg_i) and np.isfinite(feh_i) and np.isfinite(av_i)):
+        return (original_idx, np.nan, np.nan, np.nan)
+
+    try:
+        BC_G_val = bc_grid.interp([teff_i, logg_i, feh_i, av_i], ['G'])[0]
+        BC_BP_val = bc_grid.interp([teff_i, logg_i, feh_i, av_i], ['BP'])[0]
+        BC_RP_val = bc_grid.interp([teff_i, logg_i, feh_i, av_i], ['RP'])[0]
+        return (original_idx, BC_G_val, BC_BP_val, BC_RP_val)
+    except Exception as e:
+        return (original_idx, np.nan, np.nan, np.nan)
 
 def z_to_feh(Z):
-    """Converts metallicity (Z) to [Fe/H]."""
     Z_sun = 0.0152
     if Z <= 0:
-        print(f"WARNING: Z value is non-positive ({Z}). Returning NaN for [Fe/H].", file=sys.stderr)
         return np.nan
     return np.log10(Z / Z_sun)
 
-# --- MAJOR MODIFICATIONS START HERE ---
 def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_type_label="all_blue_loop_data"):
-    """
-    Generates HRD, CMD (G_BP - G_RP vs G), and LogL-LogG plots for all blue loop stellar models
-    in a single plot, including bolometric corrections for Gaia magnitudes.
-
-    Args:
-        combined_df_all_data (pd.DataFrame): DataFrame with all stellar data (all Z and masses).
-        output_dir (str): Directory to save plots.
-        output_type_label (str): Label to include in output filenames.
-    """
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     print(f"Generating combined blue loop HRD, CMD, and LogL-LogG plots (with BCs) to '{output_dir}'...")
@@ -44,159 +46,171 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
     except pkg_resources.DistributionNotFound:
         print("WARNING: isochrones package not found.", file=sys.stderr)
 
-    cmd_plotting_possible = bc_grid is not None
-    if not cmd_plotting_possible:
-        print(f"WARNING: Skipping CMD plots due to BC grid initialization failure.", file=sys.stderr)
-
     if combined_df_all_data.empty:
         print("Warning: No data provided for plotting. Skipping.", file=sys.stderr)
         return
 
-    # It's good practice to rename 'Z' to 'initial_Z' as it's typically how it's named in MESA output
-    # Or ensure your input CSVs have 'initial_Z' column.
-    # I'll assume 'initial_Z' and 'initial_mass' for consistency with cli.py.
-    # If your CSVs only have 'Z', you might need to rename it here:
-    # combined_df_all_data.rename(columns={'Z': 'initial_Z'}, inplace=True)
+    if 'Z' in combined_df_all_data.columns and 'initial_Z' not in combined_df_all_data.columns:
+        combined_df_all_data.rename(columns={'Z': 'initial_Z'}, inplace=True)
+        print("INFO: Renamed 'Z' column to 'initial_Z' for consistency.")
+    elif 'initial_Z' not in combined_df_all_data.columns:
+        print(f"ERROR: Neither 'Z' nor 'initial_Z' column found in data. Cannot proceed.", file=sys.stderr)
+        return
 
-    unique_masses = np.sort(combined_df_all_data['initial_mass'].unique())
-    unique_zs = np.sort(combined_df_all_data['initial_Z'].unique())
+    combined_df_all_data['Mbol'] = np.nan
+    combined_df_all_data['M_G'] = np.nan
+    combined_df_all_data['M_BP'] = np.nan
+    combined_df_all_data['M_RP'] = np.nan
+    combined_df_all_data['G_BP_minus_G_RP'] = np.nan
 
+    bc_input_df_filtered = combined_df_all_data.dropna(subset=['log_Teff', 'log_g', 'initial_Z']).copy()
+    
+    print(f"DEBUG: bc_input_df_filtered size: {len(bc_input_df_filtered)} rows before task creation.")
+
+    if bc_input_df_filtered.empty:
+        print("WARNING: No valid stellar data (log_Teff, log_g, initial_Z) for BC calculation. Skipping BC and magnitude calculations.", file=sys.stderr)
+    else:
+        tasks = []
+        print("DEBUG: Preparing tasks for BC calculation...")
+        for original_idx, row in bc_input_df_filtered.iterrows():
+            teff_i = 10**row['log_Teff']
+            logg_i = row['log_g']
+            feh_i = z_to_feh(row['initial_Z'])
+            av_i = 0.0
+            tasks.append((original_idx, teff_i, logg_i, feh_i, av_i))
+
+        print(f"DEBUG: Number of tasks prepared for BC calculation: {len(tasks)}")
+
+        print("Starting serial bolometric correction calculation...")
+        raw_results = []
+        for task in tqdm(tasks, desc="Calculating BCs serially"):
+            raw_results.append(_calculate_bc_for_single_point(task))
+        print("Serial calculation completed.")
+
+        print(f"DEBUG: Processing BC calculation results (length: {len(raw_results)}).")
+        
+        results_df = pd.DataFrame(raw_results, columns=['original_idx', 'BC_G_val', 'BC_BP_val', 'BC_RP_val'])
+        results_df.set_index('original_idx', inplace=True)
+        
+        combined_df_all_data['BC_G'] = results_df['BC_G_val']
+        combined_df_all_data['BC_BP'] = results_df['BC_BP_val']
+        combined_df_all_data['BC_RP'] = results_df['BC_RP_val']
+
+        valid_bc_calculated_count = combined_df_all_data['BC_G'].count()
+        print(f"Total BCs calculated: {valid_bc_calculated_count} points.")
+
+    print(f"DEBUG: Shape of combined_df_all_data AFTER BC application: {combined_df_all_data.shape}")
+    print(f"DEBUG: Number of non-NaN BC_G values: {combined_df_all_data['BC_G'].count()}")
+
+    combined_df_all_data['Mbol'] = -2.5 * combined_df_all_data['log_L'] + 4.74
+    combined_df_all_data['M_G'] = combined_df_all_data['Mbol'] - combined_df_all_data['BC_G']
+    combined_df_all_data['M_BP'] = combined_df_all_data['Mbol'] - combined_df_all_data['BC_BP']
+    combined_df_all_data['M_RP'] = combined_df_all_data['Mbol'] - combined_df_all_data['BC_RP']
+    combined_df_all_data['G_BP_minus_G_RP'] = combined_df_all_data['M_BP'] - combined_df_all_data['M_RP']
+
+    print(f"DEBUG: Shape of combined_df_all_data AFTER magnitude calculations: {combined_df_all_data.shape}")
+    print(f"DEBUG: Number of non-NaN Mbol values after calculation: {combined_df_all_data['Mbol'].count()}")
+    print(f"DEBUG: Number of non-NaN M_G values after calculation: {combined_df_all_data['M_G'].count()}")
+    print(f"DEBUG: Number of non-NaN G_BP_minus_G_RP values after calculation: {combined_df_all_data['G_BP_minus_G_RP'].count()}")
+
+    min_z = combined_df_all_data['initial_Z'].min()
+    max_z = combined_df_all_data['initial_Z'].max()
+    cmap = plt.cm.viridis
+    norm = plt.Normalize(vmin=min_z, vmax=max_z)
+
+    # --- HRD Plot ---
+    print("Generating HRD plot...")
     fig_hrd, ax_hrd = plt.subplots(figsize=(10, 8))
-    fig_cmd, ax_cmd = plt.subplots(figsize=(10, 8))
-    fig_logg, ax_logg = plt.subplots(figsize=(10, 8))
+    hrd_plot_df = combined_df_all_data.dropna(subset=['log_Teff', 'log_L', 'initial_Z'])
+    print(f"DEBUG: HRD plot DataFrame size after dropna: {len(hrd_plot_df)} rows")
+    if not hrd_plot_df.empty:
+        ax_hrd.scatter(hrd_plot_df['log_Teff'], hrd_plot_df['log_L'],
+                       c=hrd_plot_df['initial_Z'], cmap=cmap, norm=norm,
+                       s=1, alpha=0.1)
 
-    at_least_one_cmd_plot = False
+    # --- Instabilitási sáv definiálása és hozzáadása ---
+    # Vertices are in (log_Teff, log_L) coordinates
+    instability_strip_vertices = np.array([
+        [3.83, 2.4],   # Bal felső (Blue edge, Teff magas, L alacsony)
+        [3.76, 4.5],   # Bal alsó (Teff magas, L magas)
+        [3.65, 4.5],   # Jobb alsó (Red edge, Teff alacsony, L magas)
+        [3.77, 2.4]    # Jobb felső (Teff alacsony, L alacsony)
+    ])
+    
+    # Fontos: A HRD Teff tengelye inverz! Tehát a bal felső pont log_Teff értéke a legnagyobb.
+    # A Path-hoz úgy kell megadni a pontokat, hogy azok sorban összekössék a sokszöget.
+    # Itt a sorrend Teff szerint csökkenő, aztán L szerint növekvő, majd Teff szerint növekvő, aztán L szerint csökkenő.
+    # Az instability_strip_vertices pontjai valószínűleg már a helyes sorrendben vannak a Path számára.
+    
+    instability_path = Path(instability_strip_vertices)
+    instability_patch = patches.PathPatch(instability_path, facecolor='gray', edgecolor='black', lw=2, alpha=0.3, label='Instability Strip')
+    ax_hrd.add_patch(instability_patch)
+    # --- Instability strip end ---
 
-    # Iterate over both mass and Z to plot each individual track on the same figure
-    for mass_val in unique_masses:
-        mass_df = combined_df_all_data[combined_df_all_data['initial_mass'] == mass_val].copy()
-
-        for Z_val in unique_zs:
-            subset_df = mass_df[mass_df['initial_Z'] == Z_val].copy()
-            if subset_df.empty:
-                continue # Skip if no data for this specific Z and mass combination
-
-            feh_val = z_to_feh(Z_val)
-            if not np.isfinite(feh_val):
-                print(f"ERROR: Non-finite [Fe/H] for Z={Z_val}. Skipping subset for mass={mass_val}.", file=sys.stderr)
-                continue
-
-            label_text = f'M={mass_val:.1f}, Z={Z_val:.4f}' # Updated label for clarity
-
-            # HRD plot (log_Teff vs log_L)
-            hrd_df = subset_df.dropna(subset=['log_Teff', 'log_L'])
-            if not hrd_df.empty:
-                ax_hrd.plot(hrd_df['log_Teff'], hrd_df['log_L'], label=label_text, lw=1.5)
-
-            # LogL vs log_g plot
-            logg_df = subset_df.dropna(subset=['log_g', 'log_L'])
-            if not logg_df.empty:
-                ax_logg.plot(logg_df['log_g'], logg_df['log_L'], label=label_text, lw=1.5)
-
-            # CMD plot with bolometric corrections
-            if cmd_plotting_possible:
-                bc_req_cols = ['log_Teff', 'log_g', 'log_L']
-                bc_df = subset_df.dropna(subset=bc_req_cols).copy()
-                if bc_df.empty:
-                    continue # Skip if no valid data for BCs
-
-                teff = 10**bc_df['log_Teff'].values
-                logg = bc_df['log_g'].values
-
-                BC_G, BC_BP, BC_RP = [], [], []
-
-                for i in range(len(bc_df)):
-                    params = np.array([[teff[i], logg[i], feh_val, 0.0]]) # Av=0 for each point
-                    try:
-                        # bc_grid.interp returns an array of shape (N_points, N_filters)
-                        bc_values = bc_grid.interp(params, ['G', 'BP', 'RP'])
-                        BC_G.append(bc_values[0, 0])
-                        BC_BP.append(bc_values[0, 1])
-                        BC_RP.append(bc_values[0, 2])
-                    except Exception as e:
-                        # print(f"Warning: BC interpolation error at index {i} for M={mass_val}, Z={Z_val}: {e}")
-                        BC_G.append(np.nan)
-                        BC_BP.append(np.nan)
-                        BC_RP.append(np.nan)
-
-                bc_df['BC_G'] = BC_G
-                bc_df['BC_BP'] = BC_BP
-                bc_df['BC_RP'] = BC_RP
-
-                M_bol = -2.5 * bc_df['log_L'].values + 4.74
-                bc_df['M_G'] = M_bol - bc_df['BC_G']
-                bc_df['M_BP'] = M_bol - bc_df['BC_BP']
-                bc_df['M_RP'] = M_bol - bc_df['BC_RP']
-                bc_df['G_BP_minus_G_RP'] = bc_df['M_BP'] - bc_df['M_RP']
-
-                cmd_df = bc_df.dropna(subset=['G_BP_minus_G_RP', 'M_G'])
-                if not cmd_df.empty:
-                    ax_cmd.plot(cmd_df['G_BP_minus_G_RP'], cmd_df['M_G'], label=label_text, alpha=0.7, lw=1.5)
-                    at_least_one_cmd_plot = True
-    # --- MAJOR MODIFICATIONS END HERE ---
-
-    # HRD figure settings
     ax_hrd.set_xlabel(r'$\log_{10} T_{\mathrm{eff}}$')
     ax_hrd.set_ylabel(r'$\log_{10} (L/L_{\odot})$')
-    ax_hrd.set_title(f'Combined HR Diagram (All Z)') # Updated title
+    ax_hrd.set_title(f'Combined HR Diagram (All Z)')
     ax_hrd.invert_xaxis()
-    ax_hrd.legend(title='Initial Mass, Z', loc='best', fontsize='small', ncol=2) # Updated legend title and columns
+    fig_hrd.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax_hrd, label='Initial Z')
     ax_hrd.grid(True, linestyle='--', alpha=0.6)
+    ax_hrd.legend(loc='upper right') # Add legend to show instability strip label
     fig_hrd.tight_layout()
-    hrd_path = os.path.join(output_dir, f'HRD_{output_type_label}.png') # Updated filename
+    hrd_path = os.path.join(output_dir, f'HRD_{output_type_label}.png')
     fig_hrd.savefig(hrd_path, dpi=200)
     plt.close(fig_hrd)
     print(f"Saved HRD plot: {hrd_path}")
 
-    # CMD figure settings
-    if at_least_one_cmd_plot:
+    # --- CMD Plot (unchanged) ---
+    print("Generating CMD plot...")
+    fig_cmd, ax_cmd = plt.subplots(figsize=(10, 8))
+    cmd_plot_df = combined_df_all_data.dropna(subset=['G_BP_minus_G_RP', 'M_G', 'initial_Z'])
+    print(f"DEBUG: CMD plot DataFrame size after dropna: {len(cmd_plot_df)} rows")
+    if not cmd_plot_df.empty:
+        ax_cmd.scatter(cmd_plot_df['G_BP_minus_G_RP'], cmd_plot_df['M_G'],
+                       c=cmd_plot_df['initial_Z'], cmap=cmap, norm=norm,
+                       s=1, alpha=0.1)
         ax_cmd.set_xlabel(r'$G_{BP} - G_{RP}$')
         ax_cmd.set_ylabel(r'$M_G$')
-        ax_cmd.set_title(f'Combined CMD (Gaia) (All Z)') # Updated title
+        ax_cmd.set_title(f'Combined CMD (Gaia) (All Z)')
         ax_cmd.invert_yaxis()
-        ax_cmd.legend(title='Initial Mass, Z', loc='best', fontsize='small', ncol=2) # Updated legend title and columns
+        fig_cmd.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax_cmd, label='Initial Z')
         ax_cmd.grid(True, linestyle='--', alpha=0.6)
         fig_cmd.tight_layout()
-        cmd_path = os.path.join(output_dir, f'CMD_Gaia_{output_type_label}.png') # Updated filename
+        cmd_path = os.path.join(output_dir, f'CMD_Gaia_{output_type_label}.png')
         fig_cmd.savefig(cmd_path, dpi=200)
         plt.close(fig_cmd)
         print(f"Saved CMD plot: {cmd_path}")
     else:
         plt.close(fig_cmd)
-        print(f"No valid CMD plots for combined data.")
+        print(f"No valid CMD plots for combined data after dropping NaNs in G_BP_minus_G_RP or M_G.")
 
-    # LogL vs LogG figure settings
+    # --- LogL vs LogG Plot (unchanged) ---
+    print("Generating LogL vs LogG plot...")
+    fig_logg, ax_logg = plt.subplots(figsize=(10, 8))
+    logg_plot_df = combined_df_all_data.dropna(subset=['log_g', 'log_L', 'initial_Z'])
+    print(f"DEBUG: LogL vs LogG plot DataFrame size after dropna: {len(logg_plot_df)} rows")
+    if not logg_plot_df.empty:
+        ax_logg.scatter(logg_plot_df['log_g'], logg_plot_df['log_L'],
+                        c=logg_plot_df['initial_Z'], cmap=cmap, norm=norm,
+                        s=1, alpha=0.1)
     ax_logg.set_xlabel(r'$\log_{10} g$')
     ax_logg.set_ylabel(r'$\log_{10} (L/L_{\odot})$')
-    ax_logg.set_title(f'Combined LogL vs LogG (All Z)') # Updated title
-    ax_logg.invert_xaxis()
-    ax_logg.legend(title='Initial Mass, Z', loc='best', fontsize='small', ncol=2) # Updated legend title and columns
+    ax_logg.set_title(f'Combined LogL vs LogG (All Z)')
+    ax_logg.invert_yaxis()
+    fig_logg.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax_logg, label='Initial Z')
     ax_logg.grid(True, linestyle='--', alpha=0.6)
     fig_logg.tight_layout()
-    logg_path = os.path.join(output_dir, f'LogL_LogG_{output_type_label}.png') # Updated filename
+    logg_path = os.path.join(output_dir, f'LogL_LogG_{output_type_label}.png')
     fig_logg.savefig(logg_path, dpi=200)
     plt.close(fig_logg)
     print(f"Saved LogL vs LogG plot: {logg_path}")
 
     print("All combined plots generated.")
 
+
 def load_and_group_data(input_dir):
-    # Renamed for clarity, though it still returns a single DataFrame.
-    """
-    Loads all CSV files in input_dir, concatenates them into a single DataFrame.
-
-    Assumes CSV files contain at least these columns:
-    - initial_Z (metallicity)
-    - initial_mass
-    - log_Teff, log_L, log_g (needed for plots)
-
-    Args:
-        input_dir (str): Directory containing CSV files.
-
-    Returns:
-        pd.DataFrame: A single DataFrame with all data.
-    """
     all_dfs = []
+    print(f"INFO: Loading CSV files from '{input_dir}'...")
     for filename in os.listdir(input_dir):
         if filename.lower().endswith('.csv'):
             filepath = os.path.join(input_dir, filename)
@@ -209,30 +223,31 @@ def load_and_group_data(input_dir):
 
     if not all_dfs:
         print(f"ERROR: No CSV files loaded from '{input_dir}'.", file=sys.stderr)
-        return pd.DataFrame() # Return empty DataFrame on error
+        return pd.DataFrame()
 
     full_df = pd.concat(all_dfs, ignore_index=True)
+    print(f"INFO: All CSVs concatenated. Total rows: {len(full_df)}.")
 
-    # Check for required columns based on MESA output conventions
-    if 'initial_Z' not in full_df.columns:
-        print(f"ERROR: 'initial_Z' column not found in data. Please check your CSVs.", file=sys.stderr)
+    if 'initial_Z' not in full_df.columns and 'Z' not in full_df.columns:
+        print(f"ERROR: Neither 'initial_Z' nor 'Z' column found in data. Please check your CSVs.", file=sys.stderr)
         return pd.DataFrame()
     if 'initial_mass' not in full_df.columns:
         print(f"ERROR: 'initial_mass' column not found in data. Please check your CSVs.", file=sys.stderr)
         return pd.DataFrame()
 
-    # Instead of grouping, it now simply returns the concatenated DataFrame.
+    if 'Z' in full_df.columns and 'initial_Z' not in full_df.columns:
+        full_df.rename(columns={'Z': 'initial_Z'}, inplace=True)
+        print("INFO: Renamed 'Z' column to 'initial_Z' for consistency.")
+    
     return full_df
 
 if __name__ == "__main__":
-    # Customize these paths:
-    input_data_directory = "./blue_loop_data"   # Folder with input CSV files
-    output_plots_directory = "./blue_loop_plots" # Folder to save plots
+    input_data_directory = "./blue_loop_data"
+    output_plots_directory = "./blue_loop_plots"
 
-    # load_and_group_data now returns a single DataFrame
     combined_data_for_plotting = load_and_group_data(input_data_directory)
+
     if not combined_data_for_plotting.empty:
-        # Call the function with the combined DataFrame
         generate_blue_loop_plots_with_bc(combined_data_for_plotting, output_plots_directory)
     else:
         print("No valid data to plot.", file=sys.stderr)

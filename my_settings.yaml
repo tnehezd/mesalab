@@ -13,7 +13,7 @@ inlist_name: inlist_project
 # This is CRITICAL. The blue loop BC plots rely on the detailed
 # blue loop analysis data, which is generated when this is True.
 # Keep this as True to ensure the necessary data is processed.
-analyze_blue_loop: False
+analyze_blue_loop: True #False
 
 # Set to False to ensure no heatmaps are generated.
 generate_heatmaps: False
@@ -30,12 +30,12 @@ generate_blue_loop_plots_with_bc: True
 # If you've run a full analysis before and the 'detail_z*.csv' files exist,
 # you can set 'force_reanalysis' to False to speed things up.
 # If you want to re-run the blue loop analysis from scratch, set it to True.
-force_reanalysis: False
+force_reanalysis: True #false
 
 # Defines the columns saved in the detailed blue loop CSV files.
 # 'all' saves all columns from the blue loop phase.
 # 'summary' saves only key columns (e.g., star_age, log_Teff, log_L).
-blue_loop_output_type: all
+blue_loop_output_type: summary
 
 # --- Blue Loop Plotting Specifics (Optional, add as needed) ---
 # It's good practice to add any parameters specific to generate_blue_loop_plots_with_bc
