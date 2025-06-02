@@ -196,7 +196,7 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
     ax_logg.set_xlabel(r'$\log_{10} g$')
     ax_logg.set_ylabel(r'$\log_{10} (L/L_{\odot})$')
     ax_logg.set_title(f'Combined LogL vs LogG (All Z)')
-    ax_logg.invert_yaxis()
+    ax_logg.invert_xaxis()
     fig_logg.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax_logg, label='Initial Z')
     ax_logg.grid(True, linestyle='--', alpha=0.6)
     fig_logg.tight_layout()
