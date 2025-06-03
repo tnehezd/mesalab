@@ -1,4 +1,4 @@
-#mesa_tools/cli.py
+# mesa_tools/cli.py
 
 import os
 import argparse
@@ -8,14 +8,17 @@ import re
 from tqdm import tqdm
 import yaml
 import logging # Added logging import for better output
+import sys # Required for sys.exit()
 
 # Set up basic logging for the entire script
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+# Changed to DEBUG level to provide more detailed output during execution.
+logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
 
 
 from .blue_loop_analyzer import analyze_blue_loop_and_instability
 from .heatmap_generator import generate_heatmaps_and_time_diff_csv
-from .blue_loop_cmd_plotter import generate_blue_loop_plots_with_bc, load_and_group_data # Added load_and_group_data import
+from .blue_loop_cmd_plotter import generate_blue_loop_plots_with_bc, load_and_group_data
+from .config_parser import parsing_options # Correct import for parsing_options
 
 
 def extract_params_from_inlist(inlist_path):
@@ -109,72 +112,29 @@ def get_data_from_history_file(history_file_path):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Analyze MESA stellar evolution grid runs.")
+    """ MAIN function ... First, parsing the options """
 
-    parser.add_argument("--config", type=str,
-                        help="Path to a YAML configuration file. Command-line arguments will override file settings.")
+    # Call the parsing_options function from config_parser.py to get all arguments
+    args = parsing_options()
 
-    parser.add_argument("-i", "--input-dir", required=False,
-                        help="Directory containing MESA run subdirectories (e.g., 'run_M2.0_Z0.01').")
-    parser.add_argument("-o", "--output-dir", required=False,
-                        help="Output directory for results.")
-    parser.add_argument("--analyze-blue-loop", action="store_true",
-                        help="Perform blue loop analysis.")
-    parser.add_argument("--inlist-name", default="inlist_project",
-                        help="Inlist filename to identify runs (default: inlist_project).")
-    parser.add_argument("--generate-heatmaps", action="store_true",
-                        help="Generate heatmaps from cross-grid data.")
-    parser.add_argument("--force-reanalysis", action="store_true",
-                        help="Force reanalysis even if summary files exist.")
-    parser.add_argument("--blue-loop-output-type", choices=['summary', 'all'], default='all',
-                        help="Blue loop output type for detail files: 'summary' includes selected key columns, 'all' includes all columns from the relevant blue loop phase. Default: 'all'.")
-    parser.add_argument("--generate-plots", action="store_true",
-                        help="Generate plots for analysis (beyond heatmaps, typically full HRD).")
-    parser.add_argument("--generate-blue-loop-plots-with-bc", action="store_true",
-                        help="Generate blue loop specific HRD/CMD/logg-L plots with bolometric corrections.")
+    # --- FINAL DEBUG: Check the final value of args.force_reanalysis after all parsing ---
+    # This log is placed here to show the state of 'args' after YAML processing.
+    logging.debug(f"--- CLI DEBUG: args.force_reanalysis after all parsing: {args.force_reanalysis}")
+    logging.debug(f"--- CLI DEBUG: Type of args.force_reanalysis: {type(args.force_reanalysis)}")
+    # -------------------------------------------------------------------------------------
 
-
-    args = parser.parse_args()
-
-    # Load configuration from file if provided
-    if args.config:
-        try:
-            with open(args.config, 'r') as f:
-                config_data = yaml.safe_load(f)
-
-            if config_data:
-                for key, value in config_data.items():
-                    # This logic ensures command-line arguments always take precedence.
-                    # If the argument was NOT provided on the command line (i.e., it's still its default value),
-                    # OR if the config value is explicitly different from the default and the command line didn't set it to True.
-                    if getattr(args, key, None) is parser.get_default(key) or \
-                       (isinstance(getattr(args, key), bool) and getattr(args, key) == False and value == True and getattr(args,key) == parser.get_default(key)):
-                        setattr(args, key, value)
-                    # Special handling for boolean flags: if cmd line explicitly set it to True, don't override with False from config
-                    elif isinstance(getattr(args, key), bool) and getattr(args, key) is True and value is False:
-                        continue
-        except FileNotFoundError:
-            logging.error(f"Configuration file not found: {args.config}. Proceeding with command-line/default arguments.")
-        except yaml.YAMLError as e:
-            logging.error(f"Error parsing YAML configuration file {args.config}: {e}. Proceeding with command-line/default arguments.")
-
-    # Make input_dir and output_dir mandatory after config loading
-    if args.input_dir is None:
-        parser.error("--input-dir is required if not specified in the config file.")
-    if args.output_dir is None:
-        parser.error("--output-dir is required if not specified in the config file.")
-
+    # Assign values from the args Namespace to local variables for clarity
     input_dir = args.input_dir
     output_dir = args.output_dir
     analyze_blue_loop = args.analyze_blue_loop
     inlist_name = args.inlist_name
     should_generate_heatmaps = args.generate_heatmaps
-    force_reanalysis = args.force_reanalysis
+    force_reanalysis = args.force_reanalysis # This variable now holds the correctly overridden value
     blue_loop_output_type = args.blue_loop_output_type
     should_generate_plots = args.generate_plots
     should_generate_blue_loop_plots_with_bc = args.generate_blue_loop_plots_with_bc
 
-
+    # Create output directories
     analysis_results_sub_dir = os.path.join(output_dir, "analysis_results")
     plots_sub_dir = os.path.join(output_dir, "plots")
     blue_loop_plots_bc_sub_dir = os.path.join(output_dir, "blue_loop_plots_bc")
@@ -188,11 +148,25 @@ def main():
     if should_generate_blue_loop_plots_with_bc:
         os.makedirs(blue_loop_plots_bc_sub_dir, exist_ok=True)
 
-
+    # Define paths for summary and cross-grid CSVs
     summary_csv_path = os.path.join(analysis_results_sub_dir, "mesa_grid_analysis_summary.csv")
     cross_csv_path = os.path.join(analysis_results_sub_dir, "mesa_grid_cross.csv")
 
-    reanalysis_needed = force_reanalysis or not os.path.exists(summary_csv_path) or not os.path.exists(cross_csv_path)
+    # --- CRITICAL DEBUGGING FOR REANALYSIS LOGIC ---
+    logging.debug(f"--- REANALYSIS DEBUG ---")
+    logging.debug(f"  force_reanalysis (from args): {force_reanalysis}")
+    logging.debug(f"  summary_csv_path: {summary_csv_path}")
+    logging.debug(f"  Does summary_csv_path exist? {os.path.exists(summary_csv_path)}")
+    logging.debug(f"  cross_csv_path: {cross_csv_path}")
+    logging.debug(f"  Does cross_csv_path exist? {os.path.exists(cross_csv_path)}")
+
+    # Determine if reanalysis is needed based on force_reanalysis flag or missing summary/cross-grid files
+    reanalysis_needed = force_reanalysis or \
+                        not os.path.exists(summary_csv_path) or \
+                        not os.path.exists(cross_csv_path)
+
+    logging.info(f"Final reanalysis_needed flag: {reanalysis_needed}")
+    # -----------------------------------------------
 
     grouped_full_history_dfs_for_plotting = {}
     grouped_detailed_dfs_for_analysis_raw = {} # Changed name to reflect it's a list of DFs
@@ -323,7 +297,9 @@ def main():
                 df_full_history_for_analysis = None
                 if current_z in grouped_full_history_dfs_for_plotting:
                     for df in grouped_full_history_dfs_for_plotting[current_z]:
-                        if df['initial_mass'].iloc[0] == current_mass:
+                        # Ensure we get the correct DataFrame for the current mass and Z
+                        # by checking 'initial_mass' which was added during loading
+                        if 'initial_mass' in df.columns and df['initial_mass'].iloc[0] == current_mass:
                             df_full_history_for_analysis = df
                             break
 
@@ -374,7 +350,7 @@ def main():
                                     analysis_result_summary['first_age_yr'] = bl_df['star_age'].min()
                                     analysis_result_summary['last_age_yr'] = bl_df['star_age'].max()
 
-                                current_detail_df = bl_df
+                                current_detail_df = bl_df # Assign the full or filtered BL df for saving
 
                             cross_data_matrix.at[current_z, current_mass] = analysis_result_summary['blue_loop_crossing_count']
                         else:
@@ -387,9 +363,11 @@ def main():
                     summary_data.append(analysis_result_summary)
 
                     if analyze_blue_loop and not current_detail_df.empty:
+                        # Add current_detail_df to the list for the current Z value
                         if current_z not in grouped_detailed_dfs_for_analysis_raw:
-                               grouped_detailed_dfs_for_analysis_raw[current_z] = []
+                            grouped_detailed_dfs_for_analysis_raw[current_z] = []
                         grouped_detailed_dfs_for_analysis_raw[current_z].append(current_detail_df)
+
 
                 except Exception as err:
                     with open(skipped_runs_log_path, 'a') as log_file:
@@ -416,21 +394,14 @@ def main():
             for z_val, dfs_list in grouped_detailed_dfs_for_analysis_raw.items():
                 if dfs_list:
                     try:
-                        for df_item in dfs_list:
-                            if 'initial_mass' not in df_item.columns or 'initial_Z' not in df_item.columns:
-                                mass = df_item['initial_mass'].iloc[0] if 'initial_mass' in df_item.columns else None
-                                z = df_item['initial_Z'].iloc[0] if 'initial_Z' in df_item.columns else None
-                                if mass is None or z is None:
-                                    logging.warning(f"initial_mass/Z not found in blue loop detail DF for Z={z_val} before concat. This might affect BC calculation.")
-                                    df_item['initial_mass'] = df_item.get('initial_mass', np.nan)
-                                    df_item['initial_Z'] = df_item.get('initial_Z', np.nan)
-
-
+                        # Concatenate all detail DataFrames for the current Z value
                         combined_df_bl = pd.concat(dfs_list, ignore_index=True)
+
+                        # Filter columns based on blue_loop_output_type
                         if blue_loop_output_type == 'all':
                             filtered_combined_df_bl = combined_df_bl
                             output_type_label = "all columns"
-                        else:
+                        else: # 'summary' output type
                             existing_desired_cols = [col for col in concise_detail_columns if col in combined_df_bl.columns]
                             if not existing_desired_cols:
                                 logging.warning(f"No desired columns found for concise detail CSV for Z={z_val}. Skipping.")
@@ -443,7 +414,7 @@ def main():
                         logging.info(f"Written concatenated detail CSV for Z={z_val} with {output_type_label} to {detail_filename}")
 
                         # If reanalysis happens and analyze_blue_loop is true, we should populate combined_detail_data_for_plotting
-                        # as a single DataFrame containing all data
+                        # as a single DataFrame containing all data for eventual plotting.
                         if combined_detail_data_for_plotting.empty:
                             combined_detail_data_for_plotting = filtered_combined_df_bl.copy()
                         else:
@@ -457,8 +428,10 @@ def main():
 
     if should_generate_heatmaps:
         try:
+            # If summary_df_loaded is empty, try to load it from the CSV file
             if 'summary_df_loaded' not in locals() or summary_df_loaded.empty:
                 summary_df_loaded = pd.read_csv(summary_csv_path, index_col=['initial_Z', 'initial_mass'])
+
             if 'blue_loop_crossing_count' in summary_df_loaded.columns:
                 cross_data_matrix_loaded = summary_df_loaded['blue_loop_crossing_count'].unstack(level='initial_mass')
                 logging.info("Loaded existing summary data for heatmap generation.")
@@ -493,17 +466,17 @@ def main():
     if should_generate_blue_loop_plots_with_bc:
         try:
             # If combined_detail_data_for_plotting is still empty at this point,
-            # it means either analyze_blue_loop was False AND detail files weren't loaded
-            # or there were no valid detail files.
+            # it means either analyze_blue_loop was False AND detail files weren't loaded,
+            # or there were no valid detail files to begin with.
             if combined_detail_data_for_plotting.empty:
                 logging.info(f"Attempting to load detail files directly from {detail_files_output_dir} for plotting (if not already loaded during reanalysis)...")
-                # load_and_group_data function will now directly return a single combined DataFrame
+                # load_and_group_data function now directly returns a single combined DataFrame
                 combined_detail_data_for_plotting = load_and_group_data(detail_files_output_dir)
 
             if not combined_detail_data_for_plotting.empty:
                 # Call the dedicated blue loop BC plotting function with the single combined DataFrame
                 generate_blue_loop_plots_with_bc(
-                    combined_df_all_data=combined_detail_data_for_plotting, # <--- THIS IS THE KEY CHANGE
+                    combined_df_all_data=combined_detail_data_for_plotting, # <--- This is the key change
                     output_dir=blue_loop_plots_bc_sub_dir,
                     output_type_label="all_blue_loop_data" # Added this for consistency with plotter function
                 )
