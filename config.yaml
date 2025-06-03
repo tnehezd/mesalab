@@ -61,9 +61,3 @@ generate_blue_loop_plots_with_bc: True
 # an error in a previous analysis.
 # If `False` and the result files already exist, the program will attempt to load them.
 force_reanalysis: False
-
-# Determines the level of detail saved in the individual blue loop detail CSV files
-# (e.g., 'detail_z*.csv').
-# - 'all': Includes all columns from the relevant blue loop phases of the history file.
-# - 'summary': Includes only a concise set of key columns (e.g., star_age, log_Teff, log_L).
-blue_loop_output_type: all
