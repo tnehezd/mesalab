@@ -13,102 +13,15 @@ import sys # Required for sys.exit()
 # Set up basic logging for the entire script
 # Changed to DEBUG level to provide more detailed output during execution.
 logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
+logging.getLogger('matplotlib').setLevel(logging.ERROR) 
 
 
 from .blue_loop_analyzer import analyze_blue_loop_and_instability
 from .heatmap_generator import generate_heatmaps_and_time_diff_csv
 from .blue_loop_cmd_plotter import generate_blue_loop_plots_with_bc, load_and_group_data
 from .config_parser import parsing_options # Correct import for parsing_options
+from .data_reader import extract_params_from_inlist, scan_mesa_runs, get_data_from_history_file
 
-
-def extract_params_from_inlist(inlist_path):
-    """
-    Extract initial_mass and initial_Z from a MESA inlist file.
-    """
-    mass = None
-    z = None
-
-    try:
-        with open(inlist_path, 'r') as f:
-            content = f.read()
-            mass_match = re.search(r'initial_mass\s*=\s*(\d+\.?\d*)', content)
-            if mass_match:
-                mass = float(mass_match.group(1))
-            z_match = re.search(r'initial_Z\s*=\s*(\d+\.?\d*(?:e[+\-]?\d+)?)', content)
-            if z_match:
-                z = float(z_match.group(1))
-    except FileNotFoundError:
-        logging.error(f"Inlist file not found: {inlist_path}")
-    except Exception as e:
-        logging.error(f"Error reading inlist file {inlist_path}: {e}")
-
-    return mass, z
-
-
-def scan_mesa_runs(input_dir, inlist_name):
-    """
-    Scan input directory for MESA run subdirectories ('run_*') containing inlist and history.data files.
-    """
-    mesa_run_infos = []
-    potential_run_dirs = [d for d in os.listdir(input_dir)
-                          if os.path.isdir(os.path.join(input_dir, d)) and d.startswith('run_')]
-
-    if not potential_run_dirs:
-        logging.warning(f"No 'run_*' subdirectories found directly in {input_dir}. "
-                        "Ensure MESA runs are organized as 'run_*' folders.")
-
-    for run_dir_name in potential_run_dirs:
-        run_dir_path = os.path.join(input_dir, run_dir_name)
-        inlist_path = os.path.join(run_dir_path, inlist_name)
-        history_file_path = os.path.join(run_dir_path, 'LOGS', 'history.data')
-
-        if os.path.exists(inlist_path) and os.path.exists(history_file_path):
-            mass, z = extract_params_from_inlist(inlist_path)
-            if mass is not None and z is not None:
-                mesa_run_infos.append({
-                    'history_file_path': history_file_path,
-                    'run_dir_path': run_dir_path,
-                    'mass': mass,
-                    'z': z
-                })
-            else:
-                logging.warning(f"Could not extract mass/Z from inlist '{inlist_path}'. Skipping this run.")
-        else:
-            if not os.path.exists(inlist_path):
-                logging.warning(f"Inlist file '{inlist_name}' not found in '{run_dir_path}'. Skipping this run.")
-            if not os.path.exists(history_file_path):
-                logging.warning(f"history.data not found at '{history_file_path}'. Skipping this run.")
-
-    return mesa_run_infos
-
-
-def get_data_from_history_file(history_file_path):
-    """
-    Reads MESA history.data file into a pandas DataFrame using np.genfromtxt.
-    """
-    try:
-        data = np.genfromtxt(history_file_path, names=True, comments="#", skip_header=5,
-                             dtype=None, encoding='utf-8')
-
-        if data.ndim == 0: # Handle case of a single row in history.data
-            df = pd.DataFrame([data.tolist()], columns=data.dtype.names)
-        else:
-            df = pd.DataFrame(data)
-
-        # Convert all columns to numeric, coercing errors to NaN
-        for col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce')
-
-        # Ensure model_number is int if present and not NaN
-        if 'model_number' in df.columns:
-            df.dropna(subset=['model_number'], inplace=True) # Drop rows where model_number is NaN
-            if not df['model_number'].isnull().any(): # Check if any NaNs remain after dropping
-                df['model_number'] = df['model_number'].astype(int)
-
-        return df
-
-    except Exception as e:
-        raise type(e)(f"Error loading or processing {history_file_path} using np.genfromtxt: {e}") from e
 
 
 def main():
@@ -119,8 +32,8 @@ def main():
 
     # --- FINAL DEBUG: Check the final value of args.force_reanalysis after all parsing ---
     # This log is placed here to show the state of 'args' after YAML processing.
-    logging.debug(f"--- CLI DEBUG: args.force_reanalysis after all parsing: {args.force_reanalysis}")
-    logging.debug(f"--- CLI DEBUG: Type of args.force_reanalysis: {type(args.force_reanalysis)}")
+#    logging.debug(f"--- CLI DEBUG: args.force_reanalysis after all parsing: {args.force_reanalysis}")
+#    logging.debug(f"--- CLI DEBUG: Type of args.force_reanalysis: {type(args.force_reanalysis)}")
     # -------------------------------------------------------------------------------------
 
     # Assign values from the args Namespace to local variables for clarity

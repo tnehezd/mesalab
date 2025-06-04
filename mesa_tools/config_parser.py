@@ -12,6 +12,7 @@ import logging # <-- ADDED: Import the logging module
 logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
 
 
+
 def parsing_options():
     """
     Parses command-line arguments and loads settings from a YAML configuration file.
