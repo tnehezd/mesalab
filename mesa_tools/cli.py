@@ -1,5 +1,3 @@
-# mesa_tools/cli.py
-
 import os
 import argparse
 import pandas as pd
@@ -7,71 +5,54 @@ import numpy as np
 import re
 from tqdm import tqdm
 import yaml
-import logging # Added logging import for better output
-import sys # Required for sys.exit()
+import logging
+import sys
 
-# Set up basic logging for the entire script
-# Changed to DEBUG level to provide more detailed output during execution.
+# --- GLOBAL LOGGING CONFIGURATION (KEEP THIS HERE) ---
 logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
-logging.getLogger('matplotlib').setLevel(logging.ERROR) 
+logging.getLogger('matplotlib').setLevel(logging.ERROR) # Suppress Matplotlib's non-error messages
+# -----------------------------------------------------
 
-
+# Import functions from your specialized modules
+from .config_parser import parsing_options
+from .data_reader import extract_params_from_inlist, scan_mesa_runs, get_data_from_history_file
 from .blue_loop_analyzer import analyze_blue_loop_and_instability
 from .heatmap_generator import generate_heatmaps_and_time_diff_csv
 from .blue_loop_cmd_plotter import generate_blue_loop_plots_with_bc, load_and_group_data
-from .config_parser import parsing_options # Correct import for parsing_options
-from .data_reader import extract_params_from_inlist, scan_mesa_runs, get_data_from_history_file
 
+# NEW IMPORTS from the new output_manager module
+from .output_manager import create_output_directories, get_analysis_file_paths
 
 
 def main():
-    """ MAIN function ... First, parsing the options """
+    """ Main function ... Orchestrates the analysis and plotting workflow. """
 
-    # Call the parsing_options function from config_parser.py to get all arguments
     args = parsing_options()
 
-    # --- FINAL DEBUG: Check the final value of args.force_reanalysis after all parsing ---
-    # This log is placed here to show the state of 'args' after YAML processing.
-#    logging.debug(f"--- CLI DEBUG: args.force_reanalysis after all parsing: {args.force_reanalysis}")
-#    logging.debug(f"--- CLI DEBUG: Type of args.force_reanalysis: {type(args.force_reanalysis)}")
-    # -------------------------------------------------------------------------------------
-
-    # Assign values from the args Namespace to local variables for clarity
     input_dir = args.input_dir
     output_dir = args.output_dir
     analyze_blue_loop = args.analyze_blue_loop
     inlist_name = args.inlist_name
     should_generate_heatmaps = args.generate_heatmaps
-    force_reanalysis = args.force_reanalysis # This variable now holds the correctly overridden value
+    force_reanalysis = args.force_reanalysis
     blue_loop_output_type = args.blue_loop_output_type
     should_generate_plots = args.generate_plots
     should_generate_blue_loop_plots_with_bc = args.generate_blue_loop_plots_with_bc
 
-    # Create output directories
-    analysis_results_sub_dir = os.path.join(output_dir, "analysis_results")
-    plots_sub_dir = os.path.join(output_dir, "plots")
-    blue_loop_plots_bc_sub_dir = os.path.join(output_dir, "blue_loop_plots_bc")
-    detail_files_output_dir = os.path.join(output_dir, "detail_files")
+    # Call the function from output_manager to create directories
+    analysis_results_sub_dir, plots_sub_dir, blue_loop_plots_bc_sub_dir, detail_files_output_dir = \
+        create_output_directories(output_dir, analyze_blue_loop, should_generate_plots, should_generate_blue_loop_plots_with_bc)
 
-    os.makedirs(analysis_results_sub_dir, exist_ok=True)
-    if analyze_blue_loop:
-        os.makedirs(detail_files_output_dir, exist_ok=True)
-    if should_generate_plots:
-        os.makedirs(plots_sub_dir, exist_ok=True)
-    if should_generate_blue_loop_plots_with_bc:
-        os.makedirs(blue_loop_plots_bc_sub_dir, exist_ok=True)
-
-    # Define paths for summary and cross-grid CSVs
-    summary_csv_path = os.path.join(analysis_results_sub_dir, "mesa_grid_analysis_summary.csv")
-    cross_csv_path = os.path.join(analysis_results_sub_dir, "mesa_grid_cross.csv")
+    # Call the function from output_manager to get file paths
+    summary_csv_path, cross_csv_path = get_analysis_file_paths(analysis_results_sub_dir)
 
     # --- CRITICAL DEBUGGING FOR REANALYSIS LOGIC ---
     logging.debug(f"--- REANALYSIS DEBUG ---")
-    logging.debug(f"  force_reanalysis (from args): {force_reanalysis}")
-    logging.debug(f"  summary_csv_path: {summary_csv_path}")
-    logging.debug(f"  Does summary_csv_path exist? {os.path.exists(summary_csv_path)}")
-    logging.debug(f"  cross_csv_path: {cross_csv_path}")
-    logging.debug(f"  Does cross_csv_path exist? {os.path.exists(cross_csv_path)}")
+    logging.debug(f"   force_reanalysis (from args): {force_reanalysis}")
+    logging.debug(f"   summary_csv_path: {summary_csv_path}")
+    logging.debug(f"   Does summary_csv_path exist? {os.path.exists(summary_csv_path)}")
+    logging.debug(f"   cross_csv_path: {cross_csv_path}")
+    logging.debug(f"   Does cross_csv_path exist? {os.path.exists(cross_csv_path)}")
 
     # Determine if reanalysis is needed based on force_reanalysis flag or missing summary/cross-grid files
     reanalysis_needed = force_reanalysis or \
@@ -84,17 +65,12 @@ def main():
     grouped_full_history_dfs_for_plotting = {}
     grouped_detailed_dfs_for_analysis_raw = {} # Changed name to reflect it's a list of DFs
 
-    # This will be the single DataFrame passed to the plotter (formerly concatenated_detailed_dfs_for_plotting was a dict)
-    # Now, this will be the final, fully combined DataFrame for plotting
-    combined_detail_data_for_plotting = pd.DataFrame()
+    combined_detail_data_for_plotting = pd.DataFrame() # This will be the final, fully combined DataFrame for plotting
 
 
     mesa_run_infos = []
 
     # Determine if any operation requires loading history.data
-    # History data is needed for: full analysis (reanalysis_needed), general HRD plots,
-    # heatmap generation (if summary/cross-grid don't exist and need regeneration),
-    # and if blue loop analysis is requested (which uses history data to generate detail files).
     load_history_data = reanalysis_needed or should_generate_plots or should_generate_heatmaps or analyze_blue_loop
 
     if load_history_data:
@@ -357,7 +333,7 @@ def main():
                     summary_csv_path=summary_csv_path,
                     unique_zs=unique_zs_for_heatmap,
                     unique_masses=unique_masses_for_heatmap,
-                    plots_output_dir=plots_sub_dir, # This uses plots_sub_dir
+                    plots_output_dir=plots_sub_dir,
                     analysis_results_output_dir=analysis_results_sub_dir,
                     model_name=os.path.basename(input_dir),
                     blue_loop_output_type=blue_loop_output_type,
@@ -389,12 +365,12 @@ def main():
             if not combined_detail_data_for_plotting.empty:
                 # Call the dedicated blue loop BC plotting function with the single combined DataFrame
                 generate_blue_loop_plots_with_bc(
-                    combined_df_all_data=combined_detail_data_for_plotting, # <--- This is the key change
+                    combined_df_all_data=combined_detail_data_for_plotting,
                     output_dir=blue_loop_plots_bc_sub_dir,
                     output_type_label="all_blue_loop_data" # Added this for consistency with plotter function
                 )
                 logging.info("Blue loop specific plots with BCs generated successfully.")
-            else:
+            else: # This 'else' should align with the 'if not combined_detail_data_for_plotting.empty:' above it
                 logging.warning("No blue loop detail data available for BC plots. Cannot generate plots.")
 
         except Exception as e:
