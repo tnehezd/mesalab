@@ -74,11 +74,6 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
     cbar = plt.colorbar(ticks=[0, 1, 2, 3, 4, 5])
     cbar.set_label("Crossing IS edge", fontsize=14)
     cbar.ax.set_yticklabels(["0", "1", "2", "3", "4", "5"])
-    
-    # Add a legend entry for skipped models
-    plt.text(1.02, 0.05, "Világosszürke: Kihagyott modellek (adat hiány/hiba)",
-             transform=plt.gca().transAxes, fontsize=10, verticalalignment='bottom',
-             bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="lightgrey", lw=0.5, alpha=0.8))
 
 
     # Axis settings

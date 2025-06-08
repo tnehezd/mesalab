@@ -30,7 +30,7 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                     which are filtered for the blue loop analysis.
             - dict: A dictionary where keys are metallicities (Z) and values are
                     lists of **full, untrimmed** history DataFrames for plotting (full_history_data_for_plotting).
-                    Returns empty DataFrames/dicts if analysis cannot be performed or is skipped.
+                    Returns empty Dataframes/dicts if analysis cannot be performed or is skipped.
     """
     input_dir = args.input_dir
     inlist_name = args.inlist_name
@@ -214,10 +214,10 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
         summary_df = pd.DataFrame(summary_data)
         summary_df.sort_values(['initial_Z', 'initial_mass'], inplace=True)
         summary_df.set_index(['initial_Z', 'initial_mass'], inplace=True)
-        summary_df.to_csv(summary_csv_path)
+        summary_df.to_csv(summary_csv_path, na_rep='NaN') # MODIFIED: Added na_rep='NaN'
         logging.info(f"Summary CSV written to {summary_csv_path}")
 
-        cross_data_matrix.to_csv(cross_csv_path)
+        cross_data_matrix.to_csv(cross_csv_path, na_rep='NaN') # MODIFIED: Added na_rep='NaN'
         logging.info(f"Cross-grid CSV written to {cross_csv_path}")
 
         # This block is for writing detail CSVs to disk, separate from in-memory processing
@@ -244,7 +244,7 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                             output_type_label = "selected columns"
 
                         detail_filename = os.path.join(detail_files_output_dir, f"detail_z{z_val:.4f}.csv")
-                        df_to_save.to_csv(detail_filename, index=False)
+                        df_to_save.to_csv(detail_filename, index=False, na_rep='NaN') # MODIFIED: Added na_rep='NaN'
                         logging.info(f"Written concatenated detail CSV for Z={z_val} with {output_type_label} to {detail_filename}")
 
                     except Exception as e:

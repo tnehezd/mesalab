@@ -132,7 +132,7 @@ def analyze_blue_loop_and_instability(history_df: pd.DataFrame, initial_mass: fl
     if len(he_burning_start_idx_candidates) == 0:
         logging.warning(f"Warning: No significant central helium burning start detected (below {BL_CENTER_HE4_START_THRESHOLD}) after MS end for M={initial_mass}, Z={initial_Z}. Cannot reliably find RGB tip for blue loop analysis.")
         return {
-            'crossing_count': np.nan,
+            'crossing_count': 0,
             'state_times': {},
             'blue_loop_detail_df': pd.DataFrame()
         }
