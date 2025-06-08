@@ -7,8 +7,6 @@ import numpy as np
 from .heatmap_generator import generate_heatmaps_and_time_diff_csv
 from .blue_loop_cmd_plotter import generate_blue_loop_plots_with_bc, load_and_group_data
 from .all_hrd_plotter import generate_all_hr_diagrams # Import the HR diagram generator
-# The analyze_mesa_grid_directory import is no longer strictly needed here if we pass pre-loaded data,
-# but keeping it might be useful for other potential functions or debugging, so it remains.
 from .grid_analyzer import analyze_mesa_grid_directory 
 
 def handle_heatmap_generation(args, summary_df_for_plotting, plots_sub_dir, analysis_results_sub_dir, input_dir):
@@ -45,7 +43,7 @@ def handle_heatmap_generation(args, summary_df_for_plotting, plots_sub_dir, anal
                 analysis_results_output_dir=analysis_results_sub_dir,
                 model_name=os.path.basename(input_dir),
                 blue_loop_output_type=args.blue_loop_output_type,
-                analyze_blue_loop=args.analyze_loop # Assuming 'analyze_loop' is defined in args, perhaps it was 'analyze_blue_loop'
+                analyze_blue_loop=args.analyze_blue_loop # <--- FIX: Changed from args.analyze_loop
             )
             logging.info("Heatmaps generated successfully.")
         else:
@@ -91,7 +89,6 @@ def handle_blue_loop_bc_plotting(args, combined_detail_data_for_plotting, blue_l
         logging.error("Please ensure your 'blue_loop_cmd_plotter.py' is updated to expect 'combined_df_all_data' as its first parameter.")
 
 # --- HR diagram generation handler ---
-# MODIFIED: Changed input_dir to full_history_data_for_plotting
 def handle_hr_diagram_generation(args, plots_sub_dir, full_history_data_for_plotting):
     """
     Handles the generation of Hertzsprung-Russell (HR) diagrams using pre-loaded MESA run data.
@@ -111,24 +108,19 @@ def handle_hr_diagram_generation(args, plots_sub_dir, full_history_data_for_plot
 
     logging.info("Attempting to generate HR diagrams using pre-loaded full history data...")
     try:
-        # We no longer need to call analyze_mesa_grid_directory here
-        # as full_history_data_for_plotting already contains the structured data
-        
-        if not full_history_data_for_plotting: # Check if the provided data is empty
+        if not full_history_data_for_plotting:
             logging.warning("No full history data available for HR diagram generation. Skipping.")
             return
 
-        # The model_name can still be derived from the original input_dir, which is part of args
         model_name = os.path.basename(args.input_dir) 
 
-        # Instability strip data - these remain fixed for now
         logT_blue_edge = [3.76, 3.83]
         logL_blue_edge = [4.5, 2.4]
         logT_red_edge = [3.65, 3.77]
         logL_red_edge = [4.5, 2.4]
 
         generate_all_hr_diagrams(
-            data_by_metallicity=full_history_data_for_plotting, # NEW: Pass the pre-loaded data
+            data_by_metallicity=full_history_data_for_plotting,
             model_name=model_name,
             output_dir=plots_sub_dir,
             logT_blue_edge=logT_blue_edge,

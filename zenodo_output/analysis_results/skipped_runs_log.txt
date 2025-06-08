@@ -1,7 +1,0 @@
-Skipped run /home/tnehezd/workdir/zenodo_archives/zenodo_out/run_m1.40_z0.0050_0p0050fixed due to error: local variable 'filtered_combined_df_bl' referenced before assignment
-Skipped run /home/tnehezd/workdir/zenodo_archives/zenodo_out/run_m1.00_z0.0100_0p0100fixed due to error: local variable 'filtered_combined_df_bl' referenced before assignment
-Skipped run /home/tnehezd/workdir/zenodo_archives/zenodo_out/run_m1.30_z0.0025_0p0025fixed due to error: local variable 'filtered_combined_df_bl' referenced before assignment
-Skipped run /home/tnehezd/workdir/zenodo_archives/zenodo_out/run_m1.40_z0.0200_0p0200fixed due to error: local variable 'filtered_combined_df_bl' referenced before assignment
-Skipped run /home/tnehezd/workdir/zenodo_archives/zenodo_out/run_m1.10_z0.0070_0p0070fixed due to error: local variable 'filtered_combined_df_bl' referenced before assignment
-Skipped run /home/tnehezd/workdir/zenodo_archives/zenodo_out/run_m1.40_z0.0080_0p0080fixed due to error: local variable 'filtered_combined_df_bl' referenced before assignment
-Skipped run /home/tnehezd/workdir/zenodo_archives/zenodo_out/run_m1.90_z0.0005_0p0005fixed due to error: local variable 'filtered_combined_df_bl' referenced before assignment

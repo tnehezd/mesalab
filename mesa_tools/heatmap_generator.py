@@ -45,6 +45,11 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
     # Reindex the DataFrame to ensure it uses the sorted unique_zs and unique_masses
     cross_data_df_reindexed = cross_data_df.reindex(index=unique_zs_sorted, columns=unique_masses_sorted).astype(float)
 
+    # NEW: Explicitly convert any remaining non-numeric/empty string values to NaN
+    # This ensures that cmap.set_bad() correctly identifies and colors missing data.
+    for col in cross_data_df_reindexed.columns:
+        cross_data_df_reindexed[col] = pd.to_numeric(cross_data_df_reindexed[col], errors='coerce')
+
     print(f"DEBUG: cross_data_df_reindexed shape: {cross_data_df_reindexed.shape}")
     print(f"DEBUG: cross_data_df_reindexed has NaN values: {cross_data_df_reindexed.isnull().any().any()}")
     print(f"DEBUG: cross_data_df_reindexed head:\n{cross_data_df_reindexed.head()}")
@@ -55,7 +60,7 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
 
     # Define color map for heatmap.
     cmap = plt.cm.get_cmap('viridis', 6) # 6 distinct colors for 0 to 5 crossings
-    cmap.set_bad(color="white") # NaN values will remain white
+    cmap.set_bad(color="lightgrey") # Now this should work correctly for NaNs
 
     # Color scale bounds: 0, 1, 2, 3, 4, 5 (6 steps)
     bounds = [-0.5, 0.5, 1.5, 2.5, 3.5, 4.5, 5.5]
@@ -69,6 +74,12 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
     cbar = plt.colorbar(ticks=[0, 1, 2, 3, 4, 5])
     cbar.set_label("Crossing IS edge", fontsize=14)
     cbar.ax.set_yticklabels(["0", "1", "2", "3", "4", "5"])
+    
+    # Add a legend entry for skipped models
+    plt.text(1.02, 0.05, "Világosszürke: Kihagyott modellek (adat hiány/hiba)",
+             transform=plt.gca().transAxes, fontsize=10, verticalalignment='bottom',
+             bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="lightgrey", lw=0.5, alpha=0.8))
+
 
     # Axis settings
     plt.xticks(np.arange(len(unique_masses_sorted)), [f'{m:.1f}' for m in unique_masses_sorted], rotation=90, fontsize=12)
@@ -79,7 +90,6 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
     plt.title(f"Heatmap: Mass vs. Metallicity ({model_name})", fontsize=16)
 
     # Use a generic filename for the heatmap now, not directly based on model_name
-    # unless you want model_name in heatmap title only, and not in the filename.
     heatmap_filename = "mesa_grid_blue_loop_heatmap.png" # Changed filename
     plt.tight_layout()
     plt.savefig(os.path.join(plots_output_dir, heatmap_filename), dpi=300)
@@ -143,4 +153,3 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
             print(f"Error generating time differences CSV: {e}")
     else:
         print("Summary CSV not found or blue loop analysis not enabled. Skipping time differences CSV generation.")
-

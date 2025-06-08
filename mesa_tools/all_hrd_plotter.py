@@ -40,11 +40,9 @@ def generate_all_hr_diagrams(data_by_metallicity, model_name, output_dir,
         os.makedirs(output_dir)
         logging.info(f"Created output directory: {output_dir}")
 
-    # The data is already grouped by metallicity, so we just sort the keys
     sorted_metallicities = sorted(data_by_metallicity.keys())
 
     for z_value in sorted_metallicities:
-        # current_z_dfs is a list of DataFrames for the current Z value
         current_z_dfs = data_by_metallicity[z_value] 
         logging.info(f'➡ Processing HR diagrams for Z={z_value:.4f} with {len(current_z_dfs)} masses...')
 
@@ -57,18 +55,25 @@ def generate_all_hr_diagrams(data_by_metallicity, model_name, output_dir,
 
         sc = None  # Default scatter plot reference for colorbar
 
-        # MODIFIED: Iterate directly over the DataFrames in current_z_dfs
         for i, df_full_history in enumerate(current_z_dfs):
-            # Extract mass and Z from the DataFrame itself
-            # Assuming 'initial_mass' and 'initial_Z' columns are present (added in mesa_analyzer)
+            ax = axes[i] # Get the current subplot axis
+
+            # NEW: Check if the DataFrame is empty before trying to access its elements
+            if df_full_history.empty:
+                logging.warning(f"No data in DataFrame for this run (Z={z_value:.4f}, plot index {i}). Skipping plot.")
+                # Set title to indicate missing data
+                ax.set_title(f'No Data (Z={z_value:.4f})', color='darkred', fontsize=9)
+                ax.set_xticks([]) # Hide ticks
+                ax.set_yticks([])
+                continue # Skip to the next iteration of the loop
+
+            # Extract mass from the DataFrame itself
+            # Assuming 'initial_mass' column is present and has at least one row
             mass = df_full_history['initial_mass'].iloc[0] 
-            # z_value is already known from the outer loop
 
             log_Teff = df_full_history['log_Teff'].values
             log_L = df_full_history['log_L'].values
             model_number = np.array(df_full_history['model_number'], dtype=float)
-
-            ax = axes[i]
 
             # REMOVED: The trimming logic based on np.argmax(log_Teff)
             # This ensures the full evolutionary track is plotted.
@@ -97,7 +102,7 @@ def generate_all_hr_diagrams(data_by_metallicity, model_name, output_dir,
             ax.invert_xaxis() # Standard HR diagram convention
             
         # Hide any unused subplots
-        for j in range(i + 1, len(axes)):
+        for j in range(i + 1, len(axes)): # Use 'i + 1' to start from the next empty axis
             fig.delaxes(axes[j])
 
         # Set common Y-axis label only for the leftmost column
@@ -116,9 +121,12 @@ def generate_all_hr_diagrams(data_by_metallicity, model_name, output_dir,
 
         fig.suptitle(f'Hertzsprung-Russell Diagram (Z = {z_value:.4f})', fontsize=16, y=1.02)
 
-        # Add colorbar if any data was successfully plotted for this metallicity
         if sc is not None:
+            # Ensure colorbar is drawn correctly on all axes if there's any data
             cbar = fig.colorbar(sc, ax=axes.ravel().tolist(), orientation='vertical', fraction=0.04, pad=0.02, label='Model Number (Evolutionary Stage)')
+        else:
+            logging.warning(f"No scatter plot generated for Z={z_value}. Skipping colorbar for this subplot group.")
+
 
         filename = os.path.join(output_dir, f'HR_diagram_{model_name}_z{z_value:.4f}.png')
         plt.savefig(filename, bbox_inches='tight', dpi=300)

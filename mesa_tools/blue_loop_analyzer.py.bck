@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 from matplotlib.path import Path
 import os
-import logging # Added logging for better output
 
 # Define the vertices of the Instability Strip based on your provided values
 # The order is important for matplotlib.path.Path: (log_Teff, log_L)
@@ -16,17 +15,6 @@ INSTABILITY_STRIP_VERTICES = np.array([
 # Create a Path object for efficient point-in-polygon checks
 instability_path = Path(INSTABILITY_STRIP_VERTICES)
 
-# Define physical thresholds for blue loop identification (only mass threshold as requested)
-BLUELOOP_MASS_THRESHOLD = 1.2 # Msun: Stars below this are typically not classic blue-loopers (as requested)
-# New threshold for central helium to define the END of the blue loop phase
-# This value helps cut off post-core-helium burning evolution, as requested.
-BL_CENTER_HE4_END_THRESHOLD = 1e-4 # Adjusted to a very low value to capture full CHeB phase
-
-# New threshold to define the START of core helium burning for RGB tip search
-# This helps to find the RGB tip *before* the blue loop / CHeB phase ends.
-BL_CENTER_HE4_START_THRESHOLD = 0.9 # Typical initial He4 is around 0.97, so 0.9 signifies start of burning
-
-
 def is_in_instability_strip(log_Teff, log_L):
     """
     Checks if a given point (log_Teff, log_L) is inside the defined Instability Strip.
@@ -36,12 +24,10 @@ def is_in_instability_strip(log_Teff, log_L):
 def analyze_blue_loop_and_instability(history_df: pd.DataFrame, initial_mass: float, initial_Z: float):
     """
     Analyzes MESA history data for blue loop characteristics and Instability Strip crossings.
-    This version includes only the initial mass threshold and central helium exhaustion
-    for defining the blue loop relevant phase.
 
     Args:
         history_df (pd.DataFrame): DataFrame containing MESA history data.
-                                   Must include 'log_Teff', 'log_L', 'center_h1', 'star_age', 'model_number', 'log_g', 'center_he4'.
+                                   Must include 'log_Teff', 'log_L', 'center_h1', 'star_age', 'model_number', 'log_g'.
         initial_mass (float): Initial mass of the star.
         initial_Z (float): Initial metallicity (Z) of the star.
 
@@ -53,26 +39,15 @@ def analyze_blue_loop_and_instability(history_df: pd.DataFrame, initial_mass: fl
                                        filtered to include only points inside or to the blue of the IS.
               Returns a dictionary with NaN values if analysis cannot be performed (e.g., missing columns, no relevant phase).
     """
-    # 1. Initial check for mass threshold to quickly filter out unlikely blue-loopers
-    if initial_mass < BLUELOOP_MASS_THRESHOLD:
-        logging.info(f"Skipping blue loop analysis for M={initial_mass:.1f} Msun (Z={initial_Z:.4f}) "
-                     f"as its mass is below the blue loop threshold ({BLUELOOP_MASS_THRESHOLD} Msun).")
-        return {
-            'crossing_count': np.nan,
-            'state_times': {},
-            'blue_loop_detail_df': pd.DataFrame()
-        }
-
     history_df['initial_mass'] = initial_mass
     history_df['initial_Z'] = initial_Z
 
-    # Added 'center_he4' to required columns for helium exhaustion check
-    required_columns = ['log_Teff', 'log_L', 'center_h1', 'star_age', 'model_number', 'log_g', 'center_he4']
+    required_columns = ['log_Teff', 'log_L', 'center_h1', 'star_age', 'model_number', 'log_g']
 
     # Check for presence of required columns
     missing_cols = [col for col in required_columns if col not in history_df.columns]
     if missing_cols:
-        logging.error(f"ERROR: Missing required columns in history_df for M={initial_mass}, Z={initial_Z}. Missing: {missing_cols}. Skipping analysis.")
+        print(f"ERROR: Missing required columns in history_df for M={initial_mass}, Z={initial_Z}. Missing: {missing_cols}. Skipping analysis.")
         return {
             'crossing_count': np.nan,
             'state_times': {},
@@ -85,14 +60,13 @@ def analyze_blue_loop_and_instability(history_df: pd.DataFrame, initial_mass: fl
     log_Teff = history_df['log_Teff'].values
     log_L = history_df['log_L'].values
     center_h1 = history_df['center_h1'].values
-    center_he4 = history_df['center_he4'].values # New: for helium exhaustion
     star_age = history_df['star_age'].values
     model_number = history_df['model_number'].values
     log_g = history_df['log_g'].values
 
     # Check for empty data after sorting/resetting index
     if history_df.empty:
-        logging.warning(f"Warning: History data is empty after processing for M={initial_mass}, Z={initial_Z}.")
+        print(f"Warning: History data is empty after processing for M={initial_mass}, Z={initial_Z}.")
         return {
             'crossing_count': np.nan,
             'state_times': {},
@@ -104,7 +78,7 @@ def analyze_blue_loop_and_instability(history_df: pd.DataFrame, initial_mass: fl
     hydrogen_exhaustion_idx = np.where(center_h1 < 1e-4)[0]
 
     if len(hydrogen_exhaustion_idx) == 0:
-        logging.warning(f"Warning: No hydrogen exhaustion found for M={initial_mass}, Z={initial_Z} (star might be too young or still on MS).")
+        print(f"Warning: No hydrogen exhaustion found for M={initial_mass}, Z={initial_Z} (star might be too young or still on MS).")
         return {
             'crossing_count': np.nan,
             'state_times': {},
@@ -117,79 +91,63 @@ def analyze_blue_loop_and_instability(history_df: pd.DataFrame, initial_mass: fl
     # If the MS ends at the very beginning of the track (or very close),
     # it might indicate an incomplete pre-MS or very short MS.
     if ms_end_idx < 10: # Arbitrary threshold, can be adjusted
-        logging.warning(f"Warning: MS end detected too early in the track for M={initial_mass}, Z={initial_Z}, possibly incomplete data.")
+        print(f"Warning: MS end detected too early in the track for M={initial_mass}, Z={initial_Z}, possibly incomplete data.")
         return {
             'crossing_count': np.nan,
             'state_times': {},
             'blue_loop_detail_df': pd.DataFrame()
         }
 
-    # --- 2. Find RGB Tip (reddest point after MS) ---
-    # We now look for the RGB tip within the phase *before* core helium burning significantly depletes.
-    # This helps to avoid confusing the true RGB tip with later, colder points on the AGB.
-    he_burning_start_idx_candidates = np.where(history_df['center_he4'].iloc[ms_end_idx:] < BL_CENTER_HE4_START_THRESHOLD)[0]
+    # --- 2. Determine the relevant phase for blue loop/IS crossings (AGB phase onwards) ---
+    post_ms_data = history_df.iloc[ms_end_idx:].copy() # Use .copy() to avoid SettingWithCopyWarning
 
-    if len(he_burning_start_idx_candidates) == 0:
-        logging.warning(f"Warning: No significant central helium burning start detected (below {BL_CENTER_HE4_START_THRESHOLD}) after MS end for M={initial_mass}, Z={initial_Z}. Cannot reliably find RGB tip for blue loop analysis.")
+    if len(post_ms_data) < 2: # Need at least two points to find a min
+        print(f"Warning: Not enough post-MS data for M={initial_mass}, Z={initial_Z} to determine AGB phase start.")
         return {
             'crossing_count': np.nan,
             'state_times': {},
             'blue_loop_detail_df': pd.DataFrame()
         }
-    
-    # Take the first point where central helium drops below the threshold as the start of CHeB phase
-    cheb_start_abs_idx = ms_end_idx + he_burning_start_idx_candidates[0]
 
-    # Define the slice for RGB tip search: from MS end up to the start of CHeB
-    df_for_rgb_tip = history_df.iloc[ms_end_idx : cheb_start_abs_idx + 1].copy()
-    
-    if df_for_rgb_tip.empty or len(df_for_rgb_tip) < 2:
-        logging.warning(f"Not enough data to find RGB tip between MS end and CHeB start for M={initial_mass}, Z={initial_Z}. Skipping blue loop analysis.")
+    # Find the index of the minimum log_L in the post-MS phase (relative to post_ms_data)
+    logL_min_relative_idx = np.argmin(post_ms_data['log_L'].values)
+
+    # Absolute index in the original history_df
+    logL_min_abs_idx = ms_end_idx + logL_min_relative_idx
+
+    # Find the first point *after* logL_min_abs_idx where log_L increases (local maximum)
+    if logL_min_abs_idx >= len(log_L) - 1:
+        print(f"Warning: Not enough data after post-MS log_L minimum for M={initial_mass}, Z={initial_Z} to determine AGB phase start.")
         return {
             'crossing_count': np.nan,
             'state_times': {},
             'blue_loop_detail_df': pd.DataFrame()
         }
-    
-    # Find the global minimum of log_Teff in this *limited* post-MS, pre-CHeB phase (true RGB tip)
-    rgb_tip_relative_idx = np.argmin(df_for_rgb_tip['log_Teff'].values)
-    rgb_tip_abs_idx = ms_end_idx + rgb_tip_relative_idx
-    
-    rgb_tip_teff = history_df['log_Teff'].iloc[rgb_tip_abs_idx]
-    
-    # Ensure there's enough data after the RGB tip (now using a less strict check)
-    if rgb_tip_abs_idx >= len(history_df) - 1: # Changed from -2 to -1 for more flexibility
-        logging.warning(f"RGB tip detected too close to end of track for M={initial_mass}, Z={initial_Z}. Skipping blue loop analysis.")
+
+    # Look for a log_L increase after the minimum, this defines the start of the AGB-like phase
+    # np.argmax returns the index of the first occurrence of the maximum value.
+    # If all values are False, it returns 0. So we need to check if any are True.
+    log_L_increase_after_min = (log_L[logL_min_abs_idx+1:] > log_L[logL_min_abs_idx])
+
+    if not log_L_increase_after_min.any():
+        print(f"Warning: No clear AGB phase start detected after post-MS log_L minimum for M={initial_mass}, Z={initial_Z}. Likely no blue loop relevant for IS crossings.")
         return {
             'crossing_count': np.nan,
             'state_times': {},
             'blue_loop_detail_df': pd.DataFrame()
         }
-    
-    # --- 3. Define the blue loop candidate phase by central helium (partial) exhaustion ---
-    # The blue loop relevant phase starts at the *identified* RGB tip,
-    # and ends when central helium drops below BL_CENTER_HE4_END_THRESHOLD.
-    he_threshold_idx_candidates = np.where(history_df['center_he4'].iloc[rgb_tip_abs_idx:] < BL_CENTER_HE4_END_THRESHOLD)[0] 
 
-    if len(he_threshold_idx_candidates) == 0:
-        logging.warning(f"Warning: No central helium depletion below {BL_CENTER_HE4_END_THRESHOLD} found after RGB tip for M={initial_mass}, Z={initial_Z}. Considering entire post-RGB track as candidate.")
-        he_end_abs_idx = len(history_df) - 1 # If no clear depletion, take till end of track
-    else:
-        he_end_abs_idx = rgb_tip_abs_idx + he_threshold_idx_candidates[0]
+    agb_start_relative_idx = np.argmax(log_L_increase_after_min)
+    agb_start_abs_idx = logL_min_abs_idx + 1 + agb_start_relative_idx
 
-    # Define the blue loop candidate DataFrame as the segment from the RGB tip up to (and including)
-    # the central helium depletion point. This is crucial for excluding later AGB/post-AGB phases.
-    blue_loop_candidate_df = history_df.iloc[rgb_tip_abs_idx : he_end_abs_idx + 1].copy()
+    # Define the blue loop candidate phase from this AGB start point to the end of the track.
+    # This DataFrame will be used for both crossing count and initial filtering for detail_df.
+    blue_loop_candidate_df = history_df.iloc[agb_start_abs_idx:].copy()
 
-    # Removed BL_TEFF_EXCURSION_THRESHOLD, BL_MIN_LUMINOSITY_THRESHOLD, BL_MAX_TEFF_THRESHOLD_POST_RGB
-    # and their corresponding filtering based on your request for "only mass threshold and central He4 exhaustion".
-    # This means the code will now be more liberal in what it considers a "blue loop candidate" within
-    # the defined helium-burning window.
-
-    # --- 4. Instability Strip Crossing Count ---
+    # --- 3. Instability Strip Crossing Count ---
     # Determine if each point is in the instability strip for the blue loop candidate phase
     if blue_loop_candidate_df.empty:
-        logging.warning(f"Warning: Blue loop candidate DataFrame is empty after helium depletion windowing for M={initial_mass}, Z={initial_Z}.")
+        print(f"Warning: Blue loop candidate DataFrame is empty for M={initial_mass}, Z={initial_Z}.")
         return {
             'crossing_count': np.nan,
             'state_times': {},
@@ -235,7 +193,7 @@ def analyze_blue_loop_and_instability(history_df: pd.DataFrame, initial_mass: fl
     # --- State Times Dictionary ---
     state_times = {
         'ms_end_age': ms_end_age,
-        'min_teff_post_ms_age': history_df['star_age'].iloc[rgb_tip_abs_idx], # Age at the detected RGB minimum Teff
+        'min_teff_post_ms_age': star_age[logL_min_abs_idx],
         'first_is_entry_age': first_is_entry_age,
         'first_is_exit_age': first_is_exit_age,
         'last_is_entry_age': last_is_entry_age,
@@ -244,34 +202,53 @@ def analyze_blue_loop_and_instability(history_df: pd.DataFrame, initial_mass: fl
         'instability_end_age': last_is_exit_age,
     }
 
-    # --- Filtering for blue_loop_detail_df (remains largely the same) ---
-    # This filters points *for the output DataFrame* to only include those within or redder than the IS.
+    # --- KEY MODIFICATION HERE: FILTERING FOR blue_loop_detail_df ---
+    # We want points INSIDE the IS OR on its REDDER side (cooler side) relevant for the blue loop.
+
+
+    # 1. Identify the Red Edge of the Instability Strip
+    # The red edge is defined by points [3.65, 4.5] (Red edge, bottom) and [3.77, 2.4] (Red edge, top)
     red_edge_y_coords = np.array([INSTABILITY_STRIP_VERTICES[2][1], INSTABILITY_STRIP_VERTICES[3][1]])
     red_edge_x_coords = np.array([INSTABILITY_STRIP_VERTICES[2][0], INSTABILITY_STRIP_VERTICES[3][0]])
 
+    # First, calculate for every point if it's in the instability strip
     blue_loop_candidate_df['is_in_is'] = blue_loop_candidate_df.apply(
         lambda row: is_in_instability_strip(row['log_Teff'], row['log_L']), axis=1
     )
 
+    # Create a 'red_edge_teff' column in blue_loop_candidate_df, initialized to NaN
     blue_loop_candidate_df['red_edge_teff'] = np.nan
+
+    # Calculate log_Teff values on the red edge for the current log_L values.
+    # Only for log_L values that fall within the IS log_L range (2.4 and 4.5).
     valid_l_range_mask = (blue_loop_candidate_df['log_L'] >= min(red_edge_y_coords)) & \
                          (blue_loop_candidate_df['log_L'] <= max(red_edge_y_coords))
 
+    # Interpolate the red edge Teff value only for points where relevant
     blue_loop_candidate_df.loc[valid_l_range_mask, 'red_edge_teff'] = np.interp(
         blue_loop_candidate_df.loc[valid_l_range_mask, 'log_L'],
         red_edge_y_coords,
         red_edge_x_coords
     )
 
+    # The new filtering condition:
+    # 1. The point is inside the instability strip (blue_loop_candidate_df['is_in_is'] == True)
+    # OR
+    # 2. The point's log_Teff is LESS than the red edge's log_Teff (i.e., it's on the redder side)
+    #    AND its log_L is within the instability strip's L range (to prevent irrelevant cold points from being included)
+    #    AND we subtract a small epsilon (e.g., 0.01) for robust boundary handling.
+
     filter_condition = (blue_loop_candidate_df['is_in_is']) | \
                        ((blue_loop_candidate_df['log_Teff'] > blue_loop_candidate_df['red_edge_teff'] - 0.01) & \
                         valid_l_range_mask)
 
+    # Apply the filter
     filtered_blue_loop_detail_df = blue_loop_candidate_df[filter_condition].copy()
 
+    # Drop the auxiliary columns
     if 'is_in_is' in filtered_blue_loop_detail_df.columns:
         filtered_blue_loop_detail_df = filtered_blue_loop_detail_df.drop(columns=['is_in_is'])
-    if 'red_edge_teff' in filtered_blue_loop_detail_df.columns:
+    if 'red_edge_teff' in filtered_blue_loop_detail_df.columns: # Changed from 'blue_edge_teff'
         filtered_blue_loop_detail_df = filtered_blue_loop_detail_df.drop(columns=['red_edge_teff'])
 
     analysis_results = {
