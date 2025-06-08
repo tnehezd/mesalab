@@ -12,7 +12,7 @@ from .blue_loop_analyzer import analyze_blue_loop_and_instability
 
 def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_dir):
     """
-    Orchestrates the analysis of MESA runs, including blue loop analysis,
+    Coordinates the analysis of MESA runs, including blue loop analysis,
     data aggregation, and saving summary and detailed results.
 
     Args:
@@ -26,9 +26,11 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
         tuple: A tuple containing:
             - pd.DataFrame: The main summary DataFrame of analysis results.
             - dict: A dictionary where keys are metallicities (Z) and values are
-                    lists of detailed DataFrames for plotting (combined_detail_data_for_plotting).
-                    Returns an empty DataFrame for the combined_detail_data_for_plotting
-                    if analyze_blue_loop is False or no data is processed.
+                    lists of detailed DataFrames for plotting (combined_detail_data_for_plotting),
+                    which are filtered for the blue loop analysis.
+            - dict: A dictionary where keys are metallicities (Z) and values are
+                    lists of **full, untrimmed** history DataFrames for plotting (full_history_data_for_plotting).
+                    Returns empty DataFrames/dicts if analysis cannot be performed or is skipped.
     """
     input_dir = args.input_dir
     inlist_name = args.inlist_name
@@ -48,7 +50,10 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
 
     summary_df = pd.DataFrame()
     combined_detail_data_for_plotting = pd.DataFrame()
-    
+    # Initialize the new dictionary for full history data
+    full_history_data_for_plotting = {} # <--- NEW: Initialize here
+
+
     if not reanalysis_needed:
         logging.info("Summary and cross-grid CSV files already exist. Attempting to load existing data.")
         try:
@@ -59,12 +64,12 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
             # If we don't plan to plot with BCs here, we don't need to load combined_detail_data_for_plotting here.
             # But the 'mesa_analyzer' should return it if analysis is run or if data is loaded for plotting later.
             # For simplicity, we'll assume the cli will call 'load_and_group_data' if it needs it and reanalysis is False.
-            # For this function's scope, we only process if reanalysis_needed is True.
             
             logging.info("Successfully loaded existing summary CSV.")
             # For this function, we only compute or load `combined_detail_data_for_plotting` if `reanalysis_needed` is True
             # The CLI will handle loading it if `reanalysis_needed` is False and plots are requested.
-            return summary_df, combined_detail_data_for_plotting # Return loaded summary_df and empty detail_df if no reanalysis
+            # Return loaded summary_df, empty detail_df, and empty full_history_data_for_plotting if no reanalysis
+            return summary_df, combined_detail_data_for_plotting, full_history_data_for_plotting # <--- MODIFIED RETURN
         except FileNotFoundError:
             logging.warning(f"Existing summary or cross-grid CSVs not found. Forcing full reanalysis.")
             reanalysis_needed = True # Fall through to reanalysis
@@ -79,14 +84,14 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
         mesa_run_infos = scan_mesa_runs(input_dir, inlist_name)
         if not mesa_run_infos:
             logging.info("No MESA runs found for full analysis. Returning empty DataFrames.")
-            return pd.DataFrame(), pd.DataFrame()
+            return pd.DataFrame(), pd.DataFrame(), {} # <--- MODIFIED RETURN
 
         unique_masses = sorted(set(run['mass'] for run in mesa_run_infos))
         unique_zs = sorted(set(run['z'] for run in mesa_run_infos))
 
         if not unique_masses or not unique_zs:
             logging.error("Error: Could not determine unique masses or metallicities from runs. Returning empty DataFrames.")
-            return pd.DataFrame(), pd.DataFrame()
+            return pd.DataFrame(), pd.DataFrame(), {} # <--- MODIFIED RETURN
 
         cross_data_matrix = pd.DataFrame(np.nan, index=unique_zs, columns=unique_masses)
         cross_data_matrix.index.name = "Z"
@@ -94,6 +99,9 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
 
         summary_data = []
         grouped_detailed_dfs_for_analysis_raw = {z_val: [] for z_val in unique_zs} # List of DFs per Z
+        # Ensure full_history_data_for_plotting is initialized with Z keys for easier appending
+        full_history_data_for_plotting = {z_val: [] for z_val in unique_zs} # <--- NEW: Initialize with Z keys
+
 
         # Generate YAML overview
         yaml_data = {}
@@ -141,6 +149,11 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                     df_full_history = get_data_from_history_file(history_file_path)
                     df_full_history['initial_mass'] = current_mass # Add these for detail DF
                     df_full_history['initial_Z'] = current_z
+
+                    # NEW: Add the full history DataFrame to the list for the current Z value
+                    if current_z not in full_history_data_for_plotting:
+                        full_history_data_for_plotting[current_z] = []
+                    full_history_data_for_plotting[current_z].append(df_full_history.copy()) # <--- NEW: IMPORTANT: use .copy()
 
                     if analyze_blue_loop:
                         analyzer_output = analyze_blue_loop_and_instability(df_full_history, current_mass, current_z)
@@ -193,6 +206,11 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                             grouped_detailed_dfs_for_analysis_raw[current_z] = []
                         grouped_detailed_dfs_for_analysis_raw[current_z].append(current_detail_df)
 
+                        if combined_detail_data_for_plotting.empty:
+                            combined_detail_data_for_plotting = filtered_combined_df_bl.copy()
+                        else:
+                            combined_detail_data_for_plotting = pd.concat([combined_detail_data_for_plotting, filtered_combined_df_bl], ignore_index=True)         
+
                 except Exception as err:
                     with open(skipped_runs_log_path, 'a') as log_file:
                         log_file.write(f"Skipped run {run_info['run_dir_path']} due to error: {err}\n")
@@ -236,14 +254,17 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                         logging.info(f"Written concatenated detail CSV for Z={z_val} with {output_type_label} to {detail_filename}")
 
                         # Combine all detail data into a single DataFrame for potential plotting later
-                        if combined_detail_data_for_plotting.empty:
-                            combined_detail_data_for_plotting = filtered_combined_df_bl.copy()
-                        else:
-                            combined_detail_data_for_plotting = pd.concat([combined_detail_data_for_plotting, filtered_combined_df_bl], ignore_index=True)
-
+                        # Note: This is now being done within the main loop as well, to collect all detail DFs
+                        # This block for combined_detail_data_for_plotting might be redundant if done in the loop
+                        # but it ensures the final `combined_detail_data_for_plotting` is complete for all Z groups
+                        # after the loop.
+                        # It's better to manage `combined_detail_data_for_plotting` per-run within the main analysis loop.
+                        # The block below is ONLY for saving to CSV, not for the return value itself.
+                        pass # Removed the redundant logic here as it's now handled in the main loop
                     except Exception as e:
                         logging.error(f"Error writing detail CSV for Z={z_val}: {e}")
                 else:
                     logging.info(f"No detailed data to write for Z={z_val}.")
     
-    return summary_df, combined_detail_data_for_plotting
+    # MODIFIED RETURN: Now returning three values
+    return summary_df, combined_detail_data_for_plotting, full_history_data_for_plotting

@@ -9,8 +9,8 @@ import logging # <-- ADDED: Import the logging module
 # Set up basic logging for this module.
 # This ensures logging works even if this file is run directly or imported
 # before a global logging config is set up in cli.py.
+# The level here can be DEBUG as cli.py will override it with its global setting.
 logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
-
 
 
 def parsing_options():
@@ -47,6 +47,12 @@ def parsing_options():
     parser.add_argument("--generate-blue-loop-plots-with-bc", action="store_true",
                         help="Generate blue loop specific HRD/CMD/logg-L plots with bolometric corrections.")
 
+    # --- ADD THESE TWO ARGUMENTS ---
+    parser.add_argument("--generate-hr-diagrams", action="store_true",
+                        help="Generate Hertzsprung-Russell diagrams for all runs.")
+    parser.add_argument("--debug", action="store_true",
+                        help="Enable debug logging for more detailed output.")
+    # -------------------------------
 
     # Parse arguments from the command line first.
     # These values are initial defaults or explicitly set by the user via CLI.
@@ -115,6 +121,16 @@ def parsing_options():
         parser.error("--input-dir is required if not specified in the config file.")
 #    if args.output_dir is None:
 #        parser.error("--output-dir is required if not specified in the config file.")
+
+    # Set the logging level based on the --debug argument.
+    # This should be done *after* parsing args, but before any significant logging.
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+    else:
+        # Set default logging level if --debug is not present
+        # If cli.py sets a global level, it will override this.
+        # For now, let's keep it at INFO if not debug.
+        logging.getLogger().setLevel(logging.INFO)
 
     return args
 
