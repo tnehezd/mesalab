@@ -45,7 +45,7 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
     # Reindex the DataFrame to ensure it uses the sorted unique_zs and unique_masses
     cross_data_df_reindexed = cross_data_df.reindex(index=unique_zs_sorted, columns=unique_masses_sorted).astype(float)
 
-    # NEW: Explicitly convert any remaining non-numeric/empty string values to NaN
+    # Explicitly convert any remaining non-numeric/empty string values to NaN
     # This ensures that cmap.set_bad() correctly identifies and colors missing data.
     for col in cross_data_df_reindexed.columns:
         cross_data_df_reindexed[col] = pd.to_numeric(cross_data_df_reindexed[col], errors='coerce')
@@ -58,11 +58,24 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
     # Convert DataFrame to numpy array for imshow
     data_for_heatmap = cross_data_df_reindexed.to_numpy()
 
-    # Define color map for heatmap.
-    cmap = plt.cm.get_cmap('viridis', 6) # 6 distinct colors for 0 to 5 crossings
-    cmap.set_bad(color="lightgrey") # Now this should work correctly for NaNs
+    # Define custom colors for the heatmap as requested:
+    # 0 values are the darkest blue of viridis, NaN values are lightgrey, 1-5 use viridis.
+    color_skipped = "lightgrey" # For NaN values (analysis skipped/error)
 
-    # Color scale bounds: 0, 1, 2, 3, 4, 5 (6 steps)
+    # Get viridis colors for the actual crossing counts (0 to 5)
+    # We get 6 distinct colors from the viridis colormap,
+    # where the first color (index 0) will be the darkest blue for 0 crossings.
+    viridis_full_range = plt.cm.viridis(np.linspace(0, 1, 6)) # 6 colors from dark to light viridis
+
+    # Create the custom colormap using the viridis colors
+    cmap = ListedColormap(viridis_full_range)
+
+    # Set the color for bad (NaN) values to lightgrey
+    cmap.set_bad(color=color_skipped) 
+
+    # Set the color scale bounds for the custom colormap
+    # -0.5 to 0.5 for 0, 0.5 to 1.5 for 1, etc.
+    # This ensures that 0 maps to the first color, 1 to the second, etc.
     bounds = [-0.5, 0.5, 1.5, 2.5, 3.5, 4.5, 5.5]
     norm = BoundaryNorm(bounds, cmap.N)
 
@@ -70,12 +83,11 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
     plt.figure(figsize=(20, 12))
     plt.imshow(data_for_heatmap, aspect='auto', origin='lower', cmap=cmap, norm=norm)
 
-    # Colorbar settings
+    # Colorbar settings - showing ticks for 0, 1, 2, 3, 4, 5
     cbar = plt.colorbar(ticks=[0, 1, 2, 3, 4, 5])
-    cbar.set_label("Crossing IS edge", fontsize=14)
+    cbar.set_label("Number of IS Crossings", fontsize=14)
     cbar.ax.set_yticklabels(["0", "1", "2", "3", "4", "5"])
-
-
+    
     # Axis settings
     plt.xticks(np.arange(len(unique_masses_sorted)), [f'{m:.1f}' for m in unique_masses_sorted], rotation=90, fontsize=12)
     metallicity_tick_indices = np.arange(0, len(unique_zs_sorted), 5)
@@ -84,8 +96,8 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
     plt.ylabel("Metallicity (Z)", fontsize=14)
     plt.title(f"Heatmap: Mass vs. Metallicity ({model_name})", fontsize=16)
 
-    # Use a generic filename for the heatmap now, not directly based on model_name
-    heatmap_filename = "mesa_grid_blue_loop_heatmap.png" # Changed filename
+    # Use a generic filename for the heatmap now
+    heatmap_filename = "mesa_grid_blue_loop_heatmap.png"
     plt.tight_layout()
     plt.savefig(os.path.join(plots_output_dir, heatmap_filename), dpi=300)
     plt.close()
@@ -109,9 +121,8 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
             summary_df['calculated_blue_loop_duration'] = summary_df['calculated_blue_loop_duration'].apply(lambda x: round(x, 4) if pd.notna(x) else np.nan)
             summary_df['calculated_instability_duration'] = summary_df['calculated_instability_duration'].apply(lambda x: round(x, 4) if pd.notna(x) else np.nan)
 
-            # --- NEW FILTERING LOGIC ---
-            # Filter out rows where 'blue_loop_crossing_count' is NaN or 0
-            # or where blue_loop_start_age/end_age are NaN (indicating no valid blue loop)
+            # --- Filtering Logic for Time Differences CSV ---
+            # Only include rows where a valid blue loop was detected (crossing count > 0 and no NaNs in key ages)
             initial_rows = len(summary_df)
             filtered_df = summary_df[
                 (summary_df['blue_loop_crossing_count'].notna()) &
@@ -122,7 +133,7 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
 
             if initial_rows > 0 and len(filtered_df) < initial_rows:
                 print(f"Filtered out {initial_rows - len(filtered_df)} rows from time_differences CSV where no valid blue loop was detected.")
-            # --- END NEW FILTERING LOGIC ---
+            # --- END Filtering Logic ---
 
             # Renamed output file for consistency
             time_diff_csv_path = os.path.join(analysis_results_output_dir, "mesa_grid_time_differences.csv")

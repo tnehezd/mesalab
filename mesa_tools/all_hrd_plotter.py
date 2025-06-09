@@ -7,14 +7,13 @@ from matplotlib import colors
 import os
 import logging
 
-# MODIFIED: Changed parameter from 'found_runs' to 'data_by_metallicity'
 def generate_all_hr_diagrams(data_by_metallicity, model_name, output_dir,
                              logT_blue_edge, logL_blue_edge,
                              logT_red_edge, logL_red_edge):
     """
     Generates Hertzsprung-Russell (HR) diagrams for pre-loaded MESA run data,
     grouping plots by metallicity and saving each metallicity's plots
-    as a single image.
+    as a single image. The pre-main sequence (pre-MS) phase is excluded from the plots.
 
     Args:
         data_by_metallicity (dict): A dictionary where keys are metallicities (Z)
@@ -40,9 +39,11 @@ def generate_all_hr_diagrams(data_by_metallicity, model_name, output_dir,
         os.makedirs(output_dir)
         logging.info(f"Created output directory: {output_dir}")
 
+    # The data is already grouped by metallicity, so we just sort the keys
     sorted_metallicities = sorted(data_by_metallicity.keys())
 
     for z_value in sorted_metallicities:
+        # current_z_dfs is a list of DataFrames for the current Z value
         current_z_dfs = data_by_metallicity[z_value] 
         logging.info(f'➡ Processing HR diagrams for Z={z_value:.4f} with {len(current_z_dfs)} masses...')
 
@@ -55,34 +56,39 @@ def generate_all_hr_diagrams(data_by_metallicity, model_name, output_dir,
 
         sc = None  # Default scatter plot reference for colorbar
 
+        # Iterate directly over the DataFrames in current_z_dfs
         for i, df_full_history in enumerate(current_z_dfs):
-            ax = axes[i] # Get the current subplot axis
-
-            # NEW: Check if the DataFrame is empty before trying to access its elements
-            if df_full_history.empty:
-                logging.warning(f"No data in DataFrame for this run (Z={z_value:.4f}, plot index {i}). Skipping plot.")
-                # Set title to indicate missing data
-                ax.set_title(f'No Data (Z={z_value:.4f})', color='darkred', fontsize=9)
-                ax.set_xticks([]) # Hide ticks
-                ax.set_yticks([])
-                continue # Skip to the next iteration of the loop
-
-            # Extract mass from the DataFrame itself
-            # Assuming 'initial_mass' column is present and has at least one row
+            # Extract mass and Z from the DataFrame itself
+            # Assuming 'initial_mass' and 'initial_Z' columns are present (added in mesa_analyzer)
             mass = df_full_history['initial_mass'].iloc[0] 
+            # z_value is already known from the outer loop
 
-            log_Teff = df_full_history['log_Teff'].values
-            log_L = df_full_history['log_L'].values
-            model_number = np.array(df_full_history['model_number'], dtype=float)
+            # --- Pre-MS Phase Trimming Logic ---
+            # Find the index of the minimum luminosity (often marks the end of pre-MS contraction)
+            # We assume the history file starts from the pre-MS or earlier.
+            if 'log_L' not in df_full_history.columns or df_full_history.empty:
+                logging.warning(f"Missing 'log_L' or empty DataFrame for M={mass:.1f} (Z={z_value:.4f}). Cannot trim pre-MS. Skipping plot.")
+                ax = axes[i]
+                ax.set_title(f'{mass:.1f} M$_\odot$\n(No Data/Log L Missing)\n(Z={z_value:.4f})', color='darkred', fontsize=9)
+                ax.set_xticks([])
+                ax.set_yticks([])
+                continue # Skip to the next run_info if data is insufficient
 
-            # REMOVED: The trimming logic based on np.argmax(log_Teff)
-            # This ensures the full evolutionary track is plotted.
-            # If specific pre-MS trimming is needed, a more robust method (e.g.,
-            # using 'star_is_on_main_sequence' column) should be implemented here.
+            min_log_L_idx = df_full_history['log_L'].idxmin()
 
-            if len(log_Teff) < 2: # Check for insufficient data even after no trimming
-                logging.warning(f"Not enough data points for M={mass:.1f} (Z={z_value:.4f}) to plot HR diagram. Skipping.")
-                ax.set_title(f'{mass:.1f} M$_\odot$\n(No Data)\n(Z={z_value:.4f})', color='darkred', fontsize=9)
+            # Slice the DataFrame from this minimum luminosity point onwards
+            # This effectively removes the pre-MS phase from the data used for plotting
+            df_post_prems = df_full_history.iloc[min_log_L_idx:].copy()
+
+            log_Teff = df_post_prems['log_Teff'].values
+            log_L = df_post_prems['log_L'].values
+            model_number = np.array(df_post_prems['model_number'], dtype=float)
+
+            ax = axes[i]
+
+            if len(log_Teff) < 2: # Check for insufficient data even after trimming
+                logging.warning(f"Not enough data points after pre-MS trimming for M={mass:.1f} (Z={z_value:.4f}) to plot HR diagram. Skipping.")
+                ax.set_title(f'{mass:.1f} M$_\odot$\n(Insufficient Data Post-PreMS)\n(Z={z_value:.4f})', color='darkred', fontsize=9)
                 ax.set_xticks([])
                 ax.set_yticks([])
                 continue # Skip to the next run_info if data is insufficient
@@ -102,7 +108,7 @@ def generate_all_hr_diagrams(data_by_metallicity, model_name, output_dir,
             ax.invert_xaxis() # Standard HR diagram convention
             
         # Hide any unused subplots
-        for j in range(i + 1, len(axes)): # Use 'i + 1' to start from the next empty axis
+        for j in range(i + 1, len(axes)):
             fig.delaxes(axes[j])
 
         # Set common Y-axis label only for the leftmost column
@@ -121,12 +127,9 @@ def generate_all_hr_diagrams(data_by_metallicity, model_name, output_dir,
 
         fig.suptitle(f'Hertzsprung-Russell Diagram (Z = {z_value:.4f})', fontsize=16, y=1.02)
 
+        # Add colorbar if any data was successfully plotted for this metallicity
         if sc is not None:
-            # Ensure colorbar is drawn correctly on all axes if there's any data
             cbar = fig.colorbar(sc, ax=axes.ravel().tolist(), orientation='vertical', fraction=0.04, pad=0.02, label='Model Number (Evolutionary Stage)')
-        else:
-            logging.warning(f"No scatter plot generated for Z={z_value}. Skipping colorbar for this subplot group.")
-
 
         filename = os.path.join(output_dir, f'HR_diagram_{model_name}_z{z_value:.4f}.png')
         plt.savefig(filename, bbox_inches='tight', dpi=300)

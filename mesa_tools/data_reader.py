@@ -95,7 +95,7 @@ def scan_mesa_runs(input_dir, inlist_name):
                     'mass': mass,
                     'z': z
                 })
-                logging.info(f"Found valid MESA run in '{run_dir_path}'.")
+#                logging.info(f"Found valid MESA run in '{run_dir_path}'.")
             else:
                 logging.warning(f"Could not extract mass/Z from inlist '{inlist_path}'. Skipping this run.")
         else:

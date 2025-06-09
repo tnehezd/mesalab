@@ -12,12 +12,13 @@ from .grid_analyzer import analyze_mesa_grid_directory
 def handle_heatmap_generation(args, summary_df_for_plotting, plots_sub_dir, analysis_results_sub_dir, input_dir):
     """
     Handles the generation of heatmaps based on data from MESA runs.
+    Now directly reads from 'crossing_count_grid.csv' to ensure 0-crossing data is included.
 
     Args:
         args (argparse.Namespace): The command-line arguments object, containing flags like
                                    `generate_heatmaps`, `blue_loop_output_type`, `analyze_blue_loop`.
         summary_df_for_plotting (pd.DataFrame): The summary DataFrame of analyzed MESA runs.
-                                                 Expected to contain 'blue_loop_crossing_count'.
+                                                 (This is still passed but no longer used for heatmap data source).
         plots_sub_dir (str): The directory where plot images will be saved.
         analysis_results_sub_dir (str): The directory where analysis results (e.g., CSVs) will be saved.
         input_dir (str): The input directory, used to determine the model name for plot titles/filenames.
@@ -28,26 +29,49 @@ def handle_heatmap_generation(args, summary_df_for_plotting, plots_sub_dir, anal
 
     logging.info("Attempting to generate heatmaps...")
     try:
-        if 'blue_loop_crossing_count' in summary_df_for_plotting.columns:
-            cross_data_matrix_loaded = summary_df_for_plotting['blue_loop_crossing_count'].unstack(level='initial_mass')
-            
-            unique_zs_for_heatmap = sorted(list(set(summary_df_for_plotting.index.get_level_values('initial_Z'))))
-            unique_masses_for_heatmap = sorted(list(set(summary_df_for_plotting.index.get_level_values('initial_mass'))))
+        # --- MODIFICATION START ---
+        # Load the cross_data_matrix directly from the saved CSV.
+        # This CSV is generated from summary_df_raw (which includes 0 crossings).
+        cross_csv_path = os.path.join(analysis_results_sub_dir, "crossing_count_grid.csv")
+        
+        if not os.path.exists(cross_csv_path):
+            logging.warning(f"'{cross_csv_path}' not found. Cannot generate heatmaps. Please ensure analysis has been run successfully.")
+            return
 
-            generate_heatmaps_and_time_diff_csv(
-                cross_data_df=cross_data_matrix_loaded,
-                summary_csv_path=os.path.join(analysis_results_sub_dir, "summary_results.csv"),
-                unique_zs=unique_zs_for_heatmap,
-                unique_masses=unique_masses_for_heatmap,
-                plots_output_dir=plots_sub_dir,
-                analysis_results_output_dir=analysis_results_sub_dir,
-                model_name=os.path.basename(input_dir),
-                blue_loop_output_type=args.blue_loop_output_type,
-                analyze_blue_loop=args.analyze_blue_loop # <--- FIX: Changed from args.analyze_loop
-            )
-            logging.info("Heatmaps generated successfully.")
-        else:
-            logging.warning("Summary DataFrame lacks 'blue_loop_crossing_count' column; skipping heatmap generation.")
+        cross_data_matrix_loaded = pd.read_csv(cross_csv_path, index_col=0) # Read the CSV
+        
+        # Ensure index and columns are numeric strings for reindexing if they are not already
+        cross_data_matrix_loaded.columns = pd.to_numeric(cross_data_matrix_loaded.columns, errors='coerce')
+        cross_data_matrix_loaded.index = pd.to_numeric(cross_data_matrix_loaded.index, errors='coerce')
+
+        # Drop any NaN columns/indices that might have resulted from conversion
+        cross_data_matrix_loaded.dropna(axis=0, how='all', inplace=True)
+        cross_data_matrix_loaded.dropna(axis=1, how='all', inplace=True)
+
+        # Ensure the columns and index are sorted for consistent plotting
+        unique_zs_for_heatmap = sorted([z for z in cross_data_matrix_loaded.index.unique() if not pd.isna(z)])
+        unique_masses_for_heatmap = sorted([m for m in cross_data_matrix_loaded.columns.unique() if not pd.isna(m)])
+
+        # Reindex to ensure consistent order, and fill potential missing grid points with NaN
+        cross_data_df_final = cross_data_matrix_loaded.reindex(index=unique_zs_for_heatmap, columns=unique_masses_for_heatmap)
+        # --- MODIFICATION END ---
+
+        if cross_data_df_final.empty:
+            logging.warning("Cross data DataFrame is empty after loading from CSV. Cannot generate heatmaps.")
+            return
+
+        generate_heatmaps_and_time_diff_csv(
+            cross_data_df=cross_data_df_final, # Pass the directly loaded and processed DataFrame
+            summary_csv_path=os.path.join(analysis_results_sub_dir, "summary_results.csv"),
+            unique_zs=unique_zs_for_heatmap,
+            unique_masses=unique_masses_for_heatmap,
+            plots_output_dir=plots_sub_dir,
+            analysis_results_output_dir=analysis_results_sub_dir,
+            model_name=os.path.basename(input_dir),
+            blue_loop_output_type=args.blue_loop_output_type,
+            analyze_blue_loop=args.analyze_blue_loop
+        )
+        logging.info("Heatmaps generated successfully.")
     except Exception as e:
         logging.error(f"Error generating heatmaps: {e}.")
 
@@ -131,3 +155,4 @@ def handle_hr_diagram_generation(args, plots_sub_dir, full_history_data_for_plot
         logging.info("HR diagrams generated successfully.")
     except Exception as e:
         logging.error(f"Error generating HR diagrams: {e}")
+

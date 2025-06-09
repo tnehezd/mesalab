@@ -54,9 +54,28 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
     if not reanalysis_needed:
         logging.info("Summary and cross-grid CSV files already exist. Attempting to load existing data.")
         try:
-            summary_df = pd.read_csv(summary_csv_path, index_col=['initial_Z', 'initial_mass'])
-            logging.info("Successfully loaded existing summary CSV.")
-            return summary_df, combined_detail_data_for_plotting, full_history_data_for_plotting # Return loaded summary_df and empty detail/full_history if no reanalysis
+            # We will load, filter, and then return. If filtering results in empty DF, it means no valid loops.
+            loaded_summary_df = pd.read_csv(summary_csv_path, index_col=['initial_Z', 'initial_mass'])
+            
+            # --- Load-time Filtering ---
+            # Filter out rows where 'blue_loop_crossing_count' is NaN or 0, when loading existing data
+            filtered_loaded_summary_df = loaded_summary_df[
+                (loaded_summary_df['blue_loop_crossing_count'].notna()) &
+                (loaded_summary_df['blue_loop_crossing_count'] > 0)
+            ].copy()
+            # --- End Load-time Filtering ---
+
+            if filtered_loaded_summary_df.empty and not loaded_summary_df.empty:
+                logging.warning("Loaded summary CSV contained no valid blue loop entries after filtering. Forcing reanalysis.")
+                reanalysis_needed = True
+            elif filtered_loaded_summary_df.empty and loaded_summary_df.empty:
+                logging.info("Loaded summary CSV was empty. No valid blue loop entries.")
+                # No reanalysis needed if it was already empty and nothing valid.
+                return pd.DataFrame(), pd.DataFrame(), {}
+            else:
+                summary_df = filtered_loaded_summary_df
+                logging.info("Successfully loaded and filtered existing summary CSV.")
+                return summary_df, combined_detail_data_for_plotting, full_history_data_for_plotting # Return loaded summary_df and empty detail/full_history if no reanalysis
         except FileNotFoundError:
             logging.warning(f"Existing summary or cross-grid CSVs not found. Forcing full reanalysis.")
             reanalysis_needed = True
@@ -137,60 +156,79 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                         full_history_data_for_plotting[current_z] = []
                     full_history_data_for_plotting[current_z].append(df_full_history.copy())
 
-                    # Initialize filtered_combined_df_bl before any conditional assignment
-                    filtered_combined_df_bl = pd.DataFrame() # <--- FIX: Initialize here
+                    filtered_combined_df_bl = pd.DataFrame() # Initialize here
 
                     if analyze_blue_loop:
                         analyzer_output = analyze_blue_loop_and_instability(df_full_history, current_mass, current_z)
 
-                        if not pd.isna(analyzer_output['crossing_count']):
+                        # Determine if analysis was successful or found a 0-crossing loop
+                        if pd.notna(analyzer_output['crossing_count']): # This means it's either 0 or >0, not a fundamental error NaN
                             analysis_result_summary['blue_loop_crossing_count'] = int(analyzer_output['crossing_count'])
-                            state_times = analyzer_output['state_times']
-
-                            analysis_result_summary['blue_loop_start_age'] = state_times.get('first_is_entry_age', np.nan)
-                            analysis_result_summary['blue_loop_end_age'] = state_times.get('last_is_exit_age', np.nan)
-                            if pd.notna(analysis_result_summary['blue_loop_start_age']) and pd.notna(analysis_result_summary['blue_loop_end_age']):
-                                analysis_result_summary['calculated_blue_loop_duration'] = analysis_result_summary['blue_loop_end_age'] - analysis_result_summary['blue_loop_start_age']
-                                analysis_result_summary['blue_loop_duration_yr'] = analysis_result_summary['calculated_blue_loop_duration']
-
-                            analysis_result_summary['instability_start_age'] = state_times.get('instability_start_age', np.nan)
-                            analysis_result_summary['instability_end_age'] = state_times.get('instability_end_age', np.nan)
-                            if pd.notna(analysis_result_summary['instability_start_age']) and pd.notna(analysis_result_summary['instability_end_age']):
-                                analysis_result_summary['calculated_instability_duration'] = analysis_result_summary['instability_end_age'] - analysis_result_summary['instability_start_age']
                             
-                            if not analyzer_output['blue_loop_detail_df'].empty:
-                                bl_df = analyzer_output['blue_loop_detail_df'].copy()
-                                if blue_loop_output_type == 'all':
-                                    filtered_combined_df_bl = bl_df # <--- Now assigned
-                                    analysis_result_summary['max_log_L'] = bl_df['log_L'].max()
-                                    analysis_result_summary['max_log_Teff'] = bl_df['log_Teff'].max()
-                                    if 'log_R' in bl_df.columns:
-                                        analysis_result_summary['max_log_R'] = bl_df['log_R'].max()
-                                    elif 'log_R' in df_full_history.columns:
-                                        analysis_result_summary['max_log_R'] = df_full_history['log_R'].max()
-                                    analysis_result_summary['first_model_number'] = bl_df['model_number'].min()
-                                    analysis_result_summary['last_model_number'] = bl_df['model_number'].max()
-                                    analysis_result_summary['first_age_yr'] = bl_df['star_age'].min()
-                                    analysis_result_summary['last_age_yr'] = bl_df['star_age'].max()
-                                else: # 'summary' output type for blue loop details
-                                    concise_detail_columns_local = [ # Use local variable for clarity
-                                        'initial_mass', 'initial_Z', 'star_age', 'model_number',
-                                        'log_Teff', 'log_L', 'log_g', 'profile_number'
-                                    ]
-                                    existing_desired_cols = [col for col in concise_detail_columns_local if col in bl_df.columns]
-                                    if existing_desired_cols:
-                                        filtered_combined_df_bl = bl_df[existing_desired_cols] # <--- Now assigned
-                                    else:
-                                        logging.warning(f"No desired columns found for concise detail for M={current_mass}, Z={current_z}. Detail DF might remain empty.")
+                            if analysis_result_summary['blue_loop_crossing_count'] > 0: # Only populate detailed metrics if a loop was actually found
+                                state_times = analyzer_output['state_times']
+
+                                analysis_result_summary['blue_loop_start_age'] = state_times.get('first_is_entry_age', np.nan)
+                                analysis_result_summary['blue_loop_end_age'] = state_times.get('last_is_exit_age', np.nan)
+                                if pd.notna(analysis_result_summary['blue_loop_start_age']) and pd.notna(analysis_result_summary['blue_loop_end_age']):
+                                    analysis_result_summary['calculated_blue_loop_duration'] = analysis_result_summary['blue_loop_end_age'] - analysis_result_summary['blue_loop_start_age']
+                                    analysis_result_summary['blue_loop_duration_yr'] = analysis_result_summary['calculated_blue_loop_duration']
+
+                                analysis_result_summary['instability_start_age'] = state_times.get('instability_start_age', np.nan)
+                                analysis_result_summary['instability_end_age'] = state_times.get('instability_end_age', np.nan)
+                                if pd.notna(analysis_result_summary['instability_start_age']) and pd.notna(analysis_result_summary['instability_end_age']):
+                                    analysis_result_summary['calculated_instability_duration'] = analysis_result_summary['instability_end_age'] - analysis_result_summary['instability_start_age']
                                 
-                                current_detail_df = filtered_combined_df_bl # Assign the filtered BL df for saving
+                                # Populate detailed metrics if blue_loop_output_type is 'all'
+                                if not analyzer_output['blue_loop_detail_df'].empty:
+                                    bl_df = analyzer_output['blue_loop_detail_df'].copy()
+                                    if blue_loop_output_type == 'all':
+                                        filtered_combined_df_bl = bl_df 
+                                        analysis_result_summary['max_log_L'] = bl_df['log_L'].max()
+                                        analysis_result_summary['max_log_Teff'] = bl_df['log_Teff'].max()
+                                        if 'log_R' in bl_df.columns:
+                                            analysis_result_summary['max_log_R'] = bl_df['log_R'].max()
+                                        elif 'log_R' in df_full_history.columns: # Fallback to full history if log_R not in detail_df
+                                            analysis_result_summary['max_log_R'] = df_full_history['log_R'].max()
+                                        analysis_result_summary['first_model_number'] = bl_df['model_number'].min()
+                                        analysis_result_summary['last_model_number'] = bl_df['model_number'].max()
+                                        analysis_result_summary['first_age_yr'] = bl_df['star_age'].min()
+                                        analysis_result_summary['last_age_yr'] = bl_df['star_age'].max()
+                                    else: # 'summary' output type for blue loop details
+                                        # When blue_loop_output_type is 'summary', we still need to populate 
+                                        # filtered_combined_df_bl with concise columns for plotting purposes,
+                                        # even if the summary CSV does not contain the detailed metrics.
+                                        concise_detail_columns_local = [ 
+                                            'initial_mass', 'initial_Z', 'star_age', 'model_number',
+                                            'log_Teff', 'log_L', 'log_g', 'profile_number'
+                                        ]
+                                        existing_desired_cols = [col for col in concise_detail_columns_local if col in bl_df.columns]
+                                        if existing_desired_cols:
+                                            filtered_combined_df_bl = bl_df[existing_desired_cols]
+                                        else:
+                                            logging.warning(f"No desired columns found for concise detail for M={current_mass}, Z={current_z}. Detail DF for plotting might remain empty.")
+                                            filtered_combined_df_bl = pd.DataFrame() # Ensure it's empty if no columns found
+                                    
+                                    current_detail_df = filtered_combined_df_bl 
+                                else:
+                                    # If blue_loop_detail_df is empty even if crossing_count > 0 (shouldn't happen often)
+                                    logging.warning(f"Detail DataFrame empty despite blue loop found for M={current_mass}, Z={current_z}. Detailed metrics will be NaN.")
+                                    current_detail_df = pd.DataFrame() # Explicitly set to empty DataFrame
+                            else: # crossing_count is 0
+#                                logging.info(f"Blue loop analysis completed with 0 crossings for M={current_mass}, Z={current_z}. Results for this run will be excluded from summary CSV.")
+                                # analysis_result_summary stays with np.nan for other fields, but crossing_count is 0
+                                # This entry will be filtered out before saving to summary_results.csv
+                                pass # No specific action needed here as we will filter later
+                        else: # analyzer_output['crossing_count'] is NaN, meaning fundamental error
+#                            logging.warning(f"Blue loop analysis failed or returned NaN for M={current_mass}, Z={current_z}. Results for this run will be excluded from summary CSV.")
+                            pass # No specific action needed here as we will filter later
 
-                            cross_data_matrix.at[current_z, current_mass] = analysis_result_summary['blue_loop_crossing_count']
-                        else:
-                            logging.warning(f"Blue loop analysis failed or returned no valid crossings for M={current_mass}, Z={current_z}. Results for this run will be NaN in summary.")
-                    else:
+                    else: # analyze_blue_loop is False
                         logging.info(f"Skipping blue loop analysis for M={current_mass}, Z={current_z} as analyze_blue_loop is False.")
+                        analysis_result_summary['blue_loop_crossing_count'] = np.nan # Ensure it's NaN if analysis is off
+                        pass # This run will also be filtered out
 
+                    # Append to summary_data regardless, then filter later
                     summary_data.append(analysis_result_summary)
 
                     if analyze_blue_loop and not current_detail_df.empty:
@@ -198,9 +236,8 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                             grouped_detailed_dfs_for_analysis_raw[current_z] = []
                         grouped_detailed_dfs_for_analysis_raw[current_z].append(current_detail_df)
                         
-                        # Only concatenate to combined_detail_data_for_plotting if current_detail_df is not empty
                         if combined_detail_data_for_plotting.empty:
-                            combined_detail_data_for_plotting = current_detail_df.copy() # <--- FIX: use current_detail_df
+                            combined_detail_data_for_plotting = current_detail_df.copy()
                         else:
                             combined_detail_data_for_plotting = pd.concat([combined_detail_data_for_plotting, current_detail_df], ignore_index=True)         
 
@@ -211,19 +248,71 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
 
                 pbar.update(1)
 
-        summary_df = pd.DataFrame(summary_data)
-        summary_df.sort_values(['initial_Z', 'initial_mass'], inplace=True)
-        summary_df.set_index(['initial_Z', 'initial_mass'], inplace=True)
+        summary_df_raw = pd.DataFrame(summary_data)
+        summary_df_raw.sort_values(['initial_Z', 'initial_mass'], inplace=True)
+        summary_df_raw.set_index(['initial_Z', 'initial_mass'], inplace=True)
+
+        # --- FINAL FILTERING BEFORE SAVING SUMMARY CSV ---
+        # Keep only rows where blue_loop_crossing_count is NOT NaN AND is greater than 0
+        summary_df_to_save = summary_df_raw[
+            (summary_df_raw['blue_loop_crossing_count'].notna()) &
+            (summary_df_raw['blue_loop_crossing_count'] > 0)
+        ].copy()
+        # --- END FINAL FILTERING ---
+
+        # If after filtering, the summary_df_to_save is empty, set it to an empty DataFrame to avoid issues later
+        if summary_df_to_save.empty:
+            logging.info("No valid blue loop entries found after filtering for summary CSV.")
+            summary_df = pd.DataFrame(columns=[
+                'blue_loop_crossing_count', 'blue_loop_duration_yr',
+                'blue_loop_start_age', 'blue_loop_end_age',
+                'instability_start_age', 'instability_end_age',
+                'calculated_blue_loop_duration', 'calculated_instability_duration'
+            ], index=pd.MultiIndex.from_tuples([], names=['initial_Z', 'initial_mass']))
+            # Note: Max_log_L, etc., are explicitly excluded from this empty DF as well
+            # if blue_loop_output_type is 'summary'. This is handled below.
+
+        else:
+            summary_df = summary_df_to_save.copy() # Assign filtered data to summary_df
+            # --- Column Filtering based on blue_loop_output_type ---
+            if blue_loop_output_type == 'summary':
+                logging.info("Applying 'summary' output type filtering for summary CSV columns.")
+                summary_columns_for_summary_output = [
+                    'blue_loop_crossing_count', 'blue_loop_duration_yr',
+                    'blue_loop_start_age', 'blue_loop_end_age',
+                    'instability_start_age', 'instability_end_age',
+                    'calculated_blue_loop_duration', 'calculated_instability_duration'
+                ]
+                # Filter for columns that actually exist in the DataFrame before selecting
+                existing_summary_cols = [col for col in summary_columns_for_summary_output if col in summary_df.columns]
+                summary_df = summary_df[existing_summary_cols].copy()
+            # If blue_loop_output_type is 'all', summary_df remains as is (includes all populated columns)
+            # --- End Column Filtering ---
+
+
         summary_df.to_csv(summary_csv_path, na_rep='NaN') # MODIFIED: Added na_rep='NaN'
         logging.info(f"Summary CSV written to {summary_csv_path}")
+
+        # The cross_data_matrix needs to include all original runs (with 0s and NaNs for heatmap)
+        # So we use summary_df_raw to build it, then convert to numeric and reindex if needed
+        cross_data_matrix = summary_df_raw['blue_loop_crossing_count'].unstack()
+        if not cross_data_matrix.empty:
+            cross_data_matrix.columns = pd.to_numeric(cross_data_matrix.columns, errors='coerce')
+            cross_data_matrix.index = pd.to_numeric(cross_data_matrix.index, errors='coerce')
+            cross_data_matrix = cross_data_matrix.reindex(index=sorted(cross_data_matrix.index.unique()), columns=sorted(cross_data_matrix.columns.unique()))
+            # Ensure NaN for non-existent combinations that were not in summary_data_raw (e.g. if a run was never scanned)
+            cross_data_matrix = cross_data_matrix.where(pd.notna(cross_data_matrix), np.nan)
+        else:
+            logging.warning("No data to build cross-grid matrix. It will be empty.")
+            cross_data_matrix = pd.DataFrame(np.nan, index=unique_zs, columns=unique_masses) # Ensure empty structure if no data
 
         cross_data_matrix.to_csv(cross_csv_path, na_rep='NaN') # MODIFIED: Added na_rep='NaN'
         logging.info(f"Cross-grid CSV written to {cross_csv_path}")
 
         # This block is for writing detail CSVs to disk, separate from in-memory processing
         if analyze_blue_loop:
-            # Re-define concise_detail_columns here to ensure it's available if this part is reached
-            concise_detail_columns = [
+            # Define concise_detail_columns_for_saving (used for detail CSVs when blue_loop_output_type='summary')
+            concise_detail_columns_for_saving = [ 
                 'initial_mass', 'initial_Z', 'star_age', 'model_number',
                 'log_Teff', 'log_L', 'log_g', 'profile_number'
             ]
@@ -235,8 +324,8 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                         if blue_loop_output_type == 'all':
                             df_to_save = combined_df_bl
                             output_type_label = "all columns"
-                        else:
-                            existing_desired_cols = [col for col in concise_detail_columns if col in combined_df_bl.columns]
+                        else: # blue_loop_output_type is 'summary' for saving detailed CSVs
+                            existing_desired_cols = [col for col in concise_detail_columns_for_saving if col in combined_df_bl.columns]
                             if not existing_desired_cols:
                                 logging.warning(f"No desired columns found for concise detail CSV for Z={z_val}. Skipping detail CSV write.")
                                 continue
