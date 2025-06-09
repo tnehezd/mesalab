@@ -3,10 +3,10 @@
 
 # --- Required Input/Output Paths ---
 # These are essential for the program to find your MESA data and save results.
-input_dir: /home/tnehezd/workdir/mesa-r23.05.1/STRANGE/nad_convos_mid
-#input_dir: /home/tnehezd/workdir/zenodo_archives/zenodo_out
-output_dir: /d5/tnehezd/mesa_blue_loop/output
-#output_dir: /d5/tnehezd/mesa_blue_loop/zenodo_output
+#input_dir: /home/tnehezd/workdir/mesa-r23.05.1/STRANGE/nad_convos_mid
+input_dir: /home/tnehezd/workdir/zenodo_archives/zenodo_out
+#output_dir: /d5/tnehezd/mesa_blue_loop/output
+output_dir: /d5/tnehezd/mesa_blue_loop/zenodo_output
 inlist_name: inlist_project
 
 # --- Analysis and Plotting Options ---
@@ -15,24 +15,24 @@ inlist_name: inlist_project
 # This is CRITICAL. The blue loop BC plots rely on the detailed
 # blue loop analysis data, which is generated when this is True.
 # Keep this as True to ensure the necessary data is processed.
-analyze_blue_loop: False #True
+analyze_blue_loop: True
 
 # Set to False to ensure no heatmaps are generated.
 generate_heatmaps: True
 
 # This explicitly tells the program NOT to generate general HRD plots.
 # This should prevent the "összes HRD-t kirajzolja" issue.
-generate_plots: False #True
+generate_plots: True
 
 # This is what you want! Set to True to generate the blue loop specific
 # HRD/CMD/logg-L plots with bolometric corrections.
-generate_blue_loop_plots_with_bc: False #True
+generate_blue_loop_plots_with_bc: True
 
 # --- Other Settings ---
 # If you've run a full analysis before and the 'detail_z*.csv' files exist,
 # you can set 'force_reanalysis' to False to speed things up.
 # If you want to re-run the blue loop analysis from scratch, set it to True.
-force_reanalysis: False #True
+force_reanalysis: True
 
 # Defines the columns saved in the detailed blue loop CSV files.
 # 'all' saves all columns from the blue loop phase.
