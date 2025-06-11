@@ -25,9 +25,8 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
     Returns:
         tuple: A tuple containing:
             - pd.DataFrame: The main summary DataFrame of analysis results.
-            - dict: A dictionary where keys are metallicities (Z) and values are
-                    lists of detailed DataFrames for plotting (combined_detail_data_for_plotting),
-                    which are filtered for the blue loop analysis.
+            - pd.DataFrame: A combined DataFrame of detailed blue loop data for plotting
+                            (combined_detail_data_for_plotting), filtered for the blue loop analysis.
             - dict: A dictionary where keys are metallicities (Z) and values are
                     lists of **full, untrimmed** history DataFrames for plotting (full_history_data_for_plotting).
                     Returns empty Dataframes/dicts if analysis cannot be performed or is skipped.
@@ -48,7 +47,7 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
     logging.info(f"Analysis started. Reanalysis needed: {reanalysis_needed}")
 
     summary_df = pd.DataFrame()
-    combined_detail_data_for_plotting = pd.DataFrame()
+    combined_detail_data_for_plotting = pd.DataFrame() # This will hold the combined data for plotting
     full_history_data_for_plotting = {} # Initialized here
 
     if not reanalysis_needed:
@@ -71,11 +70,13 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
             elif filtered_loaded_summary_df.empty and loaded_summary_df.empty:
                 logging.info("Loaded summary CSV was empty. No valid blue loop entries.")
                 # No reanalysis needed if it was already empty and nothing valid.
-                return pd.DataFrame(), pd.DataFrame(), {}
+                return pd.DataFrame(), pd.DataFrame(), {} # Return empty DataFrames if nothing to analyze
             else:
                 summary_df = filtered_loaded_summary_df
                 logging.info("Successfully loaded and filtered existing summary CSV.")
-                return summary_df, combined_detail_data_for_plotting, full_history_data_for_plotting # Return loaded summary_df and empty detail/full_history if no reanalysis
+                # If not reanalyzing, we don't regenerate detailed data in memory for plotting
+                # So, combined_detail_data_for_plotting and full_history_data_for_plotting remain empty/as initialized.
+                return summary_df, combined_detail_data_for_plotting, full_history_data_for_plotting 
         except FileNotFoundError:
             logging.warning(f"Existing summary or cross-grid CSVs not found. Forcing full reanalysis.")
             reanalysis_needed = True
@@ -208,19 +209,15 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                                         else:
                                             logging.warning(f"No desired columns found for concise detail for M={current_mass}, Z={current_z}. Detail DF for plotting might remain empty.")
                                             filtered_combined_df_bl = pd.DataFrame() # Ensure it's empty if no columns found
-                                    
+                                        
                                     current_detail_df = filtered_combined_df_bl 
                                 else:
                                     # If blue_loop_detail_df is empty even if crossing_count > 0 (shouldn't happen often)
                                     logging.warning(f"Detail DataFrame empty despite blue loop found for M={current_mass}, Z={current_z}. Detailed metrics will be NaN.")
                                     current_detail_df = pd.DataFrame() # Explicitly set to empty DataFrame
                             else: # crossing_count is 0
-#                                logging.info(f"Blue loop analysis completed with 0 crossings for M={current_mass}, Z={current_z}. Results for this run will be excluded from summary CSV.")
-                                # analysis_result_summary stays with np.nan for other fields, but crossing_count is 0
-                                # This entry will be filtered out before saving to summary_results.csv
                                 pass # No specific action needed here as we will filter later
                         else: # analyzer_output['crossing_count'] is NaN, meaning fundamental error
-#                            logging.warning(f"Blue loop analysis failed or returned NaN for M={current_mass}, Z={current_z}. Results for this run will be excluded from summary CSV.")
                             pass # No specific action needed here as we will filter later
 
                     else: # analyze_blue_loop is False
@@ -236,10 +233,11 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                             grouped_detailed_dfs_for_analysis_raw[current_z] = []
                         grouped_detailed_dfs_for_analysis_raw[current_z].append(current_detail_df)
                         
+                        # Concatenate current_detail_df to combined_detail_data_for_plotting
                         if combined_detail_data_for_plotting.empty:
                             combined_detail_data_for_plotting = current_detail_df.copy()
                         else:
-                            combined_detail_data_for_plotting = pd.concat([combined_detail_data_for_plotting, current_detail_df], ignore_index=True)         
+                            combined_detail_data_for_plotting = pd.concat([combined_detail_data_for_plotting, current_detail_df], ignore_index=True)        
 
                 except Exception as err:
                     with open(skipped_runs_log_path, 'a') as log_file:
@@ -269,9 +267,6 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                 'instability_start_age', 'instability_end_age',
                 'calculated_blue_loop_duration', 'calculated_instability_duration'
             ], index=pd.MultiIndex.from_tuples([], names=['initial_Z', 'initial_mass']))
-            # Note: Max_log_L, etc., are explicitly excluded from this empty DF as well
-            # if blue_loop_output_type is 'summary'. This is handled below.
-
         else:
             summary_df = summary_df_to_save.copy() # Assign filtered data to summary_df
             # --- Column Filtering based on blue_loop_output_type ---
@@ -290,7 +285,7 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
             # --- End Column Filtering ---
 
 
-        summary_df.to_csv(summary_csv_path, na_rep='NaN') # MODIFIED: Added na_rep='NaN'
+        summary_df.to_csv(summary_csv_path, na_rep='NaN')
         logging.info(f"Summary CSV written to {summary_csv_path}")
 
         # The cross_data_matrix needs to include all original runs (with 0s and NaNs for heatmap)
@@ -306,7 +301,7 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
             logging.warning("No data to build cross-grid matrix. It will be empty.")
             cross_data_matrix = pd.DataFrame(np.nan, index=unique_zs, columns=unique_masses) # Ensure empty structure if no data
 
-        cross_data_matrix.to_csv(cross_csv_path, na_rep='NaN') # MODIFIED: Added na_rep='NaN'
+        cross_data_matrix.to_csv(cross_csv_path, na_rep='NaN')
         logging.info(f"Cross-grid CSV written to {cross_csv_path}")
 
         # This block is for writing detail CSVs to disk, separate from in-memory processing
@@ -320,6 +315,9 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                 if dfs_list:
                     try:
                         combined_df_bl = pd.concat(dfs_list, ignore_index=True)
+                        # --- NEW: Explicitly sort by initial_mass and star_age ---
+                        combined_df_bl = combined_df_bl.sort_values(by=['initial_mass', 'star_age']).reset_index(drop=True)
+                        # --- END NEW ---
 
                         if blue_loop_output_type == 'all':
                             df_to_save = combined_df_bl
@@ -333,12 +331,16 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                             output_type_label = "selected columns"
 
                         detail_filename = os.path.join(detail_files_output_dir, f"detail_z{z_val:.4f}.csv")
-                        df_to_save.to_csv(detail_filename, index=False, na_rep='NaN') # MODIFIED: Added na_rep='NaN'
+                        df_to_save.to_csv(detail_filename, index=False, na_rep='NaN')
                         logging.info(f"Written concatenated detail CSV for Z={z_val} with {output_type_label} to {detail_filename}")
 
                     except Exception as e:
                         logging.error(f"Error writing detail CSV for Z={z_val}: {e}")
                 else:
                     logging.info(f"No detailed data to write for Z={z_val}.")
-    
+        
+    # Ensure combined_detail_data_for_plotting is also sorted consistently for the return value
+    if not combined_detail_data_for_plotting.empty:
+        combined_detail_data_for_plotting = combined_detail_data_for_plotting.sort_values(by=['initial_Z', 'initial_mass', 'star_age']).reset_index(drop=True)
+
     return summary_df, combined_detail_data_for_plotting, full_history_data_for_plotting

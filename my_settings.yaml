@@ -3,14 +3,14 @@
 
 # --- Required Input/Output Paths ---
 # These are essential for the program to find your MESA data and save results.
-#input_dir: /home/tnehezd/workdir/mesa-r23.05.1/STRANGE/nad_convos_mid
+input_dir: /home/tnehezd/workdir/mesa-r23.05.1/STRANGE/nad_convos_mid
 #input_dir: /home/tnehezd/workdir/zenodo_archives/zenodo_out
 #input_dir: /home/tnehezd/workdir/stellar_tracks_farag/
-input_dir: /home/tnehezd/workdir/MIST_syntethic_data
-#output_dir: /d5/tnehezd/mesa_blue_loop/output
+#input_dir: /home/tnehezd/workdir/MIST_syntethic_data
+output_dir: /d5/tnehezd/mesa_blue_loop/output
 #output_dir: /d5/tnehezd/mesa_blue_loop/zenodo_output
 #output_dir: /d5/tnehezd/mesa_blue_loop/farag_output
-output_dir: /d5/tnehezd/mesa_blue_loop/MIST_output
+#output_dir: /d5/tnehezd/mesa_blue_loop/MIST_output
 
 inlist_name: inlist_project
 
@@ -27,11 +27,11 @@ generate_heatmaps: False
 
 # This explicitly tells the program NOT to generate general HRD plots.
 # This should prevent the "összes HRD-t kirajzolja" issue.
-generate_plots: False
+generate_plots: True
 
 # This is what you want! Set to True to generate the blue loop specific
 # HRD/CMD/logg-L plots with bolometric corrections.
-generate_blue_loop_plots_with_bc: False
+generate_blue_loop_plots_with_bc: True
 
 # Explicitly set to false to disable HRD generation
 generate_hr_diagrams: True 
