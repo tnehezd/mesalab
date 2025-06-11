@@ -4,9 +4,14 @@
 # --- Required Input/Output Paths ---
 # These are essential for the program to find your MESA data and save results.
 #input_dir: /home/tnehezd/workdir/mesa-r23.05.1/STRANGE/nad_convos_mid
-input_dir: /home/tnehezd/workdir/zenodo_archives/zenodo_out
+#input_dir: /home/tnehezd/workdir/zenodo_archives/zenodo_out
+#input_dir: /home/tnehezd/workdir/stellar_tracks_farag/
+input_dir: /home/tnehezd/workdir/MIST_syntethic_data
 #output_dir: /d5/tnehezd/mesa_blue_loop/output
-output_dir: /d5/tnehezd/mesa_blue_loop/zenodo_output
+#output_dir: /d5/tnehezd/mesa_blue_loop/zenodo_output
+#output_dir: /d5/tnehezd/mesa_blue_loop/farag_output
+output_dir: /d5/tnehezd/mesa_blue_loop/MIST_output
+
 inlist_name: inlist_project
 
 # --- Analysis and Plotting Options ---
@@ -18,15 +23,19 @@ inlist_name: inlist_project
 analyze_blue_loop: True
 
 # Set to False to ensure no heatmaps are generated.
-generate_heatmaps: True
+generate_heatmaps: False
 
 # This explicitly tells the program NOT to generate general HRD plots.
 # This should prevent the "összes HRD-t kirajzolja" issue.
-generate_plots: True
+generate_plots: False
 
 # This is what you want! Set to True to generate the blue loop specific
 # HRD/CMD/logg-L plots with bolometric corrections.
-generate_blue_loop_plots_with_bc: True
+generate_blue_loop_plots_with_bc: False
+
+# Explicitly set to false to disable HRD generation
+generate_hr_diagrams: True 
+
 
 # --- Other Settings ---
 # If you've run a full analysis before and the 'detail_z*.csv' files exist,
@@ -38,6 +47,8 @@ force_reanalysis: True
 # 'all' saves all columns from the blue loop phase.
 # 'summary' saves only key columns (e.g., star_age, log_Teff, log_L).
 blue_loop_output_type: summary
+
+
 
 # --- Blue Loop Plotting Specifics (Optional, add as needed) ---
 # It's good practice to add any parameters specific to generate_blue_loop_plots_with_bc

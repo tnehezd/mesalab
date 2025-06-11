@@ -47,12 +47,13 @@ def parsing_options():
     parser.add_argument("--generate-blue-loop-plots-with-bc", action="store_true",
                         help="Generate blue loop specific HRD/CMD/logg-L plots with bolometric corrections.")
 
-    # --- ADD THESE TWO ARGUMENTS ---
-    parser.add_argument("--generate-hr-diagrams", action="store_true",
-                        help="Generate Hertzsprung-Russell diagrams for all runs.")
+    # --- HRD ARGUMENT WITH DEFAULT TRUE ---
+    parser.add_argument("--generate-hr-diagrams", action='store_true', default=True, # Default is now True
+                        help="Generate Hertzsprung-Russell diagrams for all runs. Default: True.")
+    # -------------------------------
+
     parser.add_argument("--debug", action="store_true",
                         help="Enable debug logging for more detailed output.")
-    # -------------------------------
 
     # Parse arguments from the command line first.
     # These values are initial defaults or explicitly set by the user via CLI.

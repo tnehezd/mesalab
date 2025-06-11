@@ -1,0 +1,16 @@
+Z_0.0200:
+    M_1.0:
+        run_directory: run_1.0Msun
+        history_file: history.data
+    M_1.5:
+        run_directory: run_1.5Msun
+        history_file: history.data
+    M_3.0:
+        run_directory: run_3.0Msun
+        history_file: history.data
+    M_15.0:
+        run_directory: run_15Msun
+        history_file: history.data
+    M_20.0:
+        run_directory: run_20.0Msun
+        history_file: history.data
