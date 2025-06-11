@@ -26,7 +26,7 @@ env/
 
 my_organized_output/
 output/
-zenodo_ouput/*
+zenodo_output/
 MIST_output/
 farag_output/
 mesa_tools/count_cloc.py
