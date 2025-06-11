@@ -14,5 +14,5 @@ mivel a program a "history.data" file-okra van optimalizálva, ezért a MIST old
 szerkezet, header megegyezik a MESA által kiadott file-okéval (kapott egy plusz oszlopot model_number-ként, amelyet önkényesen feltöltöttem számokkal 1-gyel kezdődően)
 mivel az oldal csak eep file-okat ad, ezért dummy inlist file-okat hoztam létre, melyben kizárólag a csillag tömege és kezdeti fémessége szerepel.
 
-
+a modellek között szerepel mindenféle: amelyik bejár egy blue loopot, amelyik nem és amelyik még nem érte el az RGB tip-et
 
