@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-# import pygyre as pg # Still imported, but no longer directly used for reading in generate_all_hr_diagrams
 import math
 import time
 from matplotlib import colors
@@ -13,15 +12,18 @@ logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
 def generate_all_hr_diagrams(data_by_metallicity: dict, model_name: str, output_dir: str,
                              logT_blue_edge: list, logL_blue_edge: list,
-                             logT_red_edge: list, logL_red_edge: list):
+                             logT_red_edge: list, logL_red_edge: list,
+                             drop_zams: bool = False): # ÚJ PARAMÉTER
     """
     Generates Hertzsprung-Russell (HR) diagrams for pre-loaded MESA run data,
     grouping plots by metallicity and saving each metallicity's plots
-    as a single image. The pre-main sequence (pre-MS) phase is excluded from the plots.
+    as a single image. The pre-main sequence (pre-MS) phase can be excluded from the plots
+    if 'drop_zams' is True.
     Plots are sorted by initial mass within each metallicity group.
-    The subplot layout is fixed to 4 columns, and plot sizes are adjusted to be smaller
-    with a 1:2 height:width aspect ratio for individual subplots.
-    The colorbar is now made thinner.
+    The subplot layout is fixed to 4 columns. Individual subplots maintain a 1:2
+    height:width aspect ratio with generous sizing. The colorbar is made thinner.
+    If data is insufficient after trimming (and 'drop_zams' is True), the specific subplot
+    for that run is skipped and a warning is logged.
 
     Args:
         data_by_metallicity (dict): A dictionary where keys are metallicities (Z)
@@ -40,6 +42,10 @@ def generate_all_hr_diagrams(data_by_metallicity: dict, model_name: str, output_
                                red edge of the instability strip.
         logL_red_edge (list): Logarithm of luminosities for the
                                red edge of the instability strip.
+        drop_zams (bool, optional): If True, the pre-main sequence (pre-MS) phase
+                                    is trimmed from the beginning of the track using
+                                    the 'center_h1' drop criterion (or 'log_L' minimum as fallback).
+                                    Defaults to False (i.e., full track is plotted).
     """
     logging.info(f"Starting HR diagram generation for model '{model_name}'.")
 
@@ -76,10 +82,10 @@ def generate_all_hr_diagrams(data_by_metallicity: dict, model_name: str, output_
         cols = 4 # Fixed to 4 columns as requested
         rows = math.ceil(num_plots / cols)
 
-        # --- Adjusted Figure Size for Smaller Plots with 1:2 (Height:Width) Aspect Ratio ---
+        # --- Figure Size with 1:2 (Height:Width) Aspect Ratio ---
         # Define base dimensions for a single subplot to achieve 1:2 ratio
-        base_subplot_height = 3.5 # Smaller height in inches
-        base_subplot_width = base_subplot_height * 2 # Ensures 1:2 ratio, so 7 inches
+        base_subplot_height = 5  # Height in inches for each subplot
+        base_subplot_width = base_subplot_height * 2 # Ensures 1:2 ratio, so 10 inches
 
         fig_width = cols * base_subplot_width
         fig_height = rows * base_subplot_height
@@ -103,33 +109,63 @@ def generate_all_hr_diagrams(data_by_metallicity: dict, model_name: str, output_
             # Assuming 'initial_mass' and 'initial_Z' columns are present (added in mesa_analyzer)
             mass = df_full_history['initial_mass'].iloc[0] # Mass for title
 
-            # --- Pre-MS Phase Trimming Logic ---
-            # Find the index of the minimum luminosity (often marks the end of pre-MS contraction)
-            # We assume the history file starts from the pre-MS or earlier.
+            # --- Pre-MS Phase Trimming Logic (ZAMS detection) ---
+            # Now conditional based on 'drop_zams' parameter
+            df_post_prems = None # Initialize to None
+
+            # Check for missing required columns or empty DataFrame
             if 'log_L' not in df_full_history.columns or df_full_history.empty:
-                logging.warning(f"Missing 'log_L' or empty DataFrame for M={mass:.1f} (Z={z_value:.4f}). Cannot trim pre-MS. Skipping plot.")
-                ax.set_title(f'{mass:.1f} M$_\odot$\n(No Data/Log L Missing)\n(Z={z_value:.4f})', color='darkred', fontsize=9)
-                ax.set_xticks([])
-                ax.set_yticks([])
-                continue # Skip to the next run_info if data is insufficient
+                logging.warning(f"Missing 'log_L' or empty DataFrame for M={mass:.1f} (Z={z_value:.4f}). Skipping plot.")
+                ax.set_visible(False)
+                continue # Skip to the next run_info
+            
+            if drop_zams: # Csak akkor fut le a ZAMS levágás, ha drop_zams True
+                if 'center_h1' in df_full_history.columns:
+                    try:
+                        initial_h1_val = df_full_history['center_h1'].iloc[0]
+                        H1_DROP_THRESHOLD = 1e-4 # Adjustable threshold for H1 drop
+                        zams_candidates = df_full_history[df_full_history['center_h1'] < (initial_h1_val - H1_DROP_THRESHOLD)]
 
-            min_log_L_idx = df_full_history['log_L'].idxmin()
+                        if not zams_candidates.empty:
+                            zams_idx = zams_candidates.index[0]
+                            if zams_idx < len(df_full_history) - 1:
+                                df_post_prems = df_full_history.iloc[zams_idx:].copy()
+                                logging.info(f"Trimmed pre-MS using 'center_h1' drop criterion (threshold={H1_DROP_THRESHOLD}) for M={mass:.1f} (Z={z_value:.4f}).")
+                            else:
+                                logging.warning(f" 'center_h1' drop index is too close to end of data for M={mass:.1f} (Z={z_value:.4f}). Falling back to log_L minimum trimming.")
+                                min_log_L_idx = df_full_history['log_L'].idxmin()
+                                df_post_prems = df_full_history.iloc[min_log_L_idx:].copy()
+                        else:
+                            logging.warning(f" 'center_h1' did not drop below threshold (>{H1_DROP_THRESHOLD}) for M={mass:.1f} (Z={z_value:.4f}). Falling back to log_L minimum trimming.")
+                            min_log_L_idx = df_full_history['log_L'].idxmin()
+                            df_post_prems = df_full_history.iloc[min_log_L_idx:].copy()
 
-            # Slice the DataFrame from this minimum luminosity point onwards
-            # This effectively removes the pre-MS phase from the data used for plotting
-            df_post_prems = df_full_history.iloc[min_log_L_idx:].copy()
+                    except Exception as e:
+                        logging.warning(f"Error during 'center_h1' trimming for M={mass:.1f} (Z={z_value:.4f}): {e}. Falling back to log_L minimum trimming.")
+                        min_log_L_idx = df_full_history['log_L'].idxmin()
+                        df_post_prems = df_full_history.iloc[min_log_L_idx:].copy()
+                else:
+                    logging.warning(f" 'center_h1' not found for M={mass:.1f} (Z={z_value:.4f}). Falling back to log_L minimum trimming.")
+                    min_log_L_idx = df_full_history['log_L'].idxmin()
+                    df_post_prems = df_full_history.iloc[min_log_L_idx:].copy()
+            else:
+                # If drop_zams is False, use the full history data
+                df_post_prems = df_full_history.copy()
+                logging.info(f"Pre-MS trimming skipped for M={mass:.1f} (Z={z_value:.4f}) as 'drop_zams' is False.")
 
+            # --- Common plotting logic after trimming (or not trimming) ---
             log_Teff = df_post_prems['log_Teff'].values
             log_L = df_post_prems['log_L'].values
             model_number = np.array(df_post_prems['model_number'], dtype=float)
 
-            if len(log_Teff) < 2: # Check for insufficient data even after trimming
-                logging.warning(f"Not enough data points after pre-MS trimming for M={mass:.1f} (Z={z_value:.4f}) to plot HR diagram. Skipping.")
-                ax.set_title(f'{mass:.1f} M$_\odot$\n(Insufficient Data Post-PreMS)\n(Z={z_value:.4f})', color='darkred', fontsize=9)
-                ax.set_xticks([])
-                ax.set_yticks([])
-                continue # Skip to the next run_info if data is insufficient
+            if len(log_Teff) < 2: # Check for insufficient data even AFTER (potential) trimming
+                logging.warning(f"Not enough data points after (potential) trimming for M={mass:.1f} (Z={z_value:.4f}) to plot HR diagram. Skipping plot.")
+                ax.set_visible(False)
+                continue # Skip to the next run_info
 
+            # If we reach here, data is sufficient for plotting
+            ax.set_title(f'{mass:.1f} M$_\odot$', fontsize=15)
+            
             norm = colors.Normalize(vmin=np.min(model_number), vmax=np.max(model_number))
             cmap = plt.cm.viridis
 
@@ -140,33 +176,40 @@ def generate_all_hr_diagrams(data_by_metallicity: dict, model_name: str, output_
             # Plot instability strip edges
             ax.plot(logT_blue_edge, logL_blue_edge, color='blue', linestyle='dashed', linewidth=1.5, zorder=1, label='Blue Edge')
             ax.plot(logT_red_edge, logL_red_edge, color='red', linestyle='dashed', linewidth=1.5, zorder=1, label='Red Edge')
-
-            ax.set_title(f'{mass:.1f} M$_\odot$', fontsize=15)
+            
             ax.invert_xaxis() # Standard HR diagram convention
             
-        # Hide any unused subplots
-        for j in range(i + 1, len(axes)):
+        # Hide any unused subplots (those beyond the last processed index 'i')
+        if num_plots > 0:
+            start_idx_to_hide = i + 1
+        else:
+            start_idx_to_hide = 0 
+        
+        for j in range(start_idx_to_hide, len(axes)):
             fig.delaxes(axes[j])
 
         # Set common Y-axis label only for the leftmost column
         for idx, ax_item in enumerate(axes):
-            if idx % cols == 0:
-                ax_item.set_ylabel(r'$\log L/L_\odot$', fontsize=15)
-            else:
-                ax_item.set_yticklabels([]) # Hide Y-axis labels for other columns
+            if ax_item.get_visible():
+                if idx % cols == 0:
+                    ax_item.set_ylabel(r'$\log L/L_\odot$', fontsize=15)
+                else:
+                    ax_item.set_yticklabels([])
 
         # Set common X-axis label only for the bottom row
         for idx, ax_item in enumerate(axes):
-            if idx >= (rows - 1) * cols:
-                ax_item.set_xlabel(r'$\log T_{\rm eff}$', fontsize=15)
-            else:
-                ax_item.set_xticklabels([]) # Hide X-axis labels for upper rows
+            if ax_item.get_visible():
+                if idx >= (rows - 1) * cols:
+                    ax_item.set_xlabel(r'$\log T_{\rm eff}$', fontsize=15)
+                else:
+                    ax_item.set_xticklabels([])
 
         fig.suptitle(f'Hertzsprung-Russell Diagram (Z = {z_value:.4f})', fontsize=20, y=1.02)
 
-        # Add colorbar with reduced fraction for a thinner appearance
         if sc is not None:
-            cbar = fig.colorbar(sc, ax=axes.ravel().tolist(), orientation='vertical', fraction=0.04, pad=0.02, label='Model Number (Evolutionary Stage)',aspect = 50)
+            cbar = fig.colorbar(sc, ax=axes.ravel().tolist(), orientation='vertical', fraction=0.02, pad=0.02, label='Model Number (Evolutionary Stage)', aspect=50)
+            cbar.set_label('Model Number (Evolutionary Stage)', fontsize=12)
+
 
         filename = os.path.join(output_dir, f'HR_diagram_{model_name}_z{z_value:.4f}.png')
         plt.savefig(filename, bbox_inches='tight', dpi=100)

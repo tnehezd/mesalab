@@ -78,11 +78,20 @@ def main():
     # --- Plotting section for HR diagrams (now uses full_history_data_for_plotting) ---
     if args.generate_hr_diagrams:
         logging.info("Attempting to generate HR diagrams.")
+        
+        # Determine the boolean value for dropping ZAMS based on the argument
+        # This is the key change!
+        should_drop_zams_for_hrd = (args.generate_hr_diagrams == 'drop_zams')
+        logging.debug(f"  --> HR diagram generation: should_drop_zams_for_hrd set to: {should_drop_zams_for_hrd}")
+
         handle_hr_diagram_generation(
             args,
             plots_sub_dir, # This is the base 'plots' directory
-            full_history_data_for_plotting # NEW: Pass the full history data
+            full_history_data_for_plotting, # NEW: Pass the full history data
+            drop_zams=should_drop_zams_for_hrd # Pass the boolean flag
         )
+    else:
+        logging.info("Skipping HR diagram generation as per --generate-hr-diagrams setting.")
 
     # --- Plotting section for blue loop specific plots with BCs ---
     handle_blue_loop_bc_plotting(

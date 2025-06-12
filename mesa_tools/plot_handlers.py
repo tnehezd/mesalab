@@ -113,7 +113,7 @@ def handle_blue_loop_bc_plotting(args, combined_detail_data_for_plotting, blue_l
         logging.error("Please ensure your 'blue_loop_cmd_plotter.py' is updated to expect 'combined_df_all_data' as its first parameter.")
 
 # --- HR diagram generation handler ---
-def handle_hr_diagram_generation(args, plots_sub_dir, full_history_data_for_plotting):
+def handle_hr_diagram_generation(args, plots_sub_dir, full_history_data_for_plotting, drop_zams):
     """
     Handles the generation of Hertzsprung-Russell (HR) diagrams using pre-loaded MESA run data.
 
@@ -125,6 +125,9 @@ def handle_hr_diagram_generation(args, plots_sub_dir, full_history_data_for_plot
         full_history_data_for_plotting (dict): A dictionary where keys are metallicities (Z)
                                                and values are lists of full, untrimmed
                                                history DataFrames for each MESA run.
+        drop_zams (bool): Flag indicating whether to drop the pre-MS (ZAMS) phase.
+                          This parameter is passed from cli.py.
+                                               
     """
     if not args.generate_hr_diagrams:
         logging.debug("HR diagram generation not requested. Skipping.")
@@ -142,6 +145,8 @@ def handle_hr_diagram_generation(args, plots_sub_dir, full_history_data_for_plot
         logL_blue_edge = [4.5, 2.4]
         logT_red_edge = [3.65, 3.77]
         logL_red_edge = [4.5, 2.4]
+        
+        logging.info(f"Preparing to generate HR diagrams with drop_zams={drop_zams}.")
 
         generate_all_hr_diagrams(
             data_by_metallicity=full_history_data_for_plotting,
@@ -150,7 +155,8 @@ def handle_hr_diagram_generation(args, plots_sub_dir, full_history_data_for_plot
             logT_blue_edge=logT_blue_edge,
             logL_blue_edge=logL_blue_edge,
             logT_red_edge=logT_red_edge,
-            logL_red_edge=logL_red_edge
+            logL_red_edge=logL_red_edge,
+            drop_zams=drop_zams 
         )
         logging.info("HR diagrams generated successfully.")
     except Exception as e:
