@@ -1,34 +1,27 @@
-# mesagrid/gyre_input_generator.py
-
 import os
-import argparse
-import logging
 import re
 import pandas as pd
-from tqdm import tqdm # Assuming tqdm is installed and wanted for progress bars
+import logging
+from tqdm import tqdm # For progress bar
+import argparse # For type hinting, when this function receives arguments from CLI
 
-# Import reusable components from your mesagrid package
-from mesagrid.data_reader import scan_mesa_runs
-from mesagrid.inlist_parser import get_mesa_params_from_inlist
-
-# Configure logging for this specific tool
+# Configure logging for this module
+# This setup ensures consistent logging if this module is run standalone for testing,
+# but the main CLI's logger will take precedence when called as a subcommand.
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
-# You can set the level to DEBUG for more verbose output during development:
-# logging.getLogger().setLevel(logging.DEBUG)
 
 
 def find_nearest_profiles(profiles_index_path: str, target_model_number: int):
     """
-    Reads a profiles.index file and finds the profile numbers
-    corresponding to the model numbers immediately smaller and larger
-    than the target_model_number.
+    Finds the profile numbers corresponding to the model numbers just smaller and just larger
+    than the target_model_number from the profiles.index file.
 
     Args:
         profiles_index_path (str): Path to the profiles.index file.
-        target_model_number (int): The model number to find profiles for.
+        target_model_number (int): The model number to search for.
 
     Returns:
-        tuple: (profile_number_smaller, profile_number_larger) if both found,
+        tuple: A tuple containing (smaller_profile_number, larger_profile_number) if found,
                otherwise (None, None).
     """
     model_numbers = []
@@ -39,11 +32,8 @@ def find_nearest_profiles(profiles_index_path: str, target_model_number: int):
         return None, None
 
     try:
-        # Assuming profiles.index is space-delimited with header line (skipped)
-        # Using pandas is more robust for CSV-like files, but sticking to original parsing for now.
         with open(profiles_index_path, 'r') as f:
             # Skip first header line if it contains non-numeric data
-            # You might need to adjust skiprows if your file format differs
             first_line = f.readline().strip()
             if not re.match(r'^\d', first_line): # If first line starts with non-digit (likely header)
                 pass # Already skipped
@@ -55,7 +45,6 @@ def find_nearest_profiles(profiles_index_path: str, target_model_number: int):
                 if len(parts) < 3: # Expect at least model_number, priority, profile_number
                     continue
                 try:
-                    # model_number is parts[0], profile_number is parts[2]
                     model_number = int(parts[0])
                     profile_number = int(parts[2])
                     model_numbers.append(model_number)
@@ -71,23 +60,22 @@ def find_nearest_profiles(profiles_index_path: str, target_model_number: int):
         logging.warning(f"No valid data lines found in {profiles_index_path}.")
         return None, None
 
-    smaller_idx = None
-    larger_idx = None
-
     # Find the index of the model number just smaller than target
-    for i in range(len(model_numbers) - 1, -1, -1): # Iterate backwards
+    smaller_idx = None
+    for i in range(len(model_numbers) - 1, -1, -1):
         if model_numbers[i] <= target_model_number:
             smaller_idx = i
             break
     
     # Find the index of the model number just larger than target
-    for i in range(len(model_numbers)): # Iterate forwards
+    larger_idx = None
+    for i in range(len(model_numbers)):
         if model_numbers[i] >= target_model_number:
             larger_idx = i
             break
 
     # If the target_model_number is outside the range of profiles.index,
-    # or if we only find one side, return None
+    # or if we only find one side, return None or closest single profile
     if smaller_idx is None and larger_idx is None:
         logging.warning(f"No profiles found for target model {target_model_number} in {profiles_index_path}.")
         return None, None
@@ -108,72 +96,46 @@ def find_nearest_profiles(profiles_index_path: str, target_model_number: int):
         return profile_numbers[smaller_idx], profile_numbers[larger_idx]
 
 
-def generate_gyre_in_files(output_base_dir: str, run_sub_dir: str, mass: float, z: float,
-                           min_profile_number: int, max_profile_number: int, model_name: str):
+def generate_gyre_in_file(output_base_dir: str, run_sub_dir: str, mass: float, z: float,
+                           profile_number: int, model_name: str):
     """
-    Generates gyre.in files for a range of profile numbers within a specific MESA run.
-    Each gyre.in file is tailored to point to its corresponding MESA profile.
+    Generates a gyre.in file for a given MESA profile.
 
     Args:
         output_base_dir (str): The root directory where output for this run will be saved.
         run_sub_dir (str): The specific MESA run directory (e.g., 'run_M2.0_Z0.01').
         mass (float): Initial mass of the star for file naming.
         z (float): Metallicity of the star for file naming.
-        min_profile_number (int): The starting profile number for gyre.in generation.
-        max_profile_number (int): The ending profile number for gyre.in generation.
+        profile_number (int): The profile number for which to generate the gyre.in file.
         model_name (str): The overall model name (e.g., 'nad_convos') for output structuring.
     """
     # Create output directory for this specific run's gyre.in files
-    # The structure could be: output_base_dir / model_name / run_dir_name / gyre_in_files/
-    # This ensures gyre.in files for different runs don't mix.
+    # The structure will be: output_base_dir / model_name / run_dir_name / gyre_in_files/
     
-    # Extract the base run directory name (e.g., 'run_nad_convos_1.5MSUN_z0.0140')
     run_dir_name = os.path.basename(run_sub_dir) 
-    
     gyre_in_output_dir = os.path.join(output_base_dir, model_name, run_dir_name, 'gyre_in_files')
     os.makedirs(gyre_in_output_dir, exist_ok=True)
     logging.debug(f"Ensured output directory for gyre.in files: {gyre_in_output_dir}")
 
-    for profile_number in range(min_profile_number, max_profile_number + 1):
-        gyre_in_filename = f"gyre_in_profile_{profile_number}.in"
-        gyre_in_path = os.path.join(gyre_in_output_dir, gyre_in_filename)
+    gyre_in_filename = f"gyre_in_profile_{profile_number}.in"
+    gyre_in_path = os.path.join(gyre_in_output_dir, gyre_in_filename)
 
-        # Construct the relative path to the profile file for GYRE
-        # Assuming GYRE is run from the directory containing gyre.in files,
-        # and MESA profiles are in LOGS/ relative to the run_dir.
-        # This path might need adjustment based on how GYRE is actually invoked relative to MESA output.
-        # Here, it assumes 'gyre_in_files' is at the same level as 'run_dir_name',
-        # and inside 'run_dir_name' there is 'LOGS'.
-        
-        # Relative path from gyre_in_output_dir to the profile file
-        # Example: if gyre_in_output_dir is /output/model/run_X/gyre_in_files
-        # and profile is in /input/model/run_X/LOGS/profileY.data.GYRE
-        # We need to go up 2 levels, then down into the original run's LOGS dir.
-        
-        # Adjusting this path depends on your GYRE execution strategy.
-        # The simplest is to put gyre.in files directly into the MESA run's LOGS dir,
-        # or put them one level above in the run_dir itself.
-        # Let's assume gyre.in files will be generated *inside* each specific MESA run directory for simplicity,
-        # next to the 'LOGS' folder. This makes the path simpler.
-        # If the user wants them in a separate output structure, we need to calculate
-        # the relative path correctly.
-        
-        # --- Revision: Let's output gyre.in directly into the MESA run directory
-        # (same level as LOGS) for easier relative pathing for GYRE.
-        # This means `gyre_in_output_dir` should be the `run_sub_dir` itself.
-        gyre_in_path_in_run_dir = os.path.join(run_sub_dir, gyre_in_filename)
-        mesa_profile_relative_path = f"LOGS/profile{profile_number}.data.GYRE"
+    # Relative path from the gyre_in_output_dir to the MESA profile file.
+    # This assumes GYRE will be run from the gyre_in_output_dir,
+    # and needs to navigate *up* to the MESA run directory, then *down* into LOGS.
+    # Calculate relative path carefully
+    relative_path_to_logs = os.path.relpath(os.path.join(run_sub_dir, 'LOGS', f'profile{profile_number}.data.GYRE'), gyre_in_output_dir)
 
 
-        try:
-            with open(gyre_in_path_in_run_dir, 'w') as f:
-                f.write(f"""
+    try:
+        with open(gyre_in_path, 'w') as f:
+            f.write(f"""
 &constants
 /
 
 &model
   model_type = 'EVOL'
-  file = '{mesa_profile_relative_path}'
+  file = '{relative_path_to_logs}'
   file_format = 'MESA'
 /
 
@@ -197,7 +159,7 @@ def generate_gyre_in_files(output_base_dir: str, run_sub_dir: str, mass: float, 
 &scan
   grid_type = 'INVERSE'
   freq_min = 0.01
-  freq_max = 10.0
+  freq_max = 1.0 # Reduced max freq for faster initial scans, can be adjusted
   n_freq = 100
   freq_units = 'CYC_PER_DAY'
 /
@@ -220,168 +182,172 @@ def generate_gyre_in_files(output_base_dir: str, run_sub_dir: str, mass: float, 
   freq_units = 'CYC_PER_DAY'
 /
 """)
-            logging.info(f"→ Generated gyre.in: {gyre_in_path_in_run_dir}")
-        except IOError as e:
-            logging.error(f"Failed to write gyre.in file {gyre_in_path_in_run_dir}: {e}")
-        except Exception as e:
-            logging.error(f"An unexpected error occurred while generating gyre.in for profile {profile_number}: {e}")
-
-
-def main():
-    """
-    Main function for the mesagrid_gyre_in command-line tool.
-    Generates gyre.in files for MESA runs based on specified model number ranges,
-    typically identified as blue loop phases.
-    """
-    parser = argparse.ArgumentParser(description="Generate gyre.in files for MESA stellar evolution grids.")
-
-    parser.add_argument("--input-dir", type=str, required=True,
-                        help="Root directory containing MESA run subdirectories (e.g., 'run_M2.0_Z0.01').")
-    parser.add_argument("--output-dir", type=str, required=True,
-                        help="Output base directory for generated gyre.in files and results.")
-    parser.add_argument("--model-name", type=str, default="MESA_GRID_GYRE",
-                        help="A name for your model/project (e.g., 'nad_convos'), used for output organization. Default: MESA_GRID_GYRE.")
-    parser.add_argument("--blue-loop-model-numbers-csv", type=str, required=True,
-                        help="Path to the CSV file containing 'mass', 'Z', 'min_model_number', and 'max_model_number' for blue loop profiles. E.g., 'sorted_mass_Z_min_max_model_nad_convos.csv'.")
-    parser.add_argument("--inlist-name", type=str, default="inlist_project",
-                        help="Name of the inlist file to identify MESA runs within subdirectories (default: inlist_project).")
-    
-    args = parser.parse_args()
-
-    input_dir = args.input_dir
-    output_base_dir = args.output_dir
-    model_name = args.model_name
-    blue_loop_csv_path = args.blue_loop_model_numbers_csv
-    inlist_name = args.inlist_name
-
-    if not os.path.exists(blue_loop_csv_path):
-        logging.error(f"Blue loop model numbers CSV not found: {blue_loop_csv_path}. Exiting.")
-        sys.exit(1)
-
-    try:
-        df_model_ranges = pd.read_csv(blue_loop_csv_path)
-        if df_model_ranges.empty:
-            logging.warning(f"Blue loop model numbers CSV is empty: {blue_loop_csv_path}. No profiles to process.")
-            return
-        required_cols = ['mass', 'Z', 'min_model_number', 'max_model_number']
-        if not all(col in df_model_ranges.columns for col in required_cols):
-            logging.error(f"Blue loop CSV must contain columns: {required_cols}. Found: {df_model_ranges.columns.tolist()}. Exiting.")
-            sys.exit(1)
-
+        logging.info(f"→ Generated gyre.in: {gyre_in_path}")
+    except IOError as e:
+        logging.error(f"Failed to write gyre.in file {gyre_in_path}: {e}")
     except Exception as e:
-        logging.error(f"Error reading blue loop model numbers CSV {blue_loop_csv_path}: {e}. Exiting.")
-        sys.exit(1)
+        logging.error(f"An unexpected error occurred while generating gyre.in for profile {profile_number}: {e}")
 
-    logging.info(f"Starting GYRE input file generation for MESA runs in '{input_dir}'.")
-    logging.info(f"Using blue loop model ranges from: '{blue_loop_csv_path}'.")
 
-    # Use the existing scan_mesa_runs from mesagrid.data_reader
-    all_mesa_run_dirs = scan_mesa_runs(input_dir, inlist_name)
+def run_gyre_input_generation(args: argparse.Namespace):
+    """
+    Core logic for generating GYRE input files based on a MESA grid.
+    This function will be called by the main CLI.
 
-    if not all_mesa_run_dirs:
-        logging.warning(f"No MESA run directories found in '{input_dir}' containing '{inlist_name}'.")
+    Args:
+        args (argparse.Namespace): Arguments containing:
+                                   - input_dir (str): Top-level directory of MESA runs (e.g., 'mesa_output/nad_convos_grid').
+                                   - output_dir (str): Base directory for GYRE output files.
+                                   - model_name (str): Identifier for the MESA model (e.g., 'nad_convos').
+                                   - blue_loop_csv_path (str, optional): Path to the sorted_mass_Z_min_max.csv.
+                                                                        If not provided, this function expects
+                                                                        df_model_ranges to be passed directly.
+                                   - df_model_ranges (pd.DataFrame, optional): DataFrame containing 'mass', 'Z',
+                                                                               'min_model_number', 'max_model_number'.
+                                                                               Used when data comes from memory.
+    """
+    input_dir = args.input_dir # e.g. path to 'mesa_output/nad_convos_grid'
+    output_base_dir = args.output_dir # e.g. path to 'gyre_outputs'
+    model_name = args.model_name # e.g. 'nad_convos'
+    blue_loop_csv_path = getattr(args, 'blue_loop_csv_path', None)
+    df_model_ranges = getattr(args, 'df_model_ranges', None) # Data from memory if passed
+
+    if df_model_ranges is None:
+        if not blue_loop_csv_path or not os.path.exists(blue_loop_csv_path):
+            logging.error(f"Neither DataFrame nor valid blue loop CSV path provided. Cannot proceed with GYRE input generation.")
+            return
+
+        try:
+            df_model_ranges = pd.read_csv(blue_loop_csv_path)
+            logging.info(f"Loaded model ranges from CSV: {blue_loop_csv_path}")
+        except Exception as e:
+            logging.error(f"Error reading blue loop model numbers CSV {blue_loop_csv_path}: {e}. Exiting.")
+            return
+
+    if df_model_ranges.empty:
+        logging.warning("Model ranges DataFrame is empty. No profiles to process.")
         return
 
-    # Prepare a DataFrame to store results (profile numbers found)
-    output_records = []
+    required_cols = ['mass', 'Z', 'min_model_number', 'max_model_number']
+    if not all(col in df_model_ranges.columns for col in required_cols):
+        logging.error(f"Model ranges DataFrame must contain columns: {required_cols}. Found: {df_model_ranges.columns.tolist()}. Cannot proceed.")
+        return
 
-    for run_dir in tqdm(all_mesa_run_dirs, desc="Processing MESA runs for GYRE inputs"):
-        mass, z_val = get_mesa_params_from_inlist(os.path.join(run_dir, inlist_name))
+    logging.info(f"Starting GYRE input file generation for MESA runs in '{input_dir}'.")
+
+    # This part needs to correctly identify the MESA run directories within input_dir
+    # based on the model_name, mass, and Z.
+    # The current code in main() assumes a structure like base_dir/run_{model}_{mass}MSUN_z{Z}.
+    # We need a function to scan for these specific run directories.
+    
+    # Placeholder for a function that scans MESA run directories
+    # This might come from data_reader or a new utility in the future.
+    def _scan_mesa_run_dirs(base_path, model_id, df_ranges):
+        found_run_dirs = []
+        for _, row in df_ranges.iterrows():
+            mass = row['mass']
+            Z = float(row['Z']) # Ensure Z is float for formatting
+            mass_str = f"{mass:.1f}"
+            Z_str = f"{Z:.4f}"
+            
+            # Construct the expected MESA run directory name
+            # This must match the actual naming convention of your MESA output directories
+            dir_name = f"run_{model_id}_{mass_str}MSUN_z{Z_str}"
+            full_run_path = os.path.join(base_path, dir_name)
+            
+            if os.path.exists(full_run_path) and os.path.isdir(full_run_path):
+                found_run_dirs.append({'path': full_run_path, 'mass': mass, 'Z': Z})
+            else:
+                logging.warning(f"MESA run directory not found for M={mass}, Z={Z} at expected path: {full_run_path}. Skipping.")
+        return found_run_dirs
+    
+    # Use the placeholder scan function
+    all_mesa_run_dirs_info = _scan_mesa_run_dirs(input_dir, model_name, df_model_ranges)
+
+    if not all_mesa_run_dirs_info:
+        logging.warning(f"No MESA run directories found in '{input_dir}' matching model name '{model_name}' and specified ranges.")
+        return
+
+    # Iterate through the DataFrame to generate gyre.in files
+    # Use tqdm for a progress bar
+    for _, row in tqdm(df_model_ranges.iterrows(), total=len(df_model_ranges), desc="Generating GYRE input files"):
+        mass = row['mass']
+        Z = float(row['Z'])
+        min_model_number = row['min_model_number']
+        max_model_number = row['max_model_number']
+
+        # Find the corresponding run directory path from the scanned list
+        current_run_info = next((item for item in all_mesa_run_dirs_info if item['mass'] == mass and item['Z'] == Z), None)
         
-        if mass is None or z_val is None:
-            logging.warning(f"Could not extract mass/Z from inlist in '{run_dir}'. Skipping.")
+        if not current_run_info:
+            logging.warning(f"MESA run directory information missing for M={mass}, Z={Z}. Skipping this entry.")
             continue
 
-        # Find the corresponding row in the blue loop model ranges DataFrame
-        # Use a small tolerance for Z comparison due to float precision
-        matching_rows = df_model_ranges[
-            (df_model_ranges['mass'].round(5) == round(mass, 5)) & # Compare rounded mass
-            (df_model_ranges['Z'].round(7) == round(z_val, 7))     # Compare rounded Z
-        ]
-
-        if matching_rows.empty:
-            logging.info(f"No blue loop model range found in CSV for M={mass:.1f}, Z={z_val:.4f}. Skipping this run.")
-            output_records.append({'mass': mass, 'Z': z_val, 'min_model_number_csv': None, 'max_model_number_csv': None, 'min_profile_generated': None, 'max_profile_generated': None, 'gyre_in_dir': None, 'status': 'NoBLRange'})
-            continue
-
-        if len(matching_rows) > 1:
-            logging.warning(f"Multiple blue loop model ranges found for M={mass:.1f}, Z={z_val:.4f}. Using the first one.")
-        
-        row_data = matching_rows.iloc[0]
-        min_model_number_bl = int(row_data['min_model_number'])
-        max_model_number_bl = int(row_data['max_model_number'])
-
-        logs_path = os.path.join(run_dir, 'LOGS')
+        run_dir_path = current_run_info['path']
+        logs_path = os.path.join(run_dir_path, 'LOGS')
         profiles_index_path = os.path.join(logs_path, 'profiles.index')
 
-        if not os.path.exists(profiles_index_path):
-            logging.warning(f"profiles.index not found for M={mass:.1f}, Z={z_val:.4f} in '{logs_path}'. Cannot generate GYRE inputs.")
-            output_records.append({'mass': mass, 'Z': z_val, 'min_model_number_csv': min_model_number_bl, 'max_model_number_csv': max_model_number_bl, 'min_profile_generated': None, 'max_profile_generated': None, 'gyre_in_dir': None, 'status': 'NoProfilesIndex'})
-            continue
+        logging.info(f"→ Checking profiles.index for M={mass}, Z={Z}: {profiles_index_path}")
+        if os.path.exists(profiles_index_path):
+            logging.info(f"  --> Searching for min_model_number ({min_model_number})...")
+            profiles_min = find_nearest_profiles(profiles_index_path, min_model_number)
+            
+            logging.info(f"  --> Searching for max_model_number ({max_model_number})...")
+            profiles_max = find_nearest_profiles(profiles_index_path, max_model_number)
 
-        logging.debug(f"Searching profiles for M={mass:.1f}, Z={z_val:.4f} within model range [{min_model_number_bl}, {max_model_number_bl}].")
-        
-        # Find profile numbers corresponding to the blue loop model range
-        # Note: find_nearest_profiles returns (profile_smaller, profile_larger) for a SINGLE model number.
-        # We need to find *all* profiles between min_model_number_bl and max_model_number_bl.
-        
-        # A more robust way to get all profiles in range:
-        all_profiles_df = None
-        try:
-            all_profiles_df = pd.read_csv(profiles_index_path, delim_whitespace=True, skiprows=1, header=None,
-                                          names=['model_number', 'priority', 'profile_number'])
-        except Exception as e:
-            logging.error(f"Failed to read profiles.index for M={mass:.1f}, Z={z_val:.4f}: {e}")
-            output_records.append({'mass': mass, 'Z': z_val, 'min_model_number_csv': min_model_number_bl, 'max_model_number_csv': max_model_number_bl, 'min_profile_generated': None, 'max_profile_generated': None, 'gyre_in_dir': None, 'status': 'ProfilesIndexReadError'})
-            continue
+            if profiles_min and profiles_max:
+                smaller_profile_min, larger_profile_min = profiles_min
+                smaller_profile_max, larger_profile_max = profiles_max
+                
+                # Determine the actual range of profile numbers to generate
+                # Use the 'larger' profile for min_model_number and 'smaller' profile for max_model_number
+                # for a more inclusive range spanning the BL.
+                # However, your original code used smaller_profile_min for min and larger_profile_max for max.
+                # Let's stick to your original logic for now:
+                # The minimum profile number to start generation is the 'smaller' profile found for min_model_number.
+                # The maximum profile number to end generation is the 'larger' profile found for max_model_number.
+                actual_min_profile_to_gen = smaller_profile_min
+                actual_max_profile_to_gen = larger_profile_max
 
-        if all_profiles_df is None or all_profiles_df.empty:
-            logging.warning(f"No profiles found in {profiles_index_path} for M={mass:.1f}, Z={z_val:.4f}.")
-            output_records.append({'mass': mass, 'Z': z_val, 'min_model_number_csv': min_model_number_bl, 'max_model_number_csv': max_model_number_bl, 'min_profile_generated': None, 'max_profile_generated': None, 'gyre_in_dir': None, 'status': 'NoProfilesFound'})
-            continue
+                logging.info(f"  ✓ Found closest profiles: Min BL model {min_model_number} -> profiles ({smaller_profile_min}, {larger_profile_min}). Max BL model {max_model_number} -> profiles ({smaller_profile_max}, {larger_profile_max}).")
+                logging.info(f"  --> Generating GYRE files from profile {actual_min_profile_to_gen} to {actual_max_profile_to_gen}.")
 
-        # Filter profiles based on the blue loop model number range
-        filtered_profiles_df = all_profiles_df[
-            (all_profiles_df['model_number'] >= min_model_number_bl) &
-            (all_profiles_df['model_number'] <= max_model_number_bl)
-        ]
+                # Check if the required profile data.GYRE files exist within the range
+                all_profiles_exist = True
+                for p_num in range(actual_min_profile_to_gen, actual_max_profile_to_gen + 1):
+                    profile_data_path = os.path.join(logs_path, f'profile{p_num}.data.GYRE')
+                    if not os.path.exists(profile_data_path):
+                        logging.warning(f"    Missing profile data file: {profile_data_path}. Cannot generate GYRE input for this profile range.")
+                        all_profiles_exist = False
+                        break
+                
+                if all_profiles_exist:
+                    # Generate gyre.in files
+                    generate_gyre_in_file(output_base_dir, run_dir_path, mass, Z, actual_min_profile_to_gen, model_name)
+                    # Loop and generate for each profile number if range is inclusive
+                    for profile_num in range(actual_min_profile_to_gen + 1, actual_max_profile_to_gen + 1):
+                         generate_gyre_in_file(output_base_dir, run_dir_path, mass, Z, profile_num, model_name)
+                else:
+                    logging.warning(f"  ✗ Skipping GYRE file generation for M={mass}, Z={Z} due to missing profile data files.")
+            else:
+                logging.warning(f"  ⚠ No sufficient profile matches found for M={mass}, Z={Z}. Skipping GYRE input generation for this run.")
+        else:
+            logging.warning(f"  ✗ profiles.index not found for M={mass}, Z={Z} at: {profiles_index_path}. Skipping GYRE input generation for this run.")
 
-        if filtered_profiles_df.empty:
-            logging.info(f"No profiles found in blue loop range [{min_model_number_bl}, {max_model_number_bl}] for M={mass:.1f}, Z={z_val:.4f}. Skipping GYRE input generation.")
-            output_records.append({'mass': mass, 'Z': z_val, 'min_model_number_csv': min_model_number_bl, 'max_model_number_csv': max_model_number_bl, 'min_profile_generated': None, 'max_profile_generated': None, 'gyre_in_dir': None, 'status': 'NoProfilesInBLRange'})
-            continue
+    logging.info("GYRE input generation process completed.")
 
-        # Get the min and max profile_number from the filtered range
-        min_profile_num_to_generate = filtered_profiles_df['profile_number'].min()
-        max_profile_num_to_generate = filtered_profiles_df['profile_number'].max()
-
-        logging.info(f"Generating gyre.in for M={mass:.1f}, Z={z_val:.4f} from profile {min_profile_num_to_generate} to {max_profile_num_to_generate}.")
-        
-        # Call the generation function
-        generate_gyre_in_files(
-            output_base_dir, run_dir, mass, z_val,
-            min_profile_num_to_generate, max_profile_num_to_generate, model_name
-        )
-        
-        # Record results
-        output_records.append({
-            'mass': mass,
-            'Z': z_val,
-            'min_model_number_csv': min_model_number_bl,
-            'max_model_number_csv': max_model_number_bl,
-            'min_profile_generated': min_profile_num_to_generate,
-            'max_profile_generated': max_profile_num_to_generate,
-            'gyre_in_dir': os.path.join(output_base_dir, model_name, os.path.basename(run_dir), 'gyre_in_files'),
-            'status': 'Success'
-        })
-
-    # Save the final summary of generated files
-    final_output_df = pd.DataFrame(output_records)
-    summary_output_filename = os.path.join(output_base_dir, f"gyre_in_generation_summary_{model_name}.csv")
-    final_output_df.to_csv(summary_output_filename, index=False)
-    logging.info(f"GYRE input generation summary saved to: {summary_output_filename}")
-    logging.info("✅ All GYRE input file generation complete.")
-
-
-if __name__ == "__main__":
-    main()
+# The if __name__ == "__main__": block is now removed from here,
+# as this function will be called by the main CLI script.
+# If you still want to run it standalone for testing, you'd add:
+# if __name__ == "__main__":
+#     parser = argparse.ArgumentParser(description="Generate gyre.in files for MESA stellar evolution grids.")
+#     parser.add_argument("--input_dir", type=str, required=True,
+#                         help="Top-level directory of MESA runs (e.g., 'mesa_output/nad_convos_grid').")
+#     parser.add_argument("--output_dir", type=str, default="gyre_inputs",
+#                         help="Base directory for GYRE output files.")
+#     parser.add_argument("--model_name", type=str, default="nad_convos",
+#                         help="Identifier for the MESA model (e.g., 'nad_convos').")
+#     parser.add_argument("--blue_loop_csv_path", type=str, default="sorted_mass_Z_min_max.csv",
+#                         help="Path to the sorted_mass_Z_min_max.csv file.")
+#     args = parser.parse_args()
+#     run_gyre_input_generation(args)

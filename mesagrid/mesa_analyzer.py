@@ -76,7 +76,7 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                 logging.info("Successfully loaded and filtered existing summary CSV.")
                 # If not reanalyzing, we don't regenerate detailed data in memory for plotting
                 # So, combined_detail_data_for_plotting and full_history_data_for_plotting remain empty/as initialized.
-                return summary_df, combined_detail_data_for_plotting, full_history_data_for_plotting
+                return summary_df, combined_detail_data_for_plotting, full_history_data_for_plotting 
         except FileNotFoundError:
             logging.warning(f"Existing summary or cross-grid CSVs not found. Forcing full reanalysis.")
             reanalysis_needed = True
@@ -136,9 +136,13 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                 current_mass = run_info['mass']
                 current_z = run_info['z']
                 history_file_path = run_info['history_file_path']
+                run_dir_path = run_info['run_dir_path'] # Extract the full run directory path
 
                 analysis_result_summary = {
-                    'initial_mass': current_mass, 'initial_Z': current_z, 'blue_loop_crossing_count': np.nan,
+                    'initial_mass': current_mass, 
+                    'initial_Z': current_z, 
+                    'run_dir_path': run_dir_path, # NEW: Add the full run directory path
+                    'blue_loop_crossing_count': np.nan,
                     'blue_loop_duration_yr': np.nan, 'max_log_L': np.nan, 'max_log_Teff': np.nan,
                     'max_log_R': np.nan, 'first_model_number': np.nan, 'last_model_number': np.nan,
                     'first_age_yr': np.nan, 'last_age_yr': np.nan, 'blue_loop_start_age': np.nan,
@@ -196,20 +200,20 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                                         analysis_result_summary['first_age_yr'] = bl_df['star_age'].min()
                                         analysis_result_summary['last_age_yr'] = bl_df['star_age'].max()
                                     else: # 'summary' output type for blue loop details
-                                            # When blue_loop_output_type is 'summary', we still need to populate 
-                                            # filtered_combined_df_bl with concise columns for plotting purposes,
-                                            # even if the summary CSV does not contain the detailed metrics.
-                                            concise_detail_columns_local = [ 
-                                                'initial_mass', 'initial_Z', 'star_age', 'model_number',
-                                                'log_Teff', 'log_L', 'log_g', 'profile_number'
-                                            ]
-                                            existing_desired_cols = [col for col in concise_detail_columns_local if col in bl_df.columns]
-                                            if existing_desired_cols:
-                                                filtered_combined_df_bl = bl_df[existing_desired_cols]
-                                            else:
-                                                logging.warning(f"No desired columns found for concise detail for M={current_mass}, Z={current_z}. Detail DF for plotting might remain empty.")
-                                                filtered_combined_df_bl = pd.DataFrame() # Ensure it's empty if no columns found
-                                            
+                                        # When blue_loop_output_type is 'summary', we still need to populate 
+                                        # filtered_combined_df_bl with concise columns for plotting purposes,
+                                        # even if the summary CSV does not contain the detailed metrics.
+                                        concise_detail_columns_local = [ 
+                                            'initial_mass', 'initial_Z', 'star_age', 'model_number',
+                                            'log_Teff', 'log_L', 'log_g', 'profile_number'
+                                        ]
+                                        existing_desired_cols = [col for col in concise_detail_columns_local if col in bl_df.columns]
+                                        if existing_desired_cols:
+                                            filtered_combined_df_bl = bl_df[existing_desired_cols]
+                                        else:
+                                            logging.warning(f"No desired columns found for concise detail for M={current_mass}, Z={current_z}. Detail DF for plotting might remain empty.")
+                                            filtered_combined_df_bl = pd.DataFrame() # Ensure it's empty if no columns found
+                                        
                                     current_detail_df = filtered_combined_df_bl 
                                 else:
                                     # If blue_loop_detail_df is empty even if crossing_count > 0 (shouldn't happen often)
@@ -265,7 +269,8 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                 'blue_loop_crossing_count', 'blue_loop_duration_yr',
                 'blue_loop_start_age', 'blue_loop_end_age',
                 'instability_start_age', 'instability_end_age',
-                'calculated_blue_loop_duration', 'calculated_instability_duration'
+                'calculated_blue_loop_duration', 'calculated_instability_duration',
+                'run_dir_path' # Ensure run_dir_path is also in empty df for consistency
             ], index=pd.MultiIndex.from_tuples([], names=['initial_Z', 'initial_mass']))
         else:
             summary_df = summary_df_to_save.copy() # Assign filtered data to summary_df
@@ -276,7 +281,8 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                     'blue_loop_crossing_count', 'blue_loop_duration_yr',
                     'blue_loop_start_age', 'blue_loop_end_age',
                     'instability_start_age', 'instability_end_age',
-                    'calculated_blue_loop_duration', 'calculated_instability_duration'
+                    'calculated_blue_loop_duration', 'calculated_instability_duration',
+                    'run_dir_path' # Ensure run_dir_path is included in summary output
                 ]
                 # Filter for columns that actually exist in the DataFrame before selecting
                 existing_summary_cols = [col for col in summary_columns_for_summary_output if col in summary_df.columns]
@@ -329,7 +335,7 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                             df_to_save = combined_df_bl[existing_desired_cols]
                             output_type_label = "selected columns"
 
-                        detail_filename = os.path.join(detail_files_output_dir, f"detail_z{z_val:.4f}.csv")
+                        detail_filename = os.path.join(detail_files_output_dir, f"detail_z{z_val:.4f}.csv") 
                         df_to_save.to_csv(detail_filename, index=False, na_rep='NaN')
                         logging.info(f"Written concatenated detail CSV for Z={z_val} with {output_type_label} to {detail_filename}")
 
@@ -337,48 +343,78 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                         logging.error(f"Error writing detail CSV for Z={z_val}: {e}")
                 else:
                     logging.info(f"No detailed data to write for Z={z_val}.")
-        
-        # Ensure combined_detail_data_for_plotting is also sorted consistently for the return value
-        if not combined_detail_data_for_plotting.empty:
-            combined_detail_data_for_plotting = combined_detail_data_for_plotting.sort_values(by=['initial_Z', 'initial_mass', 'star_age']).reset_index(drop=True)
+            
+    # Ensure combined_detail_data_for_plotting is also sorted consistently for the return value
+    if not combined_detail_data_for_plotting.empty:
+        combined_detail_data_for_plotting = combined_detail_data_for_plotting.sort_values(by=['initial_Z', 'initial_mass', 'star_age']).reset_index(drop=True)
 
-        # --- START NEW LOGIC FOR MIN/MAX MODEL NUMBER CSV ---
-        # This section processes the combined detailed blue loop data to generate a summary
-        # of min/max model numbers for each initial_mass and initial_Z combination.
-        if not combined_detail_data_for_plotting.empty and analyze_blue_loop:
-            logging.info("Generating sorted min/max model number CSV...")
-            try:
-                # Create a copy to work with, to avoid potential SettingWithCopyWarning
-                temp_df_for_min_max = combined_detail_data_for_plotting.copy()
+    # --- START NEW LOGIC FOR MIN/MAX MODEL NUMBER CSV ---
+    # This section processes the combined detailed blue loop data to generate a summary
+    # of min/max model numbers for each initial_mass and initial_Z combination.
+    # It now also includes the 'run_dir_path'.
+    if not combined_detail_data_for_plotting.empty and analyze_blue_loop:
+        logging.info("Generating sorted min/max model number CSV...")
+        try:
+            # Create a copy to work with, to avoid potential SettingWithCopyWarning
+            temp_df_for_min_max = combined_detail_data_for_plotting.copy()
 
-                # Sort by initial_mass and initial_Z
-                temp_df_for_min_max_sorted = temp_df_for_min_max.sort_values(
-                    by=['initial_mass', 'initial_Z'], ascending=[True, True]
+            # Ensure run_dir_path is added to temp_df_for_min_max from the original summary_df_raw
+            # We need to merge or map the run_dir_path based on initial_mass and initial_Z
+            # Since summary_df_raw already contains run_dir_path indexed by initial_Z, initial_mass,
+            # we can reset index and merge.
+            
+            # Get the unique initial_mass, initial_Z, run_dir_path combinations from summary_df_raw
+            # This is safer than relying on columns that might not always be there in combined_detail_data_for_plotting
+            run_paths_info = summary_df_raw[['run_dir_path']].reset_index()
+
+            # Merge this information into combined_detail_data_for_plotting
+            # We need to ensure 'initial_mass' and 'initial_Z' are in combined_detail_data_for_plotting for merging
+            if 'initial_mass' in temp_df_for_min_max.columns and 'initial_Z' in temp_df_for_min_max.columns:
+                temp_df_for_min_max = pd.merge(
+                    temp_df_for_min_max,
+                    run_paths_info,
+                    on=['initial_mass', 'initial_Z'],
+                    how='left'
                 )
+            else:
+                logging.warning("Cannot merge 'run_dir_path' into min/max model number CSV as 'initial_mass' or 'initial_Z' are missing in detailed data.")
 
-                # Group by initial_mass and initial_Z to find min and max model_number
-                result_df = temp_df_for_min_max_sorted.groupby(
-                    ['initial_mass', 'initial_Z'], as_index=False
-                ).agg(
-                    min_model_number=('model_number', 'min'),
-                    max_model_number=('model_number', 'max')
-                )
+            # Sort by initial_mass and initial_Z (important for consistent grouping)
+            temp_df_for_min_max_sorted = temp_df_for_min_max.sort_values(
+                by=['initial_mass', 'initial_Z'], ascending=[True, True]
+            )
 
-                # Format the initial_Z column to 4 decimal places for the output CSV, as a string
-                result_df['initial_Z'] = result_df['initial_Z'].apply(lambda x: f"{x:.4f}")
+            # Group by initial_mass, initial_Z, AND run_dir_path to find min and max model_number
+            # Grouping by run_dir_path ensures that if for some reason two identical mass/Z
+            # have different run paths, they are treated separately.
+            result_df = temp_df_for_min_max_sorted.groupby(
+                ['initial_mass', 'initial_Z', 'run_dir_path'], as_index=False
+            ).agg(
+                min_model_number=('model_number', 'min'),
+                max_model_number=('model_number', 'max')
+            )
 
-                # Save the result to a CSV file in the detail_files_output_dir
-                output_filename = os.path.join(detail_files_output_dir, "sorted_mass_Z_min_max.csv")
-                result_df.to_csv(output_filename, index=False, na_rep='NaN')
-                logging.info(f"Sorted min/max model number data saved to: {output_filename}")
+            # Format the initial_Z column to 4 decimal places for the output CSV, as a string
+            result_df['initial_Z'] = result_df['initial_Z'].apply(lambda x: f"{x:.4f}")
 
-            except Exception as e:
-                logging.error(f"Error generating sorted min/max model number CSV: {e}")
-        elif analyze_blue_loop and combined_detail_data_for_plotting.empty:
-            logging.info("Skipping sorted min/max model number CSV generation: No detailed blue loop data available or blue loop analysis yielded no loops.")
-        else:
-            logging.info("Skipping sorted min/max model number CSV generation: Blue loop analysis was not enabled for detailed data collection.")
+            # Save the result to a CSV file in the analysis_results_sub_dir
+            # This CSV will now contain the run_dir_path
+            output_filename = os.path.join(analysis_results_sub_dir, "sorted_mass_Z_min_max.csv")
+            result_df.to_csv(output_filename, index=False, na_rep='NaN')
+            logging.info(f"Sorted min/max model number data (including run_dir_path) saved to: {output_filename}")
 
-        # --- END NEW LOGIC ---
+        except Exception as e:
+            logging.error(f"Error generating sorted min/max model number CSV: {e}")
+    elif analyze_blue_loop and combined_detail_data_for_plotting.empty:
+        logging.info("Skipping sorted min/max model number CSV generation: No detailed blue loop data available or blue loop analysis yielded no loops.")
+    else:
+        logging.info("Skipping sorted min/max model number CSV generation: Blue loop analysis was not enabled for detailed data collection.")
+
+    # --- END NEW LOGIC ---
+
+    # Ensure combined_detail_data_for_plotting is also sorted consistently for the return value
+    if not combined_detail_data_for_plotting.empty:
+        combined_detail_data_for_plotting = combined_detail_data_for_plotting.sort_values(by=['initial_Z', 'initial_mass', 'star_age']).reset_index(drop=True)
+
 
     return summary_df, combined_detail_data_for_plotting, full_history_data_for_plotting

@@ -22,16 +22,16 @@ def parsing_options():
         argparse.Namespace: An object containing all parsed arguments and
                             configuration settings.
     """
-    parser = argparse.ArgumentParser(description="Analyze MESA stellar evolution grid runs.")
+    parser = argparse.ArgumentParser(description="Analyze MESA stellar evolution grid runs and generate GYRE input files.")
 
     # Define command-line arguments
     parser.add_argument("--config", type=str,
                         help="Path to a YAML configuration file. Command-line arguments will override file settings.")
 
     parser.add_argument("-i", "--input-dir", required=False,
-                        help="Directory containing MESA run subdirectories (e.g., 'run_M2.0_Z0.01').")
+                        help="Directory containing MESA run subdirectories (e.g., 'run_M2.0_Z0.01'). This is the main MESA output root.")
     parser.add_argument("-o", "--output-dir", required=False,
-                        help="Output directory for results.")
+                        help="Output base directory for analysis results (summary, plots, GYRE inputs, etc.).")
     parser.add_argument("--analyze-blue-loop", action="store_true",
                         help="Perform blue loop analysis.")
     parser.add_argument("--inlist-name", default="inlist_project",
@@ -52,15 +52,28 @@ def parsing_options():
     # is given, it defaults to 'default'. If the flag is not present at all, it defaults to 'none'.
     parser.add_argument("--generate-hr-diagrams",
                         type=str,
-                        nargs='?',  # Makes the argument value optional (0 or 1 value)
-                        const='default', # Value if the flag is present without a subsequent value
-                        default='none', # Value if the flag is not present at all
+                        nargs='?', 
+                        const='default', 
+                        default='none', 
                         choices=['default', 'drop_zams'],
                         help="Generate Hertzsprung-Russell diagrams. 'none' (do not generate HRDs), 'default' (generate standard HRDs with full tracks), 'drop_zams' (generate HRDs with pre-main sequence (ZAMS) trimming). If no value is specified after --generate-hr-diagrams, 'default' is assumed. Default: 'none'.")
     # -------------------------------------------------
 
     parser.add_argument("--debug", action="store_true",
                         help="Enable debug logging for more detailed output.")
+
+    # --- NEW: Arguments for GYRE Input File Generation ---
+    parser.add_argument("--generate-gyre-in", action="store_true",
+                        help="Enable generation of GYRE input files.")
+    parser.add_argument("--gyre-mesa-base-dir", type=str, required=False, # Make it required=True if only used standalone
+                        help="Base directory containing the MESA 'run_model_MSUN_z' directories for GYRE input generation. If not specified, --input-dir is used.")
+    parser.add_argument("--gyre-output-dir", type=str, required=False, # Make it required=True if only used standalone
+                        help="Output directory for the generated GYRE .in files. If not specified, a subdirectory within --output-dir will be used.")
+    parser.add_argument("--gyre-model-name", type=str, required=False,
+                        help="Identifier for the MESA model (e.g., 'nad_convos') used for GYRE path construction. If not specified, a default or derived name will be used.")
+    parser.add_argument("--gyre-blue-loop-csv", type=str, required=False,
+                        help="Path to the 'sorted_mass_Z_min_max.csv' file. Required if --generate-gyre-in is used standalone (without --analyze-blue-loop). If --analyze-blue-loop is also used, this file might be generated and used directly from memory.")
+    # -----------------------------------------------------
 
     # Parse arguments from the command line first.
     # These values are initial defaults or explicitly set by the user via CLI.
@@ -96,34 +109,14 @@ def parsing_options():
                         current_arg_value = getattr(args, key)
                         default_arg_value = parser.get_default(key)
 
-                        logging.debug(f"   YAML Key: '{key}', YAML Value: '{value}' (Type: {type(value)})")
-                        logging.debug(f"   Current args.{key}: '{current_arg_value}' (Type: {type(current_arg_value)})")
-                        logging.debug(f"   Default for {key}: '{default_arg_value}' (Type: {type(default_arg_value)})")
+                        logging.debug(f"  YAML Key: '{key}', YAML Value: '{value}' (Type: {type(value)})")
+                        logging.debug(f"  Current args.{key}: '{current_arg_value}' (Type: {type(current_arg_value)})")
+                        logging.debug(f"  Default for {key}: '{default_arg_value}' (Type: {type(default_arg_value)})")
 
                         # Override with YAML value ONLY if the command-line argument was NOT explicitly provided.
                         # This logic works for `type=str` arguments as well.
                         # argparse.get_default() correctly retrieves the default for store_true actions too,
                         # but for `type=str` arguments, direct comparison is sufficient.
-                        # Special handling for nargs='?' and const:
-                        # If --generate-hr-diagrams was called without a value, current_arg_value is 'default' (from const).
-                        # If it was not called at all, current_arg_value is 'none' (from default).
-                        # We want to override only if it was the *true* default ('none') from not being present,
-                        # or if it was the 'default' from `const` but a YAML value is provided for *that specific* flag.
-                        # However, the simpler logic of 'current_arg_value == default_arg_value' still holds for most cases,
-                        # as 'default' from `const` is different from `default` from `default`.
-                        # Let's rely on argparse's internal precedence: CLI always wins over YAML.
-                        # The core idea here is that if a CLI argument was *not* provided (thus it holds its argparse `default` or `const` value),
-                        # then it can be overridden by the config file.
-                        
-                        # A robust check: if an argument's source was not the command line
-                        # (i.e., it's still its original default or const value after initial parse),
-                        # then override it with the YAML value.
-                        # This is a bit tricky with nargs='?', but generally, if `sys.argv` does not contain the flag
-                        # with a subsequent value, or if the flag itself is not present, then it can be overridden.
-                        
-                        # Simpler approach that usually works: if the parsed argument value is the
-                        # *default value that argparse would assign if the argument wasn't mentioned on CLI*,
-                        # then allow YAML to override it.
                         
                         # For --generate-hr-diagrams:
                         # If not on CLI: args.generate_hr_diagrams == 'none' (from parser default)
@@ -138,12 +131,12 @@ def parsing_options():
                         # as the "default_arg_value" returned by get_default for this specific argument
                         # with nargs='?' and const will be 'none', not 'default'.
                         if current_arg_value == parser.get_default(key):
-                            logging.debug(f"   Overriding original default value for '{key}' ('{current_arg_value}') with YAML value: '{value}'")
+                            logging.debug(f"  Overriding original default value for '{key}' ('{current_arg_value}') with YAML value: '{value}'")
                             setattr(args, key, value) # Set the 'args' object's attribute to the YAML value
                         else:
-                            logging.debug(f"   Keeping command-line value for '{key}' ('{current_arg_value}'), which overrides YAML value: '{value}'")
+                            logging.debug(f"  Keeping command-line value for '{key}' ('{current_arg_value}'), which overrides YAML value: '{value}'")
                     else:
-                        logging.warning(f"   YAML key '{key}' does not correspond to a defined command-line argument. Skipping.")
+                        logging.warning(f"  YAML key '{key}' does not correspond to a defined command-line argument. Skipping.")
 
             else:
                 logging.warning("YAML configuration file is empty or contains no data. Using command-line/default arguments.")
@@ -152,6 +145,41 @@ def parsing_options():
             logging.error(f"Error parsing YAML configuration file {config_path}: {e}. Proceeding with command-line/default arguments.")
         except Exception as e:
             logging.error(f"An unexpected error occurred while processing config file {config_path}: {e}. Proceeding with command-line/default arguments.")
+
+    # --- Post-parsing Argument Validation and Defaulting ---
+    # Set default values for GYRE-specific arguments if they weren't provided via CLI or config,
+    # and default them based on existing analysis arguments to streamline pipeline usage.
+    if args.generate_gyre_in: # Only set these defaults if GYRE generation is explicitly enabled
+        if not args.gyre_mesa_base_dir:
+            # If GYRE base directory is not specified, default to the main input_dir
+            args.gyre_mesa_base_dir = args.input_dir 
+            logging.debug(f"Defaulting --gyre-mesa-base-dir to --input-dir: {args.gyre_mesa_base_dir}")
+        
+        if not args.gyre_output_dir:
+            # If GYRE output directory is not specified, create a 'gyre_inputs' sub-directory within the main output_dir
+            if args.output_dir:
+                args.gyre_output_dir = os.path.join(args.output_dir, "gyre_inputs")
+                logging.debug(f"Defaulting --gyre-output-dir to {args.gyre_output_dir} based on --output-dir.")
+            else:
+                # If output_dir is also not set, default to a local 'gyre_inputs'
+                args.gyre_output_dir = "gyre_inputs"
+                logging.warning(f"Neither --output-dir nor --gyre-output-dir specified. Defaulting GYRE output to: {args.gyre_output_dir}")
+
+        if not args.gyre_model_name:
+            # If GYRE model name is not specified, try to derive from existing args or use a generic default
+            # A more robust way might be to parse from the 'mesa_output_dir' if it has a pattern
+            # For now, let's use a simple default
+            args.gyre_model_name = "default_mesa_model"
+            logging.warning(f"No --gyre-model-name specified. Defaulting to: {args.gyre_model_name}")
+
+        # Validation for --gyre-blue-loop-csv:
+        # It's only strictly required if GYRE generation is requested *without* analysis,
+        # otherwise, the data will come from the analysis results in memory.
+        if not args.analyze_blue_loop and not args.gyre_blue_loop_csv:
+             parser.error("--gyre-blue-loop-csv is required when --generate-gyre-in is used without --analyze-blue-loop.")
+        elif args.analyze_blue_loop and args.gyre_blue_loop_csv:
+             logging.info("--generate-gyre-in and --analyze-blue-loop are both set. The in-memory analysis results will take precedence for GYRE input. The provided --gyre-blue-loop-csv will be used as a fallback if in-memory data is unavailable.")
+
 
     # Make input_dir mandatory after config loading
     # These parser.error calls will exit the program if required arguments are missing.
@@ -182,3 +210,8 @@ if __name__ == "__main__":
     parsed_args = parsing_options()
     print(f"Parsed Arguments: {parsed_args}")
     print(f"HR Diagram setting: {parsed_args.generate_hr_diagrams}")
+    print(f"GYRE generation enabled: {parsed_args.generate_gyre_in}")
+    print(f"GYRE MESA Base Dir: {parsed_args.gyre_mesa_base_dir}")
+    print(f"GYRE Output Dir: {parsed_args.gyre_output_dir}")
+    print(f"GYRE Model Name: {parsed_args.gyre_model_name}")
+    print(f"GYRE Blue Loop CSV: {parsed_args.gyre_blue_loop_csv}")
