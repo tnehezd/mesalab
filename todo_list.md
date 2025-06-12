@@ -1,5 +1,8 @@
 ### SOME THINGS ON THE LIST
 
+config.yaml -- dir paths !!!!
+
+
 check --generate-plots
 check --generate-hrd ... it seems, that it requires  force-reanalysis, which makes sense, as HRDs are made from history.data...
 
