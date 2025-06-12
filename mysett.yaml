@@ -11,12 +11,12 @@
 # The absolute path to the main input directory containing your MESA run subdirectories
 # (e.g., 'run_M2.0_Z0.01'). Each 'run_*' folder should contain an 'inlist' file
 # and the 'LOGS/history.data' file for a specific MESA simulation.
-input_dir: /home/tnehezd/workdir/mesa-r23.05.1/STRANGE/nad_convos_mid
+input_dir: /home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid
 
 # The absolute path to the output directory where all analysis results (CSV files)
 # and generated plots will be saved. The program will create subdirectories here
 # for organization (e.g., 'analysis_results', 'plots', 'blue_loop_plots_bc').
-output_dir: ./mesa_blue_loop/output
+output_dir: /home/tnd/mesa_blue_loop/output
 
 # The filename of the inlist file found within each MESA run directory
 # (e.g., 'inlist_project'). This file is used to extract initial parameters
