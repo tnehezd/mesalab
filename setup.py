@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="mesa_tools",
+    name="mesagrid",
     version="0.1.0",
     author="Dora Tarczay-Nehez", 
     author_email="tarczaynehez.dora@csfk.org", 
@@ -34,7 +34,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'mesa_grid_analyzer=mesa_tools.cli:main',
+            'mesagrid=mesagrid.cli:main',
         ],
     },
     classifiers=[
