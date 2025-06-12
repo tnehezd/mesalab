@@ -1,7 +1,7 @@
-# mesa_tools/grid_analyzer.py
+# mesagrid/grid_analyzer.py
 import os
 import logging # ADDED: Import logging
-from mesa_tools.inlist_parser import get_mesa_params_from_inlist
+from .inlist_parser import get_mesa_params_from_inlist
 
 # Configure logging for this module if it's run independently,
 # but main cli.py will set global config.
