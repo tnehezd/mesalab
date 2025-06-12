@@ -1,4 +1,4 @@
-# mesa_tools/config_parser.py
+# mesagrid/config_parser.py
 
 import os
 import argparse

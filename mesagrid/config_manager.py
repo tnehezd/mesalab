@@ -1,4 +1,4 @@
-# mesa_tools/config_manager.py
+# mesagrid/config_manager.py
 import toml
 import os
 
@@ -18,7 +18,7 @@ def load_config(config_path=None):
     if config_path is None:
         # Try to find config.toml in the project root relative to this script's location
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.join(current_dir, '..', '..') # Go up two levels from mesa_tools/
+        project_root = os.path.join(current_dir, '..', '..') # Go up two levels from mesagrid/
         config_path = os.path.join(project_root, 'config.toml')
 
     if not os.path.exists(config_path):
