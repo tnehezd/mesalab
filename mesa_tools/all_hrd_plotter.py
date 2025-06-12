@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 def generate_all_hr_diagrams(data_by_metallicity: dict, model_name: str, output_dir: str,
                              logT_blue_edge: list, logL_blue_edge: list,
                              logT_red_edge: list, logL_red_edge: list,
-                             drop_zams: bool = False): # ÚJ PARAMÉTER
+                             drop_zams: bool = False): 
     """
     Generates Hertzsprung-Russell (HR) diagrams for pre-loaded MESA run data,
     grouping plots by metallicity and saving each metallicity's plots
