@@ -115,7 +115,7 @@ def generate_gyre_in_file(output_base_dir: str, mesa_run_dir_path: str, model_na
     # We need the base name of the MESA run directory, not its full path
     mesa_run_dir_basename = os.path.basename(mesa_run_dir_path) 
     
-    gyre_in_output_dir = os.path.join(output_base_dir, mesa_run_dir_basename, 'gyre_in_files')
+    gyre_in_output_dir = os.path.join(output_base_dir, mesa_run_dir_basename)
     os.makedirs(gyre_in_output_dir, exist_ok=True)
     logging.debug(f"Ensured output directory for gyre.in files: {gyre_in_output_dir}")
 
