@@ -231,7 +231,7 @@ def run_gyre_input_generation(args: argparse.Namespace):
         logging.warning("Model ranges DataFrame is empty. No profiles to process for GYRE input generation.")
         return
 
-    required_cols = ['mass', 'Z', 'min_model_number', 'max_model_number', 'run_dir_path']
+    required_cols = ['initial_mass', 'initial_Z', 'min_model_number', 'max_model_number', 'run_dir_path']
     if not all(col in df_model_ranges.columns for col in required_cols):
         logging.error(f"Model ranges DataFrame must contain columns: {required_cols}. Found: {df_model_ranges.columns.tolist()}. Cannot proceed.")
         return
@@ -241,8 +241,8 @@ def run_gyre_input_generation(args: argparse.Namespace):
     # Iterate through the DataFrame to generate gyre.in files
     # Use tqdm for a progress bar
     for _, row in tqdm(df_model_ranges.iterrows(), total=len(df_model_ranges), desc="Generating GYRE input files"):
-        mass = row['mass']
-        Z = float(row['Z']) # Ensure Z is float for formatting
+        mass = row['initial_mass']
+        Z = float(row['initial_Z']) # Ensure Z is float for formatting
         min_model_number = int(row['min_model_number'])
         max_model_number = int(row['max_model_number'])
         mesa_run_dir_path = row['run_dir_path'] # Directly get the full path to the MESA run directory
