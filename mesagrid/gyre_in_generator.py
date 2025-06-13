@@ -176,8 +176,8 @@ def generate_gyre_in_file(output_base_dir: str, mesa_run_dir_path: str, model_na
 /
 
 &nad_output
-  summary_file = '../gyre_out/summary_{profile_number}.h5'
-  detail_template = '../gyre_out/detail_%ID_%N_profile_{profile_number}'
+  summary_file = 'gyre_out/summary_{profile_number}.h5'
+  detail_template = 'gyre_out/detail_%ID_%N_profile_{profile_number}'
   detail_file_format = 'TXT'
   detail_item_list ='l,n_pg,n_p,n_g,omega,eta'
   freq_units = 'CYC_PER_DAY'
