@@ -8,7 +8,7 @@ input_dir: /home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid
 #input_dir: /home/tnehezd/workdir/zenodo_archives/zenodo_out
 #input_dir: /home/tnehezd/workdir/stellar_tracks_farag/
 #input_dir: /home/tnehezd/workdir/MIST_syntethic_data
-output_dir: /home/tnd/mesagrid/mesa_blue_loop/output
+output_dir: /home/tnd/mesa_blue_loop/output
 #output_dir: /d5/tnehezd/mesa_blue_loop/MIST_test_output
 #output_dir: /d5/tnehezd/mesa_blue_loop/zenodo_output
 #output_dir: /d5/tnehezd/mesa_blue_loop/farag_output
@@ -73,7 +73,7 @@ gyre_model_name: nad_convos # It is still recommended to set this to avoid a war
 # Path to the 'sorted_mass_Z_min_max.csv' file.
 # Required if 'generate_gyre_in' runs independently (without 'analyze_blue_loop').
 # If 'analyze_blue_loop' is also True, in-memory data takes precedence.
-gyre_blue_loop_csv:
+gyre_blue_loop_csv: /home/tnd/mesagrid/mesa_blue_loop/sorted_mass_Z_min_max.csv
 
 # Enable debug logging.
 debug: False
