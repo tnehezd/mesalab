@@ -161,7 +161,7 @@ def generate_gyre_in_file(output_base_dir: str, mesa_run_dir_path: str, model_na
 &scan
   grid_type = 'INVERSE'
   freq_min = 0.01
-  freq_max = 1.0 # Reduced max freq for faster initial scans, can be adjusted
+  freq_max = 1.0  
   n_freq = 100
   freq_units = 'CYC_PER_DAY'
 /
@@ -176,11 +176,10 @@ def generate_gyre_in_file(output_base_dir: str, mesa_run_dir_path: str, model_na
 /
 
 &nad_output
-  summary_file = 'gyre_out/summary_{profile_number}.h5'
-  summary_item_list = 'l,n_pg,n_p,n_g,omega,eta'
-  detail_template = 'gyre_out/detail_%ID_%N_profile_{profile_number}'
+  summary_file = '../gyre_out/summary_{profile_number}.h5'
+  detail_template = '../gyre_out/detail_%ID_%N_profile_{profile_number}'
   detail_file_format = 'TXT'
-  detail_item_list ='l,n_pg,eta,omega,freq,x,xi_r,xi_h'
+  detail_item_list ='l,n_pg,n_p,n_g,omega,eta'
   freq_units = 'CYC_PER_DAY'
 /
 """)
