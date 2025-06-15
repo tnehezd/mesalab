@@ -26,6 +26,8 @@ env/
 
 my_organized_output/
 output/
+output_nadconv/
+output_nadconv_high/
 zenodo_output/
 MIST_output/
 farag_output/
