@@ -31,7 +31,6 @@ output_nadconv_high/
 zenodo_output/
 MIST_output/
 farag_output/
-mesa_tools/count_cloc.py
 MIST_test_output/
 
 my_settings.yaml

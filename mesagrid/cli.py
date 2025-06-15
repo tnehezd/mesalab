@@ -15,10 +15,10 @@ logging.getLogger('matplotlib').setLevel(logging.ERROR)
 # -----------------------------------------------------
 
 # Import functions from specialized modules
-from .config_parser import parsing_options
+from .io.config_parser import parsing_options
 from .data_reader import extract_params_from_inlist, scan_mesa_runs, get_data_from_history_file
-from .blue_loop_analyzer import analyze_blue_loop_and_instability
-from .output_manager import create_output_directories, get_analysis_file_paths
+from .bluelooptools.blue_loop_analyzer import analyze_blue_loop_and_instability
+from .io.output_manager import create_output_directories, get_analysis_file_paths
 from .mesa_analyzer import perform_mesa_analysis
 from .plot_handlers import handle_heatmap_generation, handle_blue_loop_bc_plotting, handle_hr_diagram_generation
 
