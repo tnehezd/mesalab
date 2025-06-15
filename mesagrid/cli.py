@@ -23,7 +23,7 @@ from .mesa_analyzer import perform_mesa_analysis
 from .plot_handlers import handle_heatmap_generation, handle_blue_loop_bc_plotting, handle_hr_diagram_generation
 
 # Import specific functions from the GYRE input generator module
-from .gyre_in_generator import find_nearest_profiles, generate_gyre_in_file, run_gyre_input_generation
+from .gyretools.gyre_in_generator import find_nearest_profiles, generate_gyre_in_file, run_gyre_input_generation
 
 def setup_logging_to_file(output_dir: str, debug_mode: bool = False):
     """
