@@ -5,9 +5,9 @@ import numpy as np
 
 # Import the actual plot generation functions from their respective modules
 from .heatmap_generator import generate_heatmaps_and_time_diff_csv
-from .bluelooptools.blue_loop_cmd_plotter import generate_blue_loop_plots_with_bc, load_and_group_data
+from ..bluelooptools.blue_loop_cmd_plotter import generate_blue_loop_plots_with_bc, load_and_group_data
 from .all_hrd_plotter import generate_all_hr_diagrams # Import the HR diagram generator
-from .grid_analyzer import analyze_mesa_grid_directory 
+from ..analyzis.grid_analyzer import analyze_mesa_grid_directory 
 
 def handle_heatmap_generation(args, summary_df_for_plotting, plots_sub_dir, analysis_results_sub_dir, input_dir):
     """

@@ -3,4 +3,4 @@
 # Import package version
 from .version import __version__
 
-__all__ = ['gyretools','bluelooptools', 'io']
+__all__ = ['allplots', 'analyzis', 'bluelooptools', 'gyretools', 'io']

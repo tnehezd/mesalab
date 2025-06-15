@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 # Import necessary functions from other modules
 from .data_reader import scan_mesa_runs, get_data_from_history_file
-from .bluelooptools.blue_loop_analyzer import analyze_blue_loop_and_instability
+from ..bluelooptools.blue_loop_analyzer import analyze_blue_loop_and_instability
 
 
 def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_dir):
