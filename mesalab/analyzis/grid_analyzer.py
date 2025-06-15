@@ -1,4 +1,4 @@
-# mesagrid/grid_analyzer.py
+# mesalab/analyzis/grid_analyzer.py
 import os
 import logging # ADDED: Import logging
 from ..io.inlist_parser import get_mesa_params_from_inlist

@@ -1,8 +1,28 @@
 from setuptools import setup, find_packages
+from os import path
+import sys
+
+sys.path.insert(0, "mesalab")
+from version import __version__
+
+# Load requirements
+#requirements = None
+#with open('requirements.txt') as file:
+#    requirements = file.read().splitlines()
+
+# If Python3: Add "README.md" to setup.
+# Useful for PyPI. Irrelevant for users using Python2.
+try:
+    this_directory = path.abspath(path.dirname(__file__))
+    with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
+        long_description = f.read()
+except:
+    long_description = ' '
+
 
 setup(
-    name="mesagrid",
-    version="0.1.0",
+    name="mesalab",
+    version=__version__,
     author="Dora Tarczay-Nehez", 
     author_email="tarczaynehez.dora@csfk.org", 
     description="Tools for analyzing MESA stellar evolution simulation data, specifically for mass and metallicity grids.",
@@ -34,7 +54,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'mesagrid=mesagrid.cli:main',
+            'mesalab=mesalab.cli:main',
         ],
     },
     classifiers=[

@@ -1,4 +1,4 @@
-# mesagrid/inlist_parser.py
+# mesalab/io/inlist_parser.py
 import os
 import re
 
