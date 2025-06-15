@@ -26,10 +26,12 @@ check MESA version compatibilities...
 
 AND REMOVE DEBUG LINES, or just hide them...
 
-maybe: make dirs for the py file-s: __init.py__ is necessary
-maybe: remove dependencies, and version from the setup file... what more?
+maybe: remove dependencies from the setup file... what more?
 
 readme.md: maybe i should mention that it was made for my project...
 
 
 ok, another: remove dir from detail files! just from there! sorted.... files can keep them
+
+
+update config.yaml with gyre things
