@@ -2,13 +2,13 @@
 
 &setup
   ! Basic directory settings
-  mesa_dir = '/home/tnehezd/workdir/mesa-r23.05.1/STRANGE/nad_convos_mid/run_nad_convos_mid_10.0MSUN_z0.0015'
-  mesasdk_root = '/home/tnehezd/workdir/mesasdk'
+  mesa_dir = '/home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid/run_nad_convos_mid_10.0MSUN_z0.0015'
+  mesasdk_root = '/home/tnd/mesasdk'
   ! The GYRE_DIR is the directory that contains the 'bin' folder with the GYRE executable.
   ! Example: if the GYRE executable is at: /path/to/gyre_install/bin/gyre
   ! then gyre_dir = '/path/to/gyre_install'
   ! In your case, it's inside your MESA installation, so GYRE_DIR should be:
-  gyre_dir = '/home/tnehezd/workdir/mesa-r23.05.1/gyre/gyre'
+  gyre_dir = '/home/tnd/mesa-r23.05.1/gyre/gyre'
   output_base_dir = './mesalab_results' ! Base directory for all outputs
 /
 
@@ -24,10 +24,10 @@
   ! GYRE-specific settings for the runs
   enable_parallel = .TRUE.   ! Enable parallel execution of GYRE runs.
   num_gyre_threads = 2       ! How many OpenMP threads (CPU cores) should ONE GYRE run use.
-  max_concurrent_gyre_runs = 3 ! How many GYRE runs should execute simultaneously (processes).
+  max_concurrent_gyre_runs = 30 ! How many GYRE runs should execute simultaneously (processes).
   gyre_inlist_template = 'gyre.in' ! The name of the base GYRE inlist template file (assumed in the same directory).
   mesa_profile_pattern = 'LOGS/profile*.data.GYRE' ! Pattern to find MESA profile files in the MESA LOGS directory.
-  mesa_profile_base_dir = '/home/tnehezd/workdir/mesa_blue_loop/mesalab/gyretools/mesalab_results' ! Relative or absolute path to the MESA LOGS directory (where profiles are).
+  mesa_profile_base_dir = '/home/tnd/mesagrid/mesa_blue_loop/mesalab/gyretools/mesalab_results' ! Relative or absolute path to the MESA LOGS directory (where profiles are).
 
   ! Profile selection mode
   ! 'ALL_PROFILES': Process all profile*.data.GYRE files found in mesa_profile_base_dir.
@@ -37,7 +37,7 @@
   ! Used only if run_mode = 'FILTERED_PROFILES'
   ! This path is relative to the 'output_base_dir' 
   ! (e.g., './mesalab_results/analysis_results/sorted_mass_Z_min_max.csv')
-  filtered_profiles_csv = '/home/tnehezd/workdir/mesa_blue_loop/output/analysis_results/sorted_mass_Z_min_max.csv' ! <--- ADD THIS LINE!
+  filtered_profiles_csv = '/home/tnd/mesagrid/mesa_blue_loop/output/analysis_results/sorted_mass_Z_min_max.csv' ! <--- ADD THIS LINE!
 /
 
 &analyze_options

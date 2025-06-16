@@ -3,7 +3,7 @@
 
 &model
     model_type = 'EVOL'
-    file = '/home/tnehezd/workdir/mesa-r23.05.1/STRANGE/nad_convos_mid/run_nad_convos_mid_4.0MSUN_z0.0060/LOGS/profile8.data.GYRE'
+    file = '/home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid/run_nad_convos_mid_4.0MSUN_z0.0060/LOGS/profile8.data.GYRE'
     file_format = 'MESA'
 /
 
