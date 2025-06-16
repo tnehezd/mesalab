@@ -35,3 +35,6 @@ ok, another: remove dir from detail files! just from there! sorted.... files can
 
 
 update config.yaml with gyre things
+
+GYRE RUN IMPLEMENTÁLÁSA?!
+ehhez leírás: GYRE_DIR környezeti változó hozzáadása! ... /gyre/gyre ... itt make, majd a gyre/gyre/bin/gyre-rel lehet futtatni... számomra most már csak az a kérdés, hogy mesadk nélkül megy-e!
