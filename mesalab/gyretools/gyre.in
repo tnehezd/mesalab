@@ -43,10 +43,12 @@
 /
 
 &nad_output
-  summary_file = 'summary.h5'
+  summary_file = 'summary.h5'                ! Add 'gyre_out/' prefix
   detail_file_format = 'TXT'
-  detail_template = 'detail.l%l.n%n.h5'        	      ! File name template for detail files
-  detail_item_list = 'id,l,n_pg,omega,x,xi_r, xi_h,c_1,As,V_2,Gamma_1, eta, freq' 	      ! Items to appear in detail files
+  detail_template = 'detail.l%l.n%n.TXT'      ! Add 'gyre_out/' prefix AND change .h5 to .TXT
+  detail_item_list = 'id,l,n_pg,omega,x,xi_r, xi_h,c_1,As,V_2,Gamma_1, eta, freq'
+  freq_units = 'CYC_PER_DAY'
+/  detail_item_list = 'id,l,n_pg,omega,x,xi_r, xi_h,c_1,As,V_2,Gamma_1, eta, freq' 	      ! Items to appear in detail files
   freq_units = 'CYC_PER_DAY'
 /
 

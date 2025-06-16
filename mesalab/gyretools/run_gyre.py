@@ -3,10 +3,12 @@ import os
 import multiprocessing
 import shutil
 import glob
-import f90nml # Make sure you've run: pip install f90nml
+import f90nml
+import pandas as pd
+import h5py
+import re
 
-# --- GYRE Execution Function (slightly modified for config parameters) ---
-
+# --- GYRE Execution Function ---
 def run_single_gyre_model(
     model_profile_path,
     gyre_inlist_template_path,
@@ -17,6 +19,17 @@ def run_single_gyre_model(
     """
     Runs a single GYRE model for a given MESA profile.
     Dynamically generates the inlist file for the specific run.
+
+    Args:
+        model_profile_path (str): Absolute path to the MESA profile file.
+        gyre_inlist_template_path (str): Path to the base GYRE inlist template file.
+        output_dir (str): Directory where GYRE output and its inlist will be saved for this run.
+        gyre_executable (str): Absolute path to the GYRE executable.
+        num_gyre_threads (int): Number of OpenMP threads GYRE should use for this single run.
+    
+    Raises:
+        subprocess.CalledProcessError: If GYRE execution fails.
+        Exception: For other unexpected errors during the run.
     """
     os.makedirs(output_dir, exist_ok=True)
     
@@ -27,11 +40,8 @@ def run_single_gyre_model(
     # Set the MESA profile path in the inlist
     nml['model']['file'] = os.path.abspath(model_profile_path)
 
-    # Set the output file names to be in the specific output directory
-    # We only provide the filename here; the subprocess.run cwd parameter handles the directory
-#    nml['nad_output']['summary_file'] = 'summary_output.h5'
-#    nml['nad_output']['detail_template'] = 'detail_output_%ID_%N'
-#    nml['nad_output']['detail_file_format'] = 'HDF' # Ensure HDF format
+    # Output file names (summary_file, detail_template) are now read directly from gyre_inlist_template_path.
+    # This allows full control over output naming and subdirectories from the gyre.in template itself.
 
     # Generate a unique inlist filename for this run
     profile_base_name = os.path.basename(model_profile_path).replace('.data.GYRE', '')
@@ -43,7 +53,8 @@ def run_single_gyre_model(
     os.environ['OMP_NUM_THREADS'] = str(num_gyre_threads)
 
     # 3. Assemble and run the GYRE command
-    command = [gyre_executable, os.path.basename(run_inlist_path)] # Just the filename because we're using cwd
+    # Use os.path.basename(run_inlist_path) because cwd is set to output_dir
+    command = [gyre_executable, os.path.basename(run_inlist_path)]
 
     print(f"**[{os.path.basename(output_dir)}]** Attempting to run GYRE with command: `{gyre_executable} {os.path.basename(run_inlist_path)}` (OMP_NUM_THREADS={num_gyre_threads})")
 
@@ -66,11 +77,11 @@ def run_single_gyre_model(
         print("--- Standard Error (stderr) ---")
         print(e.stderr)
         print("--- Error during run ---")
-        raise # Re-raise the exception
+        raise # Re-raise the exception for main() to catch
     except Exception as e:
         print(f"**[{os.path.basename(output_dir)}] UNEXPECTED ERROR occurred during GYRE run:** {e}")
         print("--- Error during run ---")
-        raise
+        raise # Re-raise the exception
 
 
 # --- Main mesalab Controller Script ---
@@ -90,10 +101,10 @@ def main():
     gyre_cfg = config['gyre_options']
 
     # --- Setup Paths ---
-    mesa_dir = setup_cfg['mesa_dir']
+    mesa_dir = setup_cfg['mesa_dir'] # Base MESA installation directory
     mesasdk_root = setup_cfg['mesasdk_root']
-    gyre_dir = setup_cfg['gyre_dir']
-    output_base_dir = setup_cfg['output_base_dir']
+    gyre_dir = setup_cfg['gyre_dir'] # Base GYRE installation directory (or containing GYRE executable)
+    output_base_dir = setup_cfg['output_base_dir'] # Root directory for all mesalab outputs
 
     # Ensure output base directory exists
     os.makedirs(output_base_dir, exist_ok=True)
@@ -102,9 +113,8 @@ def main():
     # Determine GYRE executable path
     gyre_executable = os.path.join(gyre_dir, 'bin', 'gyre')
     
-    # Verify GYRE executable exists and is runnable
+    # Fallback if gyre_dir already points directly to the binary folder
     if not (os.path.exists(gyre_executable) and os.path.isfile(gyre_executable) and os.access(gyre_executable, os.X_OK)):
-        # Fallback: check if GYRE_DIR itself is the binary dir
         gyre_executable_fallback = os.path.join(gyre_dir, 'gyre')
         if (os.path.exists(gyre_executable_fallback) and os.path.isfile(gyre_executable_fallback) and os.access(gyre_executable_fallback, os.X_OK)):
             gyre_executable = gyre_executable_fallback
@@ -117,44 +127,183 @@ def main():
     # --- Run MESA (Placeholder) ---
     if run_cfg['run_mesa']:
         print("\n--- MESA Run (Not yet implemented) ---")
-        # In the future, MESA execution logic would go here
         pass
 
     # --- Run GYRE ---
     if run_cfg['run_gyre']:
         print("\n--- GYRE Run Starting ---")
 
-        # Find MESA profiles
-        mesa_profile_source_dir = os.path.join(mesa_dir, gyre_cfg['mesa_profile_base_dir'])
+        # This mesa_profile_source_dir is for the 'ALL_PROFILES' mode, usually mesa_dir/LOGS
+        global_mesa_logs_dir = os.path.join(mesa_dir, gyre_cfg['mesa_profile_base_dir'])
         
-        # Check if the base directory for profiles exists
-        if not os.path.exists(mesa_profile_source_dir):
-            raise FileNotFoundError(f"MESA profile base directory not found: '{mesa_profile_source_dir}'. "
-                                    f"Please check 'mesa_dir' and 'mesa_profile_base_dir' in '{config_file}'.")
-
-        # Use glob to find all matching profile files
-        profile_paths = sorted(glob.glob(os.path.join(mesa_profile_source_dir, gyre_cfg['mesa_profile_pattern'])))
+        tasks = [] # List to store all GYRE tasks (profile_path, inlist_template, output_dir, executable, threads)
         
-        if not profile_paths:
-            print(f"**WARNING:** No MESA profile files found in '{mesa_profile_source_dir}' matching pattern '{gyre_cfg['mesa_profile_pattern']}'. Skipping GYRE runs.")
-        else:
-            print(f"**Found {len(profile_paths)} MESA profile(s) to process.**")
+        if gyre_cfg['run_mode'].upper() == 'ALL_PROFILES':
+            # This mode will process all profile*.data.GYRE files found under the configured global MESA LOGS directory.
+            # WARNING: If different MESA runs produce profiles with overlapping numbers in this single LOGS dir,
+            # their GYRE outputs might overwrite each other's results in the 'all_profiles_run_...' directories.
+            # Using FILTERED_PROFILES is generally safer for grid-based studies.
             
-            tasks = []
-            for i, profile_path in enumerate(profile_paths):
-                # Create a unique output directory for each GYRE run
-                profile_filename = os.path.basename(profile_path)
-                run_output_name = profile_filename.replace('.data.GYRE', '') # Clean name for directory
-                run_output_dir = os.path.join(output_base_dir, run_output_name)
-                
-                tasks.append((
-                    profile_path,
-                    gyre_cfg['gyre_inlist_template'], # Path to your base gyre.in
-                    run_output_dir,
-                    gyre_executable,
-                    gyre_cfg['num_gyre_threads']
-                ))
+            if not os.path.exists(global_mesa_logs_dir):
+                raise FileNotFoundError(f"MESA profile base directory for 'ALL_PROFILES' mode not found: '{global_mesa_logs_dir}'. "
+                                        f"Please check 'mesa_dir' and 'mesa_profile_base_dir' in '{config_file}'.")
 
+            all_profile_paths = sorted(glob.glob(os.path.join(global_mesa_logs_dir, gyre_cfg['mesa_profile_pattern'])))
+            print(f"**Run mode: ALL_PROFILES.** Found {len(all_profile_paths)} MESA profile(s) to process based on pattern '{gyre_cfg['mesa_profile_pattern']}'.")
+            
+            if not all_profile_paths:
+                print(f"**WARNING:** No MESA profile files found to process. Skipping GYRE runs.")
+            else:
+                for profile_path in all_profile_paths:
+                    profile_id_from_filename = os.path.basename(profile_path).replace('.data.GYRE', '') # e.g., 'profile00010'
+                    
+                    # Output directory for ALL_PROFILES mode, less specific but avoids direct overwrites by number
+                    run_output_dir = os.path.join(output_base_dir, f"all_profiles_run_{profile_id_from_filename}") 
+                    
+                    tasks.append((
+                        profile_path,
+                        gyre_cfg['gyre_inlist_template'],
+                        run_output_dir,
+                        gyre_executable,
+                        gyre_cfg['num_gyre_threads']
+                    ))
+
+        elif gyre_cfg['run_mode'].upper() == 'FILTERED_PROFILES':
+            # This mode processes profiles based on a CSV file that specifies model ranges and MESA run directories.
+            # This is the preferred mode for managing M-Z grids.
+            filtered_csv_path = os.path.join(output_base_dir, gyre_cfg['filtered_profiles_csv']) 
+            
+            if not os.path.exists(filtered_csv_path):
+                 raise FileNotFoundError(f"FILTERED_PROFILES mode selected, but CSV file '{filtered_csv_path}' not found. "
+                                         f"Please ensure it exists in your '{output_base_dir}' directory.")
+
+            print(f"**Run mode: FILTERED_PROFILES.** Reading filter criteria from '{filtered_csv_path}'...")
+            
+            try:
+                filter_df = pd.read_csv(filtered_csv_path)
+            except Exception as e:
+                raise IOError(f"Error reading filtered profiles CSV '{filtered_csv_path}': {e}")
+
+            if filter_df.empty:
+                print(f"**WARNING:** Filtered profiles CSV '{filtered_csv_path}' is empty. No profiles to process for GYRE runs.")
+                return 
+
+            # Iterate through each row in the filter_df (each row represents a specific MESA run for a Mass/Z combination)
+            for index, row in filter_df.iterrows():
+                mass = row['initial_mass']
+                Z = row['initial_Z']
+                min_model = row['min_model_number']
+                max_model = row['max_model_number']
+                
+                # Get the absolute path to the specific MESA run directory from the CSV
+                mesa_run_specific_dir = row['run_dir_path'] 
+
+                # Construct the path to the LOGS directory and profiles.index for this specific MESA run
+                current_mesa_run_logs_dir = os.path.join(mesa_run_specific_dir, 'LOGS')
+                current_profiles_index_path = os.path.join(current_mesa_run_logs_dir, 'profiles.index')
+
+                print(f"\nProcessing M={mass}, Z={Z} from run directory: {os.path.basename(mesa_run_specific_dir)}")
+                print(f"  Searching profiles in: {current_mesa_run_logs_dir}")
+
+                # --- Manual parsing of profiles.index for the current MESA run ---
+                # This ensures we are reading the correct profiles.index for each M-Z combination
+                model_numbers_in_index = []
+                profile_numbers_in_index = []
+
+                if not os.path.exists(current_profiles_index_path):
+                    print(f"  **WARNING:** profiles.index not found for M={mass}, Z={Z} at: '{current_profiles_index_path}'. Skipping this M-Z combination.")
+                    continue 
+
+                try:
+                    with open(current_profiles_index_path, 'r') as f:
+                        for line in f:
+                            line = line.strip()
+                            if not line or line.startswith('#'): # Skip empty lines and comments
+                                continue
+                            
+                            parts = line.split()
+                            if len(parts) < 2: # Ensure enough columns for model_number and prof_num
+                                continue
+                            
+                            try:
+                                # Model number is always the first column (index 0)
+                                model_num = int(parts[0])
+                                # Profile number is typically the last column (e.g., 'prof_num')
+                                # Based on standard MESA profiles.index, this should be correct.
+                                # If your file uses the 3rd column, change parts[-1] to parts[2].
+                                profile_num = int(parts[-1]) 
+                                
+                                model_numbers_in_index.append(model_num)
+                                profile_numbers_in_index.append(profile_num)
+                            except ValueError:
+                                # Skip lines that don't contain valid numbers in expected columns
+                                continue
+                except Exception as e:
+                    print(f"  **ERROR:** Error reading profiles.index for M={mass}, Z={Z} at '{current_profiles_index_path}': {e}. Skipping.")
+                    continue
+
+                if not model_numbers_in_index:
+                    print(f"  **WARNING:** No valid data lines found in '{current_profiles_index_path}' for M={mass}, Z={Z}. Skipping.")
+                    continue
+
+                # Create a lookup map from the manually parsed data for this specific run
+                model_to_profile_map = dict(zip(model_numbers_in_index, profile_numbers_in_index))
+
+                # Find all model numbers within the specified range for this M-Z combination
+                selected_profile_numbers_for_this_run = set()
+                
+                models_in_range_for_this_run = [
+                    model for model in model_numbers_in_index
+                    if min_model <= model <= max_model
+                ]
+                
+                for model in models_in_range_for_this_run:
+                    if model in model_to_profile_map:
+                        selected_profile_numbers_for_this_run.add(model_to_profile_map[model])
+
+                if not selected_profile_numbers_for_this_run:
+                    print(f"  **WARNING:** No MESA profiles found for M={mass}, Z={Z} within model range {min_model}-{max_model}. Skipping.")
+                    continue
+
+                # --- Create the unique output root directory for this M-Z MESA run ---
+                # This will be `output_base_dir/basename_of_mesa_run_dir/`
+                # e.g., `mesalab_results/run_nad_convos_mid_2.5MSUN_z0.0015/`
+                specific_model_output_root = os.path.join(
+                    output_base_dir,
+                    os.path.basename(mesa_run_specific_dir) 
+                )
+                os.makedirs(specific_model_output_root, exist_ok=True) # Ensure this directory exists
+
+                # Prepare GYRE tasks for each selected profile within this M-Z run
+                for prof_num in sorted(list(selected_profile_numbers_for_this_run)):
+                    expected_profile_name = f'profile{prof_num}.data.GYRE'
+                    # The profile file is located in the LOGS directory of the specific MESA run
+                    profile_path = os.path.join(current_mesa_run_logs_dir, expected_profile_name) 
+
+                    if os.path.exists(profile_path):
+                        # Create the final output directory for this specific GYRE run
+                        # e.g., `mesalab_results/run_nad_convos_mid_2.5MSUN_z0.0015/profile00010/`
+                        run_output_dir = os.path.join(specific_model_output_root, f'profile{prof_num:05d}') # 5-digit profile number
+                        
+                        tasks.append((
+                            profile_path,
+                            gyre_cfg['gyre_inlist_template'],
+                            run_output_dir,
+                            gyre_executable,
+                            gyre_cfg['num_gyre_threads']
+                        ))
+                    else:
+                        print(f"  **WARNING:** Filtered profile '{expected_profile_name}' not found for M={mass}, Z={Z} at '{profile_path}'. Skipping.")
+            
+            print(f"\nTotal GYRE tasks prepared: {len(tasks)}")
+
+        else:
+            raise ValueError(f"Invalid 'run_mode' specified in '{config_file}': {gyre_cfg['run_mode']}. "
+                             f"Accepted values are 'ALL_PROFILES' or 'FILTERED_PROFILES'.")
+
+        if not tasks:
+            print(f"**WARNING:** No GYRE tasks were prepared. Skipping GYRE runs.")
+        else:
             if gyre_cfg['enable_parallel']:
                 print(f"**Parallel GYRE execution enabled.** Running {gyre_cfg['max_concurrent_gyre_runs']} job(s) concurrently.")
                 with multiprocessing.Pool(processes=gyre_cfg['max_concurrent_gyre_runs']) as pool:
@@ -163,19 +312,17 @@ def main():
                 print("**Parallel GYRE execution disabled.** Running jobs sequentially.")
                 for task in tasks:
                     run_single_gyre_model(*task)
-        
-        print("\n--- GYRE Run Finished ---")
+            
+            print("\n--- GYRE Run Finished ---")
 
     # --- Run Analysis (Placeholder) ---
     if run_cfg['run_analysis']:
         print("\n--- Analysis Run (Not yet implemented) ---")
-        # In the future, analysis logic would go here, processing GYRE outputs
         pass
 
     # --- Run Plots (Placeholder) ---
     if run_cfg['run_plots']:
         print("\n--- Plotting Run (Not yet implemented) ---")
-        # In the future, plotting logic would go here, using analysis results
         pass
 
     print("\n**mesalab execution complete.**")
@@ -190,4 +337,4 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n**[Unexpected Error]:** An unexpected error occurred: {e}")
         import traceback
-        traceback.print_exc() # Print full traceback for debugging
+        traceback.print_exc()
