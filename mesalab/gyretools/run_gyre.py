@@ -36,8 +36,8 @@ def run_single_gyre_model(
     # Generate a unique inlist filename for this run
     profile_base_name = os.path.basename(model_profile_path).replace('.data.GYRE', '')
     run_inlist_path = os.path.join(output_dir, f'gyre_inlist_{profile_base_name}.in')
-    nml.write(run_inlist_path)
-
+    nml.write(run_inlist_path, force=True) # Add force=True to overwrite existing files
+    
     # 2. Set OpenMP threads
     # This sets the number of cores GYRE will use for *one* run
     os.environ['OMP_NUM_THREADS'] = str(num_gyre_threads)
