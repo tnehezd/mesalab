@@ -29,9 +29,9 @@ def run_single_gyre_model(
 
     # Set the output file names to be in the specific output directory
     # We only provide the filename here; the subprocess.run cwd parameter handles the directory
-    nml['nad_output']['summary_file'] = 'summary_output.h5'
-    nml['nad_output']['detail_template'] = 'detail_output_%ID_%N'
-    nml['nad_output']['detail_file_format'] = 'HDF' # Ensure HDF format
+#    nml['nad_output']['summary_file'] = 'summary_output.h5'
+#    nml['nad_output']['detail_template'] = 'detail_output_%ID_%N'
+#    nml['nad_output']['detail_file_format'] = 'HDF' # Ensure HDF format
 
     # Generate a unique inlist filename for this run
     profile_base_name = os.path.basename(model_profile_path).replace('.data.GYRE', '')

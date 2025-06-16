@@ -43,10 +43,10 @@
 /
 
 &nad_output
-  summary_file = 'summary_10.h5'
-  detail_template = 'detail_%ID_%N_profile_10'
+  summary_file = 'summary.h5'
   detail_file_format = 'TXT'
-  detail_item_list ='l,n_pg,n_p,n_g,omega,eta'
+  detail_template = 'detail.l%l.n%n.h5'        	      ! File name template for detail files
+  detail_item_list = 'id,l,n_pg,omega,x,xi_r, xi_h,c_1,As,V_2,Gamma_1, eta, freq' 	      ! Items to appear in detail files
   freq_units = 'CYC_PER_DAY'
 /
 

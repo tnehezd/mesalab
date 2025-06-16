@@ -42,9 +42,9 @@
 /
 
 &nad_output
-    summary_file = 'summary_output.h5'
-    detail_template = 'detail_output_%ID_%N'
-    detail_file_format = 'HDF'
-    detail_item_list = 'l,n_pg,n_p,n_g,omega,eta'
+    summary_file = 'summary.h5'
+    detail_file_format = 'TXT'
+    detail_template = 'detail.l%l.n%n.h5'
+    detail_item_list = 'id,l,n_pg,omega,x,xi_r, xi_h,c_1,As,V_2,Gamma_1, eta, freq'
     freq_units = 'CYC_PER_DAY'
 /
