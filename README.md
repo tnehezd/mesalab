@@ -136,3 +136,14 @@ To get started with the `mesa_tools` package and the `mesa_grid_analyzer` tool, 
     
     idna, scipy, astropy,beautifulsoup4
     holoview, pymultinest
+    
+    
+    
+    ## Installation
+
+mesalab requires Python 3.x and the following packages:
+
+- f90nml: `pip install f90nml`
+- (If you use numpy, scipy, matplotlib later: `pip install numpy scipy matplotlib`)
+
+You will also need a working MESA and GYRE installation, with the `GYRE_DIR` environment variable set up correctly in your shell.

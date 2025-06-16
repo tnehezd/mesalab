@@ -1,127 +1,193 @@
 import subprocess
 import os
+import multiprocessing
+import shutil
+import glob
+import f90nml # Make sure you've run: pip install f90nml
 
-def run_gyre_simple_test(inlist_filename="gyre.in", gyre_executable_path=None):
+# --- GYRE Execution Function (slightly modified for config parameters) ---
+
+def run_single_gyre_model(
+    model_profile_path,
+    gyre_inlist_template_path,
+    output_dir,
+    gyre_executable,
+    num_gyre_threads
+):
     """
-    Futtat egyetlen GYRE modellt egy adott inlist fájllal.
-
-    Parameters
-    ----------
-    inlist_filename : str, optional
-        Az inlist fájl neve a GYRE számára. Alapértelmezett: "gyre.in".
-        Feltételezzük, hogy ez a fájl ugyanabban a mappában van, mint a szkript.
-    gyre_executable_path : str, optional
-        A GYRE futtatható fájl teljes elérési útja.
-        Ha None, a szkript megpróbálja automatikusan megtalálni a PATH-ban,
-        vagy a GYRE_DIR környezeti változó alapján.
-
-    Raises
-    ------
-    FileNotFoundError
-        Ha az inlist fájl nem található, vagy a GYRE futtatható fájl nincs meg.
-    subprocess.CalledProcessError
-        Ha a GYRE futása hibával (nem nulla visszatérési kóddal) fejeződik be.
-    Exception
-        Egyéb váratlan hibák esetén.
+    Runs a single GYRE model for a given MESA profile.
+    Dynamically generates the inlist file for the specific run.
     """
-    # 1. Ellenőrizzük, hogy az inlist fájl létezik-e
-    if not os.path.exists(inlist_filename):
-        raise FileNotFoundError(f"Inlist fájl nem található: '{inlist_filename}'. Kérlek, ellenőrizd a fájlnevet és a mappát.")
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # 1. Generate the inlist file for the current run
+    # Read the template inlist
+    nml = f90nml.read(gyre_inlist_template_path)
 
-    # 2. A GYRE futtatható fájl elérési útjának meghatározása
-    gyre_bin_path = None
-    if gyre_executable_path:
-        # Ha a felhasználó expliciten megadta az elérési utat
-        gyre_bin_path = gyre_executable_path
-    elif 'GYRE_DIR' in os.environ:
-        # Ha a GYRE_DIR környezeti változó be van állítva
-        gyre_dir = os.environ['GYRE_DIR'].strip() # Fontos: levágjuk a felesleges szóközöket, ha vannak
+    # Set the MESA profile path in the inlist
+    nml['model']['file'] = os.path.abspath(model_profile_path)
 
-        # Két legvalószínűbb útvonal, amit a GYRE_DIR megadhat
-        # 1. GYRE_DIR/bin/gyre (a leggyakoribb standalone telepítésnél)
-        potential_path_bin = os.path.join(gyre_dir, 'bin', 'gyre')
-        # 2. GYRE_DIR/gyre (ha maga a GYRE_DIR a bináris mappája)
-        potential_path_root = os.path.join(gyre_dir, 'gyre')
+    # Set the output file names to be in the specific output directory
+    # We only provide the filename here; the subprocess.run cwd parameter handles the directory
+    nml['nad_output']['summary_file'] = 'summary_output.h5'
+    nml['nad_output']['detail_template'] = 'detail_output_%ID_%N'
+    nml['nad_output']['detail_file_format'] = 'HDF' # Ensure HDF format
 
-        # Ellenőrizzük, hogy létezik-e, fájl-e, és futtatható-e
-        if os.path.exists(potential_path_bin) and os.path.isfile(potential_path_bin) and os.access(potential_path_bin, os.X_OK):
-            gyre_bin_path = potential_path_bin
-        elif os.path.exists(potential_path_root) and os.path.isfile(potential_path_root) and os.access(potential_path_root, os.X_OK):
-            gyre_bin_path = potential_path_root
-        else:
-            print(f"Figyelem: A **GYRE_DIR** ('{gyre_dir}') be van állítva, de a 'gyre' futtatható fájl nem található, vagy nem futtatható sem a '{potential_path_bin}', sem a '{potential_path_root}' útvonalon.")
+    # Generate a unique inlist filename for this run
+    profile_base_name = os.path.basename(model_profile_path).replace('.data.GYRE', '')
+    run_inlist_path = os.path.join(output_dir, f'gyre_inlist_{profile_base_name}.in')
+    nml.write(run_inlist_path)
 
-    # 3. Utolsó próbálkozás: simán "gyre" a PATH-ban
-    if not gyre_bin_path:
-        try:
-            # Csak ellenőrizzük, hogy a "gyre" parancs elérhető-e a PATH-ban
-            subprocess.run(["which", "gyre"], capture_output=True, check=True, text=True)
-            gyre_bin_path = "gyre" # Ezt fogjuk használni, ha a 'which' megtalálja
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            pass # Nem található a PATH-ban, vagy nincs telepítve a 'which'
+    # 2. Set OpenMP threads
+    # This sets the number of cores GYRE will use for *one* run
+    os.environ['OMP_NUM_THREADS'] = str(num_gyre_threads)
 
-    # Ha még mindig nincs futtatható fájl, akkor hibát dobunk
-    if not gyre_bin_path or (gyre_bin_path != "gyre" and not (os.path.exists(gyre_bin_path) and os.path.isfile(gyre_bin_path) and os.access(gyre_bin_path, os.X_OK))):
-        raise FileNotFoundError(
-            "**GYRE futtatható fájl nem található.** "
-            "Kérlek, ellenőrizd, hogy:\n"
-            "  1. A `gyre` benne van-e a **PATH** környezeti változódban.\n"
-            "  2. A **GYRE_DIR** környezeti változó be van-e állítva, és a benne lévő útvonal helyes-e (pl. `$GYRE_DIR/bin/gyre` vagy `$GYRE_DIR/gyre`).\n"
-            "  3. Vagy add meg a GYRE teljes elérési útját a `gyre_executable_path` paraméterben."
-        )
+    # 3. Assemble and run the GYRE command
+    command = [gyre_executable, os.path.basename(run_inlist_path)] # Just the filename because we're using cwd
 
-    # 4. A GYRE parancs összeállítása és futtatása
-    command = [gyre_bin_path, inlist_filename]
-
-    print(f"**Próbálom futtatni a GYRE-t a következő paranccsal:** `{' '.join(command)}`")
+    print(f"**[{os.path.basename(output_dir)}]** Attempting to run GYRE with command: `{gyre_executable} {os.path.basename(run_inlist_path)}` (OMP_NUM_THREADS={num_gyre_threads})")
 
     try:
-        result = subprocess.run(command, capture_output=True, text=True, check=True)
+        # Important: cwd=output_dir, so GYRE writes the generated inlist and outputs there
+        result = subprocess.run(command, capture_output=True, text=True, check=True, cwd=output_dir)
 
-        print(f"\n**GYRE futtatás SIKERES** a '{inlist_filename}' fájlhoz!")
-        print("--- GYRE Standard Output (stdout) ---")
+        print(f"**[{os.path.basename(output_dir)}] GYRE run SUCCESSFUL**!")
+        print("--- Standard Output (stdout) ---")
         print(result.stdout)
         if result.stderr:
-            print("--- GYRE Standard Error (stderr) ---")
+            print("--- Standard Error (stderr) ---")
             print(result.stderr)
-        print("--- Futás befejezve ---")
+        print("--- Run finished ---")
 
     except subprocess.CalledProcessError as e:
-        print(f"\n**HIBA: GYRE futtatás SIKERTELEN** a '{inlist_filename}' fájlhoz, kilépési kód: **{e.returncode}**!")
-        print("--- GYRE Standard Output (stdout) ---")
+        print(f"**[{os.path.basename(output_dir)}] ERROR: GYRE run FAILED**, exit code: **{e.returncode}**!")
+        print("--- Standard Output (stdout) ---")
         print(e.stdout)
-        print("--- GYRE Standard Error (stderr) ---")
+        print("--- Standard Error (stderr) ---")
         print(e.stderr)
-        print("--- Hiba futás közben ---")
-        raise # Dobd tovább a hibát
+        print("--- Error during run ---")
+        raise # Re-raise the exception
     except Exception as e:
-        print(f"\n**VÁRATLAN HIBA történt a GYRE futtatása közben:** {e}")
-        print("--- Hiba futás közben ---")
-        raise # Dobd tovább a hibát
+        print(f"**[{os.path.basename(output_dir)}] UNEXPECTED ERROR occurred during GYRE run:** {e}")
+        print("--- Error during run ---")
+        raise
 
+
+# --- Main mesalab Controller Script ---
+
+def main():
+    config_file = 'gyre_config.in'
+
+    if not os.path.exists(config_file):
+        raise FileNotFoundError(f"Configuration file '{config_file}' not found. Please create it.")
+
+    print(f"**Reading configuration from '{config_file}'...**")
+    config = f90nml.read(config_file)
+
+    # Accessing settings from the config file
+    setup_cfg = config['setup']
+    run_cfg = config['run_control']
+    gyre_cfg = config['gyre_options']
+
+    # --- Setup Paths ---
+    mesa_dir = setup_cfg['mesa_dir']
+    mesasdk_root = setup_cfg['mesasdk_root']
+    gyre_dir = setup_cfg['gyre_dir']
+    output_base_dir = setup_cfg['output_base_dir']
+
+    # Ensure output base directory exists
+    os.makedirs(output_base_dir, exist_ok=True)
+    print(f"**Output will be saved in: '{os.path.abspath(output_base_dir)}'**")
+
+    # Determine GYRE executable path
+    gyre_executable = os.path.join(gyre_dir, 'bin', 'gyre')
+    
+    # Verify GYRE executable exists and is runnable
+    if not (os.path.exists(gyre_executable) and os.path.isfile(gyre_executable) and os.access(gyre_executable, os.X_OK)):
+        # Fallback: check if GYRE_DIR itself is the binary dir
+        gyre_executable_fallback = os.path.join(gyre_dir, 'gyre')
+        if (os.path.exists(gyre_executable_fallback) and os.path.isfile(gyre_executable_fallback) and os.access(gyre_executable_fallback, os.X_OK)):
+            gyre_executable = gyre_executable_fallback
+        else:
+            raise FileNotFoundError(f"GYRE executable not found or not executable at '{gyre_executable}' or '{gyre_executable_fallback}'. "
+                                    f"Please check your 'gyre_dir' in '{config_file}'.")
+    print(f"**GYRE executable found at: '{gyre_executable}'**")
+
+
+    # --- Run MESA (Placeholder) ---
+    if run_cfg['run_mesa']:
+        print("\n--- MESA Run (Not yet implemented) ---")
+        # In the future, MESA execution logic would go here
+        pass
+
+    # --- Run GYRE ---
+    if run_cfg['run_gyre']:
+        print("\n--- GYRE Run Starting ---")
+
+        # Find MESA profiles
+        mesa_profile_source_dir = os.path.join(mesa_dir, gyre_cfg['mesa_profile_base_dir'])
+        
+        # Check if the base directory for profiles exists
+        if not os.path.exists(mesa_profile_source_dir):
+            raise FileNotFoundError(f"MESA profile base directory not found: '{mesa_profile_source_dir}'. "
+                                    f"Please check 'mesa_dir' and 'mesa_profile_base_dir' in '{config_file}'.")
+
+        # Use glob to find all matching profile files
+        profile_paths = sorted(glob.glob(os.path.join(mesa_profile_source_dir, gyre_cfg['mesa_profile_pattern'])))
+        
+        if not profile_paths:
+            print(f"**WARNING:** No MESA profile files found in '{mesa_profile_source_dir}' matching pattern '{gyre_cfg['mesa_profile_pattern']}'. Skipping GYRE runs.")
+        else:
+            print(f"**Found {len(profile_paths)} MESA profile(s) to process.**")
+            
+            tasks = []
+            for i, profile_path in enumerate(profile_paths):
+                # Create a unique output directory for each GYRE run
+                profile_filename = os.path.basename(profile_path)
+                run_output_name = profile_filename.replace('.data.GYRE', '') # Clean name for directory
+                run_output_dir = os.path.join(output_base_dir, run_output_name)
+                
+                tasks.append((
+                    profile_path,
+                    gyre_cfg['gyre_inlist_template'], # Path to your base gyre.in
+                    run_output_dir,
+                    gyre_executable,
+                    gyre_cfg['num_gyre_threads']
+                ))
+
+            if gyre_cfg['enable_parallel']:
+                print(f"**Parallel GYRE execution enabled.** Running {gyre_cfg['max_concurrent_gyre_runs']} job(s) concurrently.")
+                with multiprocessing.Pool(processes=gyre_cfg['max_concurrent_gyre_runs']) as pool:
+                    pool.starmap(run_single_gyre_model, tasks)
+            else:
+                print("**Parallel GYRE execution disabled.** Running jobs sequentially.")
+                for task in tasks:
+                    run_single_gyre_model(*task)
+        
+        print("\n--- GYRE Run Finished ---")
+
+    # --- Run Analysis (Placeholder) ---
+    if run_cfg['run_analysis']:
+        print("\n--- Analysis Run (Not yet implemented) ---")
+        # In the future, analysis logic would go here, processing GYRE outputs
+        pass
+
+    # --- Run Plots (Placeholder) ---
+    if run_cfg['run_plots']:
+        print("\n--- Plotting Run (Not yet implemented) ---")
+        # In the future, plotting logic would go here, using analysis results
+        pass
+
+    print("\n**mesalab execution complete.**")
 
 if __name__ == "__main__":
-    # Az inlist fájl neve (most már alapértelmezett a 'gyre.in')
-    my_inlist_file = "gyre.in"
-
-    # Hagyjuk None-on, hogy a szkript automatikusan megpróbálja megtalálni a GYRE-t
-    # a GYRE_DIR környezeti változó vagy a PATH alapján.
-    # Ha ez nem működik, akkor itt adhatod meg a GYRE teljes útját, pl:
-    # my_gyre_executable = "/home/tnehezd/sajat/gyre/bin/gyre"
-    my_gyre_executable = None
-
-    print(f"Indul a GYRE tesztfuttatás a '{my_inlist_file}' inlist fájllal.")
-
     try:
-        run_gyre_simple_test(inlist_filename=my_inlist_file, gyre_executable_path=my_gyre_executable)
-        print("\n**GYRE tesztfuttatás sikeresen befejeződött a Python szkriptből.**")
-        print(f"Keresd a kimeneti fájlokat (summary_output.h5, detail_output_...) ugyanabban a mappában, ahol a szkriptet futtattad.")
-
+        main()
     except FileNotFoundError as e:
-        print(f"\n**[Futtatási hiba]:** {e}")
-    except subprocess.CalledProcessError:
-        print("\n**[Futtatási hiba]:** A GYRE futtatása sikertelen volt, lásd a fenti hibakimenetet.")
+        print(f"\n**[Critical Error]:** {e}")
+    except subprocess.CalledProcessError as e:
+        print(f"\n**[GYRE Execution Error]:** A GYRE process failed. Check the output above for details.")
     except Exception as e:
-        print(f"\n**[Váratlan hiba]:** {e}")
-
-    print("\nTeszt futtatás befejeződött.")
+        print(f"\n**[Unexpected Error]:** An unexpected error occurred: {e}")
+        import traceback
+        traceback.print_exc() # Print full traceback for debugging

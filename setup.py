@@ -46,6 +46,7 @@ setup(
         'seaborn>=0.12.2',    # Installed: 0.12.2 (If used for specific plot types like heatmaps/distributions)
         'numba>=0.56.4',      # Installed: 0.56.4 (If used for performance optimization)
         'swifter>=1.4.0',     # Installed: 1.4.0 (If used to accelerate pandas operations)
+        'f90nml>=1.4.5',      # Installed: 1.4.5 (If used gyre calculations)
 
         # Other potential dependencies that might be direct (check your imports)
         # 'gdr3bcg==1.1',     # If you directly import and use this package

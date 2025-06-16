@@ -1,0 +1,47 @@
+! mesalab_config.in
+
+&setup
+  ! Basic directory settings
+  mesa_dir = '.'
+  mesasdk_root = '/home/tnehezd/workdir/mesasdk'
+  ! The GYRE_DIR is the directory that contains the 'bin' folder with the GYRE executable.
+  ! Example: if the GYRE executable is at: /path/to/gyre_install/bin/gyre
+  ! then gyre_dir = '/path/to/gyre_install'
+  ! In your case, it's inside your MESA installation, so GYRE_DIR should be:
+  gyre_dir = '/home/tnehezd/workdir/mesa-r23.05.1/gyre/gyre'
+  output_base_dir = './mesalab_results' ! Base directory for all outputs
+/
+
+&run_control
+  ! Which steps should mesalab execute
+  run_mesa = .FALSE.    ! Not yet implemented. In the future, this could launch MESA runs.
+  run_gyre = .TRUE.     ! Run GYRE on the specified profiles.
+  run_analysis = .FALSE. ! Not yet implemented. For processing results.
+  run_plots = .FALSE.   ! Not yet implemented. For plotting results.
+/
+
+&gyre_options
+  ! GYRE-specific settings for the runs
+  enable_parallel = .TRUE.   ! Enable parallel execution of GYRE runs.
+  num_gyre_threads = 2       ! How many OpenMP threads (CPU cores) should ONE GYRE run use.
+  max_concurrent_gyre_runs = 2 ! How many GYRE runs should execute simultaneously (processes).
+  gyre_inlist_template = 'gyre.in' ! The name of the base GYRE inlist template file (assumed in the same directory).
+  mesa_profile_pattern = 'profile*.data.GYRE' ! Pattern to find MESA profile files in the MESA LOGS directory.
+  mesa_profile_base_dir = '.' ! Relative or absolute path to the MESA LOGS directory (where profiles are).
+/
+
+&analyze_options
+  ! Analysis-related settings
+  ! (Not used yet, just an example of structure)
+  calc_stability = .TRUE.
+  output_summary_csv = .TRUE.
+/
+
+&plot_options
+  ! Plotting-related settings
+  ! (Not used yet, just an example of structure)
+  plot_hr = .TRUE.
+  plot_k_diagram = .FALSE.
+  plot_save_format = 'png'
+  plot_dpi = 300
+/
