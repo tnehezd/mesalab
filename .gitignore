@@ -38,7 +38,7 @@ mesa_blue_loop.ipynb
 mysett.yaml
 
 
-mesalab/gyretools/mesalab_results/
+mesalab_results/
 
 *.h5
 detail*.*
