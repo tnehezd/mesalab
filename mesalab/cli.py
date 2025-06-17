@@ -22,8 +22,8 @@ from .io.output_manager import create_output_directories, get_analysis_file_path
 from .analyzis.mesa_analyzer import perform_mesa_analysis
 from .allplots.plot_handlers import handle_heatmap_generation, handle_blue_loop_bc_plotting, handle_hr_diagram_generation
 
-# Import specific functions from the GYRE input generator module
-from .gyretools.gyre_in_generator import find_nearest_profiles, generate_gyre_in_file, run_gyre_input_generation
+# >>> NEW/MODIFIED IMPORT FOR GYRE_MODULES
+from .gyretools.gyre_modules import run_single_gyre_model, run_gyre_workflow, 
 
 def setup_logging_to_file(output_dir: str, debug_mode: bool = False):
     """
@@ -81,58 +81,42 @@ def main():
         logging.info("No analysis performed or data loaded. Exiting.")
         return
 
-    # --- GYRE Input File Generation ---
-    if args.generate_gyre_in:
-        logging.info("Starting GYRE input file generation process.")
+    # --- GYRE Workflow Integration (Input Generation & Simulation) ---
+    # This block now covers both generating the input CSV AND running GYRE,
+    # all managed by gyre_modules.py's run_gyre_workflow function.
+    if args.run_gyre_workflow: # This requires a new argparse flag, e.g., --run-gyre-workflow
+        logging.info("Starting integrated GYRE workflow (input generation and simulation).")
         
-        gyre_args = argparse.Namespace()
-        gyre_args.gyre_mesa_base_dir = args.gyre_mesa_base_dir 
-        gyre_args.gyre_output_dir = args.gyre_output_dir   
-        gyre_args.gyre_model_name = args.gyre_model_name   
-
-        # Determine which source to use for model ranges for GYRE
-        df_for_gyre_input = None
-        blue_loop_csv_for_gyre = None
-
-        # Always try to use in-memory data first IF analysis was performed AND it has required columns
-        if args.analyze_blue_loop and analysis_performed_or_data_loaded:
-            required_cols_for_gyre_df = [
-                'initial_mass', 'initial_Z', 'first_model_number', 'last_model_number', 'run_dir_path'
-            ]
-            if all(col in summary_df_for_plotting.columns for col in required_cols_for_gyre_df):
-                df_for_gyre_input = summary_df_for_plotting[required_cols_for_gyre_df].copy()
-                df_for_gyre_input.rename(columns={
-                    'initial_mass': 'mass', 
-                    'initial_Z': 'Z',       
-                    'first_model_number': 'min_model_number',
-                    'last_model_number': 'max_model_number'
-                }, inplace=True)
-                logging.info("Passing in-memory analysis results to GYRE input generator.")
-            else:
-                logging.warning("In-memory summary DataFrame lacks required columns for GYRE (first_model_number, last_model_number, run_dir_path). Will attempt to load from saved CSV.")
-                # Fallback to CSV path if in-memory data is incomplete
-                blue_loop_csv_for_gyre = os.path.join(analysis_results_sub_dir, "sorted_mass_Z_min_max.csv")
-                logging.info(f"Falling back to GYRE data from CSV: {blue_loop_csv_for_gyre}")
-        else:
-            # If blue loop analysis was not enabled (args.analyze_blue_loop is False),
-            # or no data was loaded for some reason, we must rely on the CSV.
-            # First, check if the user explicitly provided a --gyre-blue-loop-csv
-            if args.gyre_blue_loop_csv:
-                blue_loop_csv_for_gyre = args.gyre_blue_loop_csv
-                logging.info(f"Blue loop analysis not active. Using user-provided --gyre-blue-loop-csv: {blue_loop_csv_for_gyre}")
-            else: # If user didn't provide, try the one saved by mesa_analyzer in the output directory
-                blue_loop_csv_for_gyre = os.path.join(analysis_results_sub_dir, "sorted_mass_Z_min_max.csv")
-                logging.info(f"Blue loop analysis not active and no --gyre-blue-loop-csv provided. Attempting to load GYRE data from default CSV: {blue_loop_csv_for_gyre}")
-
-
-        gyre_args.df_model_ranges = df_for_gyre_input
-        gyre_args.gyre_blue_loop_csv = blue_loop_csv_for_gyre
+        # Determine the path to gyre_config.in
+        # It's crucial that gyre_config.in contains all necessary paths
+        # for MESA profiles (mesa_dir) and GYRE executable (gyre_dir).
+        # We'll pass this config file path to gyre_modules.run_gyre_workflow.
+        
+        # Get gyre_config_path from arguments, default to 'gyre_config.in'
+        gyre_config_file_path = getattr(args, 'gyre_config_path', 'gyre_config.in') 
+        
+        # If the path is not absolute, try to find it relative to output_dir first, then current dir.
+        if not os.path.isabs(gyre_config_file_path):
+             proposed_path_in_output = os.path.join(args.output_dir, gyre_config_file_path)
+             if os.path.exists(proposed_path_in_output):
+                 gyre_config_file_path = proposed_path_in_output
+             elif os.path.exists(gyre_config_file_path): # Check current directory
+                 pass # Use the default or specified relative path
+             else:
+                 logging.error(f"GYRE configuration file '{gyre_config_file_path}' not found at '{proposed_path_in_output}' or current directory. Please provide a valid path.")
+                 return # Or raise an exception, depending on desired strictness
 
         try:
-            run_gyre_input_generation(gyre_args)
+            # Here, we call the run_gyre_workflow function from gyre_modules.
+            # This function is now expected to handle:
+            # 1. Reading gyre_config.in
+            # 2. Identifying profiles (potentially using the logic moved from gyre_in_generator)
+            # 3. Generating inlist files for each profile
+            # 4. Executing GYRE for each profile
+            gyre_modules.run_gyre_workflow(config_file=gyre_config_file_path)
         except Exception as e:
-            logging.error(f"Error during GYRE input file generation: {e}")
-            logging.exception("GYRE input generation exception details:")
+            logging.error(f"Error during integrated GYRE workflow: {e}")
+            logging.exception("Integrated GYRE workflow exception details:")
             
     # --- Heatmap Generation ---
     handle_heatmap_generation(
