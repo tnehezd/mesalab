@@ -5,6 +5,8 @@ import argparse
 import yaml
 import sys
 import logging
+from datetime import datetime # Added for logging, if needed elsewhere
+
 
 # Set up basic logging for this module.
 logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
@@ -40,7 +42,7 @@ def parsing_options():
     parser.add_argument("--blue-loop-output-type", choices=['summary', 'all'], default='all',
                         help="Blue loop output type for detail files: 'summary' includes selected key columns, 'all' includes all columns from the relevant blue loop phase. Default: 'all'.")
     parser.add_argument("--generate-plots", action="store_true",
-                        help="Generate general plots (e.g., HR diagrams, if enabled).") # Added help text clarity
+                        help="Generate general plots (e.g., HR diagrams, if enabled).") 
 
     # --- NEW GYRE-RELATED ARGUMENTS START HERE ---
     parser.add_argument('--run-gyre-workflow', action='store_true',
@@ -60,6 +62,12 @@ def parsing_options():
     # Parse command-line arguments first
     cmd_args = parser.parse_args()
 
+    # Get default values from parser
+    defaults = {action.dest: action.default for action in parser._actions if action.dest != argparse.SUPPRESS}
+    
+    # Initialize combined_args with parser defaults
+    combined_args = argparse.Namespace(**defaults)
+
     # Load settings from YAML file if provided
     config_from_yaml = {}
     if cmd_args.config:
@@ -74,31 +82,37 @@ def parsing_options():
             logging.error(f"Error parsing YAML configuration file {cmd_args.config}: {e}")
             sys.exit(1)
 
-    # Combine arguments, with command-line arguments taking precedence
-    # Create a new Namespace to store the combined settings
-    combined_args = argparse.Namespace()
+    # Apply YAML settings (overriding defaults)
+    for key, value in config_from_yaml.items():
+        # Only set if the argument exists in the parser
+        if hasattr(combined_args, key):
+            setattr(combined_args, key, value)
+        else:
+            logging.warning(f"YAML config contains unknown key '{key}'. Ignoring.")
 
-    # Apply defaults for flags not explicitly set in YAML or CLI
-    for action in parser._actions:
-        if action.dest != argparse.SUPPRESS: # Skip special arguments like --help
-            if action.option_strings: # It's a positional or optional argument
-                # Check if it was provided on the command line
-                if getattr(cmd_args, action.dest) is not None and \
-                   getattr(cmd_args, action.dest) != action.default: # Check if it's explicitly set by CLI, not just default
-                    setattr(combined_args, action.dest, getattr(cmd_args, action.dest))
-                elif action.dest in config_from_yaml:
-                    setattr(combined_args, action.dest, config_from_yaml[action.dest])
-                else:
-                    setattr(combined_args, action.dest, action.default)
-            else: # Positional arguments without option strings (unlikely for your case, but good practice)
-                 if getattr(cmd_args, action.dest) is not None:
-                     setattr(combined_args, action.dest, getattr(cmd_args, action.dest))
-                 elif action.dest in config_from_yaml:
-                     setattr(combined_args, action.dest, config_from_yaml[action.dest])
-                 else:
-                     setattr(combined_args, action.dest, action.default)
+    # Apply command-line arguments (overriding YAML and defaults)
+    for key, value in vars(cmd_args).items():
+        # 'config' argument is handled separately, don't re-apply
+        if key == 'config':
+            continue
+        
+        # Only overwrite if the command-line argument was actually provided (not its default)
+        # This is a bit tricky for 'action="store_true"' flags, as their default is False.
+        # If default is False and cmd_args.key is True, it was set.
+        # If cmd_args.key is explicitly None (e.g., for optional string args not given), don't overwrite.
+        
+        # A more robust check for whether a CLI arg was explicitly set:
+        # Check if the value from cmd_args is different from the original parser default for that arg.
+        # For store_true flags, this effectively checks if it was switched from False to True.
+        
+        # Get the original default for this argument from the parser
+        original_parser_default = parser.get_default(key)
 
-
+        if value != original_parser_default or (value is True and original_parser_default is False):
+            setattr(combined_args, key, value)
+        elif value is not None and original_parser_default is None: # For args with no default set by argparse but provided by CLI
+             setattr(combined_args, key, value)
+             
     # Special handling for --input-dir and --output-dir as they are critical
     # If not provided via CLI or YAML, they need to be specified or handle defaults properly
     if not hasattr(combined_args, 'input_dir') or combined_args.input_dir is None:
