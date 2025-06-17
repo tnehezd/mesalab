@@ -3,11 +3,12 @@ import os
 import multiprocessing
 import shutil
 import glob
-import f90nml # Make sure you have this installed: pip install f90nml
+import f90nml
 import pandas as pd
-import h5py # For potential post-processing of GYRE .h5 outputs
+import h5py
 import re
 import logging
+import numpy as np # Added for potential NaN handling if initial_mass/Z are truly empty
 
 # --- Configure logging for this module ---
 # This setup ensures consistent logging. The main application's logger
@@ -133,7 +134,6 @@ def run_single_gyre_model(
                 del os.environ['OMP_NUM_THREADS']
                 logging.info("OMP_NUM_THREADS unset.")
 
-
 # --- Main GYRE Pipeline Orchestration Function ---
 def run_gyre_workflow(config_file: str):
     """
@@ -254,55 +254,75 @@ def run_gyre_workflow(config_file: str):
             return    
 
         # Check for required columns in the DataFrame
+        # IMPORTANT: Using 'run_dir_path' as per your CSV header output
         required_cols = ['initial_mass', 'initial_Z', 'min_model_number', 'max_model_number', 'run_dir_path']
         if not all(col in filter_df.columns for col in required_cols):
             raise ValueError(f"Filtered profiles CSV '{filtered_csv_path}' must contain the columns: {', '.join(required_cols)}")
+        
+        # --- Critical change: Ensure mass and Z columns are not empty/NaN ---
+        # If 'initial_mass' or 'initial_Z' can be genuinely empty (NaN),
+        # uncomment the following line to skip rows with missing critical data.
+        # Otherwise, the float conversion or later usage will fail.
+        # filter_df = filter_df.dropna(subset=['initial_mass', 'initial_Z'])
+        # if filter_df.empty:
+        #    logging.warning(f"**WARNING:** Filtered profiles CSV '{filtered_csv_path}' has no rows with valid 'initial_mass' and 'initial_Z' after dropping NaNs. No profiles to process.")
+        #    return
+
 
         for index, row in filter_df.iterrows():
-            mass = row['initial_mass']
-            Z = row['initial_Z']
+            # Safely convert mass and Z, handle potential NaN if not dropped above
+            mass = row['initial_mass'] if pd.notna(row['initial_mass']) else np.nan
+            Z = row['initial_Z'] if pd.notna(row['initial_Z']) else np.nan
+
+            # If mass or Z are NaN, skip this row as we can't form the path or process it meaningfully
+            if pd.isna(mass) or pd.isna(Z):
+                logging.warning(f"Skipping row {index} in CSV due to missing initial_mass or initial_Z.")
+                continue
+
             min_model = int(row['min_model_number'])
             max_model = int(row['max_model_number'])
             
+            # Using 'run_dir_path' as per your CSV header output
             mesa_run_specific_dir = row['run_dir_path']    
 
             current_mesa_run_logs_dir = os.path.join(mesa_run_specific_dir, 'LOGS')
             current_profiles_index_path = os.path.join(current_mesa_run_logs_dir, 'profiles.index')
 
             logging.info(f"\nProcessing M={mass}, Z={Z} from run directory: {os.path.basename(mesa_run_specific_dir)}")
-            logging.info(f"Searching profiles in: {current_mesa_run_logs_dir}")
+            logging.info(f"Searching profiles in: {current_mesa_run_logs_dir} within model range [{min_model}-{max_model}]")
 
-            model_numbers_in_index = []
-            profile_numbers_in_index = []
-
+            # Store mapping from model_number to profile_number from profiles.index
+            model_to_profile_map = {}
+            
             if not os.path.exists(current_profiles_index_path):
                 logging.warning(f"**WARNING:** profiles.index not found for M={mass}, Z={Z} at: '{current_profiles_index_path}'. Skipping this M-Z combination.")
                 continue    
 
             try:
                 with open(current_profiles_index_path, 'r') as f:
+                    # Check if the first line is a header (starts with non-digit or '#')
                     first_line = f.readline().strip()
-                    if not re.match(r'^\d', first_line):    
-                        # If the first line doesn't start with a digit, assume it's a header and skip it.
-                        pass    
+                    if not re.match(r'^\d', first_line):     
+                        # If it's a header, skip it. File pointer is already past it.
+                        pass     
                     else:
-                        f.seek(0) # If it's not a header, rewind to the beginning.
+                        f.seek(0) # If it's not a header, rewind to the beginning to process it.
 
                     for line in f:
                         line = line.strip()
-                        if not line or line.startswith('#'):    
+                        if not line or line.startswith('#'):     
                             continue
-                        
-                        parts = line.split()
-                        if len(parts) < 2:    
-                            continue
-                        
-                        try:
-                            model_num = int(parts[0])
-                            profile_num = int(parts[-1])    
                             
-                            model_numbers_in_index.append(model_num)
-                            profile_numbers_in_index.append(profile_num)
+                        parts = line.split()
+                        # Expecting at least two parts for model_number and profile_number
+                        if len(parts) < 2:     
+                            continue
+                            
+                        try:
+                            # model_number is typically the first column, profile_number the last
+                            model_num = int(parts[0])
+                            profile_num = int(parts[-1])     
+                            model_to_profile_map[model_num] = profile_num
                         except ValueError:
                             logging.debug(f"Skipping malformed line in {current_profiles_index_path}: {line.strip()}")
                             continue
@@ -310,22 +330,15 @@ def run_gyre_workflow(config_file: str):
                 logging.error(f"**ERROR:** Error reading profiles.index for M={mass}, Z={Z} at '{current_profiles_index_path}': {e}. Skipping.")
                 continue
 
-            if not model_numbers_in_index:
-                logging.warning(f"**WARNING:** No valid data lines found in '{current_profiles_index_path}' for M={mass}, Z={Z}. Skipping.")
+            if not model_to_profile_map:
+                logging.warning(f"**WARNING:** No valid data found in '{current_profiles_index_path}' for M={mass}, Z={Z}. Skipping.")
                 continue
 
-            model_to_profile_map = dict(zip(model_numbers_in_index, profile_numbers_in_index))
-
+            # --- CRITICAL FIX: Collect ALL profiles within the specified model number range ---
             selected_profile_numbers_for_this_run = set()
-            
-            models_in_range_for_this_run = [
-                model for model in model_numbers_in_index
-                if min_model <= model <= max_model
-            ]
-            
-            for model in models_in_range_for_this_run:
-                if model in model_to_profile_map:
-                    selected_profile_numbers_for_this_run.add(model_to_profile_map[model])
+            for model_num_in_index, profile_num_in_index in model_to_profile_map.items():
+                if min_model <= model_num_in_index <= max_model:
+                    selected_profile_numbers_for_this_run.add(profile_num_in_index)
 
             if not selected_profile_numbers_for_this_run:
                 logging.warning(f"**WARNING:** No MESA profiles found for M={mass}, Z={Z} within model range {min_model}-{max_model}. Skipping.")
@@ -333,13 +346,14 @@ def run_gyre_workflow(config_file: str):
 
             specific_model_output_root = os.path.join(
                 output_base_dir,
-                os.path.basename(mesa_run_specific_dir)    
+                os.path.basename(mesa_run_specific_dir)     
             )
-            os.makedirs(specific_model_output_root, exist_ok=True)    
+            os.makedirs(specific_model_output_root, exist_ok=True)     
 
+            # Iterate over sorted profile numbers to ensure consistent processing order
             for prof_num in sorted(list(selected_profile_numbers_for_this_run)):
                 expected_profile_name = f'profile{prof_num}.data.GYRE'
-                profile_path = os.path.join(current_mesa_run_logs_dir, expected_profile_name)    
+                profile_path = os.path.join(current_mesa_run_logs_dir, expected_profile_name)     
 
                 if os.path.exists(profile_path):
                     run_output_dir = os.path.join(specific_model_output_root, f'profile{prof_num:05d}')
@@ -353,7 +367,7 @@ def run_gyre_workflow(config_file: str):
                     ))
                 else:
                     logging.warning(f"**WARNING:** Filtered profile '{expected_profile_name}' not found for M={mass}, Z={Z} at '{profile_path}'. Skipping.")
-        
+            
         logging.info(f"\nTotal GYRE tasks prepared: {len(tasks)}")
 
     else:
@@ -374,7 +388,7 @@ def run_gyre_workflow(config_file: str):
             logging.info("**Parallel GYRE execution disabled.** Running jobs sequentially.")
             for task in tasks:
                 run_single_gyre_model(*task)
-        
+            
         logging.info("\n--- GYRE Run Finished ---")
 
     logging.info("\n**GYRE pipeline execution complete.**")
