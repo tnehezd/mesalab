@@ -1,170 +1,281 @@
+import pandas as pd
 import os
 import re
-import pandas as pd
+from tqdm import tqdm
+import matplotlib.pyplot as plt
+import seaborn as sns
 import numpy as np
-import pygyre # Make sure you have pygyre installed (pip install pygyre)
-from tqdm import tqdm # Import tqdm for progress bar
+import pygyre # Ensure you have pygyre installed (pip install pygyre)
 
-# --- Configuration (Adjust these paths to your system) ---
-# Base directory for the MESA grid project (where this script is located)
+# --- Configuration ---
+# IMPORTANT: Adjust these paths to precisely match your system's setup.
+
+# Base directory of your 'mesa_blue_loop' project.
+# This is where your 'gyre_plot.py' script is, and where 'mesalab_results' is located.
 project_base_dir = "/home/tnd/mesagrid/mesa_blue_loop"
 
-# This should point to the folder containing your 'run_...' folders that hold GYRE outputs
-# E.g., if GYRE outputs are in /home/tnd/mesagrid/mesa_blue_loop/mesalab_results/run_XXX/...
-gyre_data_base_folder = os.path.join(project_base_dir, "mesalab_results")
+# This is the base directory where your GYRE output 'run_...' folders are located.
+# Each 'run_...' folder is expected to contain 'profileXXXXX' subfolders,
+# and inside those 'profileXXXXX' folders, you'll find 'summary.h5'.
+gyre_results_base_dir = os.path.join(project_base_dir, "mesalab_results")
 
-# This should point to the folder containing your 'run_...' folders that hold MESA LOGS
-# E.g., if MESA LOGS are in /home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid/run_XXX/LOGS/...
-mesa_logs_base_folder = "/home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid"
+# This is the base directory where your MESA run LOGS folders are located.
+# Each 'run_...' folder here should contain a 'LOGS' subfolder with 'history.data' and 'profiles.index'.
+mesa_logs_base_dir = "/home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid"
 
-# Output CSV file name
-output_csv_filename = "gyre_summary_with_history_data.csv"
+# Name of the output CSV file (will contain all collected data).
+output_csv_filename = "gyre_modes_with_mesa_params.csv"
 
-# --- End Configuration ---
+# Output directory for plots (within project_base_dir, will be created if it doesn't exist).
+plot_output_dir = os.path.join(project_base_dir, "output", "plots")
 
-# Function to extract mass and Z from folder name (unchanged from your code)
-def extract_mass_and_Z(folder_name):
-    mass_match = re.search(r'(\d+(\.\d+)?)MSUN', folder_name)
-    Z_match = re.search(r'z(\d+\.\d+)', folder_name)
-    mass = float(mass_match.group(1)) if mass_match else np.nan
-    Z = float(Z_match.group(1)) if Z_match else np.nan
-    return mass, Z
+# Ensure the plot output directory exists
+os.makedirs(plot_output_dir, exist_ok=True)
 
-# Data collection
-all_data = []
+# --- Function to parse MESA run parameters from directory names ---
+def parse_mesa_run_name(run_name):
+    # Example directory names: 'run_nad_convos_mid_9.5MSUN_z0.0080'
+    match_mass = re.search(r'(\d+\.?\d*)MSUN', run_name)
+    match_z = re.search(r'z(\d+\.?\d*)', run_name)
+    mass = float(match_mass.group(1)) if match_mass else np.nan
+    z = float(match_z.group(1)) if match_z else np.nan
+    return mass, z
 
-print("Checking run folders and extracting data...")
-
-# Get list of all 'run_...' folders in the GYRE data base directory
-run_folders = [f for f in os.listdir(gyre_data_base_folder) if os.path.isdir(os.path.join(gyre_data_base_folder, f)) and f.startswith("run")]
-
-# Add tqdm for a progress bar
-for gyre_run_folder_name in tqdm(run_folders, desc="Processing MESA runs"):
-    full_gyre_run_path = os.path.join(gyre_data_base_folder, gyre_run_folder_name)
+# --- Data Collection Function ---
+def collect_gyre_mesa_data():
+    all_gyre_modes = []
     
-    mass, Z = extract_mass_and_Z(gyre_run_folder_name)
+    print("Starting data collection from GYRE and MESA results...")
 
-    # Path to the corresponding MESA LOGS folder for this run
-    corresponding_mesa_run_path = os.path.join(mesa_logs_base_folder, gyre_run_folder_name)
-    
-    profiles_index_path = os.path.join(corresponding_mesa_run_path, "LOGS", "profiles.index")
-    profile_to_model = {}
+    # Get a list of all 'run_...' directories in the GYRE results base directory
+    run_directories = [d for d in os.listdir(gyre_results_base_dir) 
+                       if os.path.isdir(os.path.join(gyre_results_base_dir, d)) and d.startswith("run")]
 
-    if os.path.exists(profiles_index_path):
-        try:
-            with open(profiles_index_path, 'r') as f:
-                lines = f.readlines()[1:] # Skip the first line (header)
-                for line in lines:
-                    parts = line.strip().split()
-                    if len(parts) == 3:
-                        model_num, _, profile_num = map(int, parts)
-                        profile_to_model[profile_num] = model_num
-        except Exception as e:
-            tqdm.write(f"  Error reading profiles.index in {gyre_run_folder_name}: {e}")
-            continue # Skip to next run folder if profiles.index is problematic
-    else:
-        tqdm.write(f"  profiles.index not found for {gyre_run_folder_name}. Skipping.")
-        continue
+    # Iterate through GYRE result directories with a progress bar
+    for run_dir_name in tqdm(run_directories, desc="Processing MESA runs"):
+        current_gyre_run_path = os.path.join(gyre_results_base_dir, run_dir_name)
+        
+        mass, z = parse_mesa_run_name(run_dir_name)
+        if pd.isna(mass) or pd.isna(z): # Check for NaN values from parsing
+            tqdm.write(f"Warning: Could not parse mass or Z from directory name: {run_dir_name}. Skipping this run.")
+            continue
 
-    # Path to the 'gyre_out' folder for this run
-    gyre_out_path = os.path.join(full_gyre_run_path, "gyre_out")
-    if not os.path.isdir(gyre_out_path):
-        tqdm.write(f"  gyre_out folder not found for {gyre_run_folder_name}. Skipping.")
-        continue
+        # Construct path to the corresponding MESA LOGS directory for this run
+        corresponding_mesa_logs_path = os.path.join(mesa_logs_base_dir, run_dir_name, "LOGS")
+        
+        # --- Read profiles.index to map profile numbers to model numbers ---
+        profiles_index_path = os.path.join(corresponding_mesa_logs_path, "profiles.index")
+        profile_to_model = {}
 
-    # Process each summary_XXX.h5 file in gyre_out
-    summary_files = [f for f in os.listdir(gyre_out_path) if f.startswith("summary_") and f.endswith(".h5")]
-    if not summary_files:
-        tqdm.write(f"  No summary_*.h5 files found in {gyre_out_path}. Skipping.")
-        continue
+        if os.path.exists(profiles_index_path):
+            try:
+                with open(profiles_index_path, 'r') as f:
+                    lines = f.readlines()[1:] # Skip header line
+                    for line in lines:
+                        parts = line.strip().split()
+                        if len(parts) == 3:
+                            model_num, _, profile_num = map(int, parts)
+                            profile_to_model[profile_num] = model_num
+            except Exception as e:
+                tqdm.write(f"  Error reading profiles.index in {run_dir_name}: {e}. Skipping this run.")
+                continue # Skip to next run folder if profiles.index is problematic
+        else:
+            tqdm.write(f"  profiles.index not found for {run_dir_name} at {profiles_index_path}. Skipping this run.")
+            continue
 
-    for fname in summary_files:
-        summary_path = os.path.join(gyre_out_path, fname)
-        profile_value_match = re.search(r'summary_(\d+)\.h5', fname)
-        profile_value = int(profile_value_match.group(1)) if profile_value_match else -1
+        # --- Read the MESA history.data file for this run (once per run) ---
+        history_file_path = os.path.join(corresponding_mesa_logs_path, "history.data")
+        mesa_history_df = pd.DataFrame() # Initialize empty DataFrame
 
-        try:
-            # Read GYRE table using pygyre
-            table = pygyre.read_output(summary_path)
-            # Ensure 'modes' key is used for the actual mode data in pygyre output if it's structured that way
-            # pygyre.read_output directly returns a table (dict-like), so check for 'omega' and 'eta'
+        if os.path.exists(history_file_path):
+            try:
+                # Read header from the 6th line (index 5)
+                with open(history_file_path, 'r') as f:
+                    lines = f.readlines()
+                header_line = lines[5].strip().split() 
+                
+                # Read using pandas, explicitly setting column names, whitespace delimiter, and Python engine
+                mesa_history_df = pd.read_csv(history_file_path, 
+                                              skiprows=6, 
+                                              sep=r'\s+', 
+                                              names=header_line, 
+                                              engine='python')
+                
+                required_history_cols = ['model_number', 'log_L', 'log_Teff', 'star_mass']
+                if not all(col in mesa_history_df.columns for col in required_history_cols):
+                    tqdm.write(f"Warning: Missing required columns in history.data for {run_dir_name}. Available: {mesa_history_df.columns.tolist()}. Skipping this run.")
+                    continue
+
+            except Exception as e:
+                tqdm.write(f"Error reading {history_file_path}: {e}. Skipping this run.")
+                continue
+        else:
+            tqdm.write(f"Error: MESA history.data not found for {run_dir_name} at {history_file_path}. Skipping this run.")
+            continue
+
+        # --- Iterate through profile directories within the current run_dir_name ---
+        # The summary.h5 files are located inside 'profileXXXXX' subfolders.
+        profile_folders = [d for d in os.listdir(current_gyre_run_path) 
+                           if os.path.isdir(os.path.join(current_gyre_run_path, d)) and d.startswith("profile")]
+
+        if not profile_folders:
+            tqdm.write(f"  No 'profileXXXXX' folders found in {current_gyre_run_path}. Skipping this run.")
+            continue
+
+        for profile_folder_name in profile_folders:
+            current_profile_path = os.path.join(current_gyre_run_path, profile_folder_name)
+            summary_h5_path = os.path.join(current_profile_path, "summary.h5") # The specific summary.h5 file
+
+            # Extract profile_value (e.g., 1 from 'profile00001')
+            profile_value_match = re.search(r'profile(\d+)', profile_folder_name)
+            if not profile_value_match:
+                tqdm.write(f"  Warning: Could not extract profile number from folder name: {profile_folder_name}. Skipping this profile.")
+                continue
+            profile_value = int(profile_value_match.group(1))
+
+            if not os.path.exists(summary_h5_path):
+                # tqdm.write(f"  summary.h5 not found in {current_profile_path}. Skipping this profile.") # Uncomment for more verbose output
+                continue # Silently skip if no summary.h5 (e.g., if GYRE failed for this profile)
+
+            # Find corresponding model_number from profiles.index
+            model_num = profile_to_model.get(profile_value, np.nan)
+            if pd.isna(model_num):
+                tqdm.write(f"  ⚠️ No valid model number mapped for profile {profile_value} in {run_dir_name}. Skipping modes from this profile.")
+                continue
             
-            # pygyre.read_output returns a structured numpy array or similar,
-            # we need to ensure we're getting all modes for this profile, not just the first one.
-            # Let's assume 'table' contains all modes for a given profile.
+            # Find the corresponding MESA history entry using the model_number
+            mesa_row = mesa_history_df[mesa_history_df['model_number'] == model_num]
+            if mesa_row.empty:
+                tqdm.write(f"  Warning: No MESA history entry found for model {model_num} in {run_dir_name}. Skipping modes from this profile.")
+                continue
             
-            # The previous code only took the first mode's omega and eta.
-            # To get all modes from a summary file, we need to iterate over the table.
-            if len(table) == 0:
-                # tqdm.write(f"  No modes found in {summary_path}. Skipping.")
-                continue # Skip if the summary file has no modes
+            # --- Read GYRE summary.h5 file for this profile ---
+            try:
+                # pygyre.read_output returns a structured numpy array or similar, containing all modes
+                gyre_table = pygyre.read_output(summary_h5_path)
+                
+                if len(gyre_table) == 0:
+                    continue # Skip if the summary file has no modes
 
-            # History file path for this run
-            history_file_path = os.path.join(corresponding_mesa_run_path, "LOGS", "history.data")
-            
-            if os.path.exists(history_file_path):
-                try:
-                    # Read history.data and find the relevant row
-                    with open(history_file_path, 'r') as f:
-                        lines = f.readlines()
+                # Append MESA parameters to each GYRE mode row found in summary.h5
+                for mode_idx in range(len(gyre_table)):
+                    mode_row_gyre = gyre_table[mode_idx]
                     
-                    # Extract header from the 6th line (index 5)
-                    header_line = lines[5].strip().split() 
-                    # Read using pandas, explicitly setting column names and Python engine for robustness
-                    df_history = pd.read_csv(history_file_path, skiprows=6, sep=r'\s+', names=header_line, engine='python') # Added engine='python' and sep='\s+'
+                    new_row = {
+                        'mass': mass,
+                        'Z': z,
+                        'model_number': model_num,
+                        'profile_number': profile_value, # Store the profile number too
+                        'log_L': mesa_row['log_L'].iloc[0],
+                        'log_Teff': mesa_row['log_Teff'].iloc[0],
+                        'star_mass_mesa': mesa_row['star_mass'].iloc[0], # Mass from MESA history
+                        # GYRE mode properties (ensure these keys exist in pygyre output's dtype.names)
+                        'freq_real': mode_row_gyre['omega'].real if 'omega' in mode_row_gyre.dtype.names else np.nan,
+                        'freq_imag': mode_row_gyre['omega'].imag if 'omega' in mode_row_gyre.dtype.names else np.nan,
+                        'n_p': mode_row_gyre['n_p'] if 'n_p' in mode_row_gyre.dtype.names else np.nan,
+                        'n_g': mode_row_gyre['n_g'] if 'n_g' in mode_row_gyre.dtype.names else np.nan,
+                        'l': mode_row_gyre['l'] if 'l' in mode_row_gyre.dtype.names else np.nan,
+                        # Add other history columns you might want, e.g., 'center_h1', 'star_age', 'log_g'
+                        'center_h1': mesa_row['center_h1'].iloc[0] if 'center_h1' in mesa_row.columns else np.nan,
+                        'star_age': mesa_row['star_age'].iloc[0] if 'star_age' in mesa_row.columns else np.nan,
+                        'log_g': mesa_row['log_g'].iloc[0] if 'log_g' in mesa_row.columns else np.nan
+                    }
+                    all_gyre_modes.append(new_row)
 
-                    model_num = profile_to_model.get(profile_value, np.nan)
-                    if pd.isna(model_num): # Check for NaN after lookup
-                        tqdm.write(f"  ⚠️ No valid model number mapped for profile {profile_value} in {gyre_run_folder_name}. Skipping modes from this profile.")
-                        continue
+            except Exception as e:
+                tqdm.write(f"Error reading {summary_h5_path} with pygyre: {e}. Skipping this profile's GYRE modes.")
+                continue
+    
+    # --- Finalize and save data ---
+    if all_gyre_modes:
+        final_df = pd.DataFrame(all_gyre_modes)
+        # Sort by mass, Z, model for consistency
+        final_df_sorted = final_df.sort_values(by=['mass', 'Z', 'model_number'])
+        
+        output_csv_path = os.path.join(project_base_dir, output_csv_filename)
+        final_df_sorted.to_csv(output_csv_path, index=False)
+        print(f"\nSuccessfully collected all data: {output_csv_path}")
+        print(f"Total {len(final_df_sorted)} modes processed and saved.")
+        return final_df_sorted
+    else:
+        print("\nNo GYRE modes were found or processed after iterating through all runs.")
+        return pd.DataFrame() # Return an empty DataFrame if no data
 
-                    match = df_history[df_history['model_number'] == model_num]
-                    if not match.empty:
-                        match_row = match.iloc[0]
-                        
-                        # Iterate through each mode found in the GYRE summary file
-                        for mode_idx in range(len(table)):
-                            mode_row_gyre = table[mode_idx]
-                            
-                            row_data = {
-                                'mass': mass,
-                                'Z': Z,
-                                'profile': profile_value,
-                                'model': model_num,
-                                'freq_real': mode_row_gyre['omega'].real if 'omega' in mode_row_gyre.dtype.names else np.nan, # pygyre returns complex 'omega'
-                                'freq_imag': mode_row_gyre['omega'].imag if 'omega' in mode_row_gyre.dtype.names else np.nan,
-                                'n_p': mode_row_gyre['n_p'] if 'n_p' in mode_row_gyre.dtype.names else np.nan,
-                                'n_g': mode_row_gyre['n_g'] if 'n_g' in mode_row_gyre.dtype.names else np.nan,
-                                'l': mode_row_gyre['l'] if 'l' in mode_row_gyre.dtype.names else np.nan,
-                                'log_L': match_row['log_L'],
-                                'log_Teff': match_row['log_Teff'],
-                                'center_h1': match_row['center_h1'],
-                                'star_age': match_row['star_age'],
-                                'log_g': match_row['log_g']
-                            }
-                            all_data.append(row_data)
-                    else:
-                        tqdm.write(f"  ⚠️ No matching model number ({model_num}) found in history.data for {gyre_run_folder_name}. Skipping modes from this profile.")
+# --- HRD Plotting Function ---
+def plot_gyre_hrd(df_modes_filtered):
+    if df_modes_filtered.empty:
+        print("No data available for plotting after filtering or collection.")
+        return
 
-                except Exception as e:
-                    tqdm.write(f"  ⚠️ Failed to read history data for model {model_num if 'model_num' in locals() else 'N/A'} in {gyre_run_folder_name}: {e}")
-            else:
-                tqdm.write(f"  ⚠️ history.data not found for {gyre_run_folder_name}. Skipping modes from this profile.")
+    # HRD plot colored by 'n_p' (pressure mode radial order)
+    plt.figure(figsize=(10, 8))
+    sns.scatterplot(data=df_modes_filtered,
+                    x='log_Teff',
+                    y='log_L',
+                    hue='n_p', # Color by 'n_p' mode number
+                    palette='viridis', # Choose a colormap
+                    s=50, # Marker size
+                    alpha=0.7, # Transparency
+                    edgecolor='w', # White edge for markers
+                    linewidth=0.5)
 
-        except Exception as e:
-            tqdm.write(f"  Error reading {summary_path} with pygyre: {e}")
+    plt.xlabel(r'$\log T_{\mathrm{eff}}$')
+    plt.ylabel(r'$\log (L/L_{\odot})$')
+    plt.title(f'Hertzsprung-Russell Diagram - GYRE Modes by $n_p$ (Total Modes: {len(df_modes_filtered)})')
+    plt.gca().invert_xaxis() # Invert x-axis for traditional HRD (Teff increases to the left)
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.legend(title='$n_p$ Mode Number', bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.tight_layout()
 
-# Create DataFrame and save
-if all_data:
-    df = pd.DataFrame(all_data)
+    plot_filename_np = os.path.join(plot_output_dir, "hrd_gyre_modes_by_np.png")
+    plt.savefig(plot_filename_np, dpi=300)
+    print(f"HRD plot (by $n_p$) saved to: {plot_filename_np}")
 
-    # Sort by mass, Z, model
-    df_sorted = df.sort_values(by=['mass', 'Z', 'model'])
+    # Another example: HRD plot colored by instability (freq_imag)
+    # Only plot modes that are unstable (freq_imag > 0)
+    df_unstable_modes = df_modes_filtered[df_modes_filtered['freq_imag'] > 0]
+    
+    if not df_unstable_modes.empty:
+        plt.figure(figsize=(10, 8))
+        sns.scatterplot(data=df_unstable_modes,
+                        x='log_Teff',
+                        y='log_L',
+                        hue='freq_imag', # Color by imaginary frequency
+                        palette='coolwarm', # Another colormap for positive/negative values
+                        s=50,
+                        alpha=0.7,
+                        edgecolor='w',
+                        linewidth=0.5)
 
-    # Save to CSV
-    output_csv_path = os.path.join(project_base_dir, output_csv_filename) # Save to project base dir for easy access
-    df_sorted.to_csv(output_csv_path, index=False)
+        plt.xlabel(r'$\log T_{\mathrm{eff}}$')
+        plt.ylabel(r'$\log (L/L_{\odot})$')
+        plt.title(f'Hertzsprung-Russell Diagram - Unstable GYRE Modes (Total Unstable: {len(df_unstable_modes)})')
+        plt.gca().invert_xaxis()
+        plt.grid(True, linestyle='--', alpha=0.6)
+        plt.legend(title='$\mathrm{Im}(\omega)$', bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.tight_layout()
 
-    print(f"\n✔ Done. Saved to '{output_csv_path}'")
-else:
-    print("\nNo data collected. Check paths and input files.")
+        plot_filename_imag = os.path.join(plot_output_dir, "hrd_gyre_modes_by_freq_imag.png")
+        plt.savefig(plot_filename_imag, dpi=300)
+        print(f"HRD plot (by $\mathrm{Im}(\omega)$) saved to: {plot_filename_imag}")
+    else:
+        print("No unstable modes found for plotting.")
+
+    plt.show() # Display the plots (this will pause execution until plots are closed)
+
+# --- Main execution logic ---
+if __name__ == '__main__':
+    # 1. Collect data and save to CSV
+    df_gyre_modes = collect_gyre_mesa_data()
+
+    # 2. Generate plots from the collected data
+    if not df_gyre_modes.empty:
+        # You can filter data here if you only want to plot specific modes
+        # Example: only l=0 modes:
+        # df_modes_to_plot = df_gyre_modes[df_gyre_modes['l'] == 0]
+        # Or all found modes:
+        df_modes_to_plot = df_gyre_modes.copy()
+        
+        plot_gyre_hrd(df_modes_to_plot)
+    else:
+        print("No GYRE modes available to generate plots.")
