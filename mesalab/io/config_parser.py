@@ -1,129 +1,113 @@
-# mesalab/io/config_parser.py
+# mesalab/io/config_parser.py (Recommended Revision)
 
 import os
 import argparse
 import yaml
 import sys
 import logging
-from datetime import datetime # Added for logging, if needed elsewhere
+from datetime import datetime
 
-
-# Set up basic logging for this module.
 logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
 
-
 def parsing_options():
-    """
-    Parses command-line arguments and loads settings from a YAML configuration file.
-    Command-line arguments take precedence over YAML settings.
-
-    Returns:
-        argparse.Namespace: An object containing all parsed arguments and
-                            configuration settings.
-    """
     parser = argparse.ArgumentParser(description="Analyze MESA stellar evolution grid runs and generate GYRE input files.")
 
-    # Define command-line arguments
-    parser.add_argument("--config", type=str,
-                        help="Path to a YAML configuration file. Command-line arguments will override file settings.")
-
-    parser.add_argument("-i", "--input-dir", required=False,
-                        help="Directory containing MESA run subdirectories (e.g., 'run_M2.0_Z0.01'). This is the main MESA output root.")
-    parser.add_argument("-o", "--output-dir", required=False,
-                        help="Output base directory for analysis results (summary, plots, GYRE inputs, etc.).")
-    parser.add_argument("--analyze-blue-loop", action="store_true",
+    # Define ALL command-line arguments, including their default values.
+    # IMPORTANT: The default values here are the ultimate fallback if not
+    # specified in YAML or on the command line.
+    parser.add_argument("--config", type=str, help="Path to a YAML configuration file.")
+    parser.add_argument("-i", "--input-dir", type=str, default=None, # Set default to None to easily check if it was set
+                        help="Directory containing MESA run subdirectories.")
+    parser.add_argument("-o", "--output-dir", type=str, default='./mesagrid_output',
+                        help="Output base directory for analysis results.")
+    parser.add_argument("--analyze-blue-loop", action="store_true", default=False,
                         help="Perform blue loop analysis.")
-    parser.add_argument("--inlist-name", default="inlist_project",
-                        help="Inlist filename to identify runs (default: inlist_project).")
-    parser.add_argument("--generate-heatmaps", action="store_true",
+    parser.add_argument("--inlist-name", type=str, default="inlist_project",
+                        help="Inlist filename to identify runs.")
+    parser.add_argument("--generate-heatmaps", action="store_true", default=False,
                         help="Generate heatmaps from cross-grid data.")
-    parser.add_argument("--force-reanalysis", action="store_true",
+    parser.add_argument("--force-reanalysis", action="store_true", default=False,
                         help="Force reanalysis even if summary files exist.")
     parser.add_argument("--blue-loop-output-type", choices=['summary', 'all'], default='all',
-                        help="Blue loop output type for detail files: 'summary' includes selected key columns, 'all' includes all columns from the relevant blue loop phase. Default: 'all'.")
-    parser.add_argument("--generate-plots", action="store_true",
-                        help="Generate general plots (e.g., HR diagrams, if enabled).") 
+                        help="Blue loop output type for detail files.")
+    parser.add_argument("--generate-plots", action="store_true", default=False,
+                        help="Generate general plots.")
 
-    # --- NEW GYRE-RELATED ARGUMENTS START HERE ---
-    parser.add_argument('--run-gyre-workflow', action='store_true',
-                        help='Execute the full GYRE workflow: generate input CSV and run GYRE simulations. Requires gyre_config.in.')
+    # NEW GYRE-RELATED ARGUMENTS (ensure default=False for store_true flags)
+    parser.add_argument('--run-gyre-workflow', action='store_true', default=False, # <--- CRITICAL: default=False
+                        help='Execute the full GYRE workflow: generate input CSV and run GYRE simulations.')
     parser.add_argument('--gyre-config-path', type=str, default='gyre_config.in',
-                        help='Path to the GYRE-specific configuration file (e.g., gyre_config.in). This config drives gyre_modules.')
-    # --- NEW GYRE-RELATED ARGUMENTS END HERE ---
+                        help='Path to the GYRE-specific configuration file (e.g., gyre_config.in).')
 
     parser.add_argument("--generate-hr-diagrams", type=str, choices=['none', 'all', 'drop_zams'], default='none',
-                        help='Control HR diagram generation: "none", "all" profiles, or "drop_zams" (excluding ZAMS).')
-    parser.add_argument("--generate-blue-loop-plots-with-bc", action="store_true",
+                        help='Control HR diagram generation.')
+    parser.add_argument("--generate-blue-loop-plots-with-bc", action="store_true", default=False,
                         help="Generate blue loop plots including bolometric corrections.")
-    parser.add_argument("--debug", action="store_true",
+    parser.add_argument("--debug", action="store_true", default=False,
                         help="Enable debug mode for more verbose logging output.")
 
+    # Parse arguments from the command line first. This gives us CLI values and argparse's defaults.
+    args_from_cli = parser.parse_args()
 
-    # Parse command-line arguments first
-    cmd_args = parser.parse_args()
-
-    # Get default values from parser
-    defaults = {action.dest: action.default for action in parser._actions if action.dest != argparse.SUPPRESS}
-    
-    # Initialize combined_args with parser defaults
-    combined_args = argparse.Namespace(**defaults)
-
-    # Load settings from YAML file if provided
+    # Load settings from YAML file if a config file was specified on the CLI
     config_from_yaml = {}
-    if cmd_args.config:
-        if not os.path.exists(cmd_args.config):
-            logging.error(f"Configuration file not found: {cmd_args.config}")
+    if args_from_cli.config:
+        if not os.path.exists(args_from_cli.config):
+            logging.error(f"Configuration file not found: {args_from_cli.config}")
             sys.exit(1)
         try:
-            with open(cmd_args.config, 'r') as f:
+            with open(args_from_cli.config, 'r') as f:
                 config_from_yaml = yaml.safe_load(f)
-            logging.info(f"Loaded configuration from: {cmd_args.config}")
+            logging.info(f"Loaded configuration from: {args_from_cli.config}")
         except yaml.YAMLError as e:
-            logging.error(f"Error parsing YAML configuration file {cmd_args.config}: {e}")
+            logging.error(f"Error parsing YAML configuration file {args_from_cli.config}: {e}")
             sys.exit(1)
 
-    # Apply YAML settings (overriding defaults)
-    for key, value in config_from_yaml.items():
-        # Only set if the argument exists in the parser
-        if hasattr(combined_args, key):
-            setattr(combined_args, key, value)
-        else:
-            logging.warning(f"YAML config contains unknown key '{key}'. Ignoring.")
-
-    # Apply command-line arguments (overriding YAML and defaults)
-    for key, value in vars(cmd_args).items():
-        # 'config' argument is handled separately, don't re-apply
-        if key == 'config':
+    # Create a new Namespace object to hold the final combined arguments.
+    # Initialize it with values from YAML, if present, otherwise with CLI-parsed defaults.
+    final_args = argparse.Namespace()
+    for arg_name, cli_value in vars(args_from_cli).items():
+        # The 'config' argument is handled separately; we don't want it in the final_args for processing.
+        if arg_name == 'config':
             continue
-        
-        # Only overwrite if the command-line argument was actually provided (not its default)
-        # This is a bit tricky for 'action="store_true"' flags, as their default is False.
-        # If default is False and cmd_args.key is True, it was set.
-        # If cmd_args.key is explicitly None (e.g., for optional string args not given), don't overwrite.
-        
-        # A more robust check for whether a CLI arg was explicitly set:
-        # Check if the value from cmd_args is different from the original parser default for that arg.
-        # For store_true flags, this effectively checks if it was switched from False to True.
-        
-        # Get the original default for this argument from the parser
-        original_parser_default = parser.get_default(key)
 
-        if value != original_parser_default or (value is True and original_parser_default is False):
-            setattr(combined_args, key, value)
-        elif value is not None and original_parser_default is None: # For args with no default set by argparse but provided by CLI
-             setattr(combined_args, key, value)
-             
-    # Special handling for --input-dir and --output-dir as they are critical
-    # If not provided via CLI or YAML, they need to be specified or handle defaults properly
-    if not hasattr(combined_args, 'input_dir') or combined_args.input_dir is None:
+        # Get the default value for this argument as defined by argparse.
+        # This is important for 'store_true' flags where default is False.
+        arg_action = None
+        for action in parser._actions:
+            if action.dest == arg_name:
+                arg_action = action
+                break
+        
+        default_value = arg_action.default if arg_action else None # Get original argparse default
+
+        # Prioritize values: CLI > YAML > Argparse_Default
+
+        # Start with the default or None
+        value_to_set = default_value
+        
+        # If the argument is in YAML, use the YAML value
+        if arg_name in config_from_yaml:
+            value_to_set = config_from_yaml[arg_name]
+
+        # If the CLI value is different from its argparse default (meaning it was explicitly set on CLI)
+        # Or if it's a 'store_true' flag and CLI value is True (overriding a default False)
+        # Or if it's not a boolean flag and CLI value is not None (meaning it was provided)
+        if (isinstance(arg_action, (argparse._StoreTrueAction, argparse._StoreFalseAction)) and cli_value != default_value) or \
+           (not isinstance(arg_action, (argparse._StoreTrueAction, argparse._StoreFalseAction)) and cli_value is not None):
+            value_to_set = cli_value
+
+        setattr(final_args, arg_name, value_to_set)
+
+    # Final validation for required arguments (like input_dir)
+    if not hasattr(final_args, 'input_dir') or final_args.input_dir is None:
         logging.critical("ERROR: --input-dir is required either via command-line or in the config file.")
         sys.exit(1)
     
-    if not hasattr(combined_args, 'output_dir') or combined_args.output_dir is None:
-        # Default if not specified anywhere. Can be overridden by YAML/CLI.
-        combined_args.output_dir = './mesagrid_output' 
-        logging.warning(f"No --output-dir specified. Using default: {combined_args.output_dir}")
+    # Set default for output_dir if not specified (explicitly defining default here as well)
+    if not hasattr(final_args, 'output_dir') or final_args.output_dir is None:
+        final_args.output_dir = './mesagrid_output'
+        logging.warning(f"No --output-dir specified. Using default: {final_args.output_dir}")
 
-
-    logging.debug(f"Final combined arguments: {combined_args}")
-    return combined_args
+    logging.debug(f"Final combined arguments: {final_args}")
+    return final_args
