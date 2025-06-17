@@ -2,7 +2,7 @@
 
 &setup
   ! Basic directory settings
-  mesa_dir = '/home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid/run_nad_convos_mid_10.0MSUN_z0.0015'
+  mesa_dir = '/home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid/'
   mesasdk_root = '/home/tnd/mesasdk'
   ! The GYRE_DIR is the directory that contains the 'bin' folder with the GYRE executable.
   ! Example: if the GYRE executable is at: /path/to/gyre_install/bin/gyre

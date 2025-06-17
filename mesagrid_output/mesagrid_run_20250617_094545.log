@@ -1,0 +1,75 @@
+2025-06-17 09:45:45,924 - INFO - Logging set up. Log file: ./mesagrid_output/mesagrid_run_20250617_094545.log
+2025-06-17 09:45:45,925 - DEBUG - Debug mode enabled.
+2025-06-17 09:45:45,925 - INFO - MESA Grid Analysis started. Input directory: /home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid, Output directory: ./mesagrid_output
+2025-06-17 09:45:45,925 - INFO - Created/ensured directory: ./mesagrid_output/analysis_results
+2025-06-17 09:45:45,925 - DEBUG - --- RE-ANALYSIS DEBUG ---
+2025-06-17 09:45:45,925 - DEBUG -     force_reanalysis (from arguments): False
+2025-06-17 09:45:45,925 - DEBUG -     summary_csv_path: ./mesagrid_output/analysis_results/mesa_grid_analysis_summary.csv
+2025-06-17 09:45:45,925 - DEBUG -     Does summary_csv_path exist? False
+2025-06-17 09:45:45,925 - DEBUG -     cross_csv_path: ./mesagrid_output/analysis_results/mesa_grid_cross.csv
+2025-06-17 09:45:45,925 - DEBUG -     Does cross_csv_path exist? False
+2025-06-17 09:45:45,925 - INFO - Analysis started. Reanalysis needed: True
+2025-06-17 09:45:45,928 - INFO - Starting full analysis of MESA runs...
+2025-06-17 09:45:45,930 - INFO - Scanning '/home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid' for MESA run directories...
+2025-06-17 09:45:45,943 - INFO - Inlist file 'inlist_project' not found in '/home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid/.mesa_temp_cache'. Skipping this directory.
+2025-06-17 09:45:45,943 - INFO - history.data not found at '/home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid/.mesa_temp_cache/LOGS/history.data'. Skipping this directory.
+2025-06-17 09:45:45,946 - INFO - Finished scanning. Found 440 valid MESA runs.
+2025-06-17 09:45:46,013 - INFO - Generated YAML overview of processed runs: ./mesagrid_output/analysis_results/processed_runs_overview.yaml
+2025-06-17 09:45:46,642 - INFO - Skipping blue loop analysis for M=9.5, Z=0.01 as analyze_blue_loop is False.
+2025-06-17 09:45:47,254 - INFO - Skipping blue loop analysis for M=6.5, Z=0.0025 as analyze_blue_loop is False.
+2025-06-17 09:45:47,754 - INFO - Skipping blue loop analysis for M=8.0, Z=0.002 as analyze_blue_loop is False.
+2025-06-17 09:45:48,365 - INFO - Skipping blue loop analysis for M=9.5, Z=0.013 as analyze_blue_loop is False.
+2025-06-17 09:45:49,118 - INFO - Skipping blue loop analysis for M=8.0, Z=0.018 as analyze_blue_loop is False.
+2025-06-17 09:45:49,739 - INFO - Skipping blue loop analysis for M=6.5, Z=0.0155 as analyze_blue_loop is False.
+2025-06-17 09:45:50,313 - INFO - Skipping blue loop analysis for M=8.5, Z=0.011 as analyze_blue_loop is False.
+2025-06-17 09:45:50,922 - INFO - Skipping blue loop analysis for M=3.5, Z=0.0045 as analyze_blue_loop is False.
+2025-06-17 09:45:51,527 - INFO - Skipping blue loop analysis for M=4.5, Z=0.0065 as analyze_blue_loop is False.
+2025-06-17 09:45:52,145 - INFO - Skipping blue loop analysis for M=4.0, Z=0.0055 as analyze_blue_loop is False.
+2025-06-17 09:45:52,761 - INFO - Skipping blue loop analysis for M=7.0, Z=0.011 as analyze_blue_loop is False.
+2025-06-17 09:45:53,340 - INFO - Skipping blue loop analysis for M=6.0, Z=0.0125 as analyze_blue_loop is False.
+2025-06-17 09:45:53,952 - INFO - Skipping blue loop analysis for M=8.0, Z=0.009 as analyze_blue_loop is False.
+2025-06-17 09:45:54,562 - INFO - Skipping blue loop analysis for M=10.0, Z=0.0155 as analyze_blue_loop is False.
+2025-06-17 09:45:55,172 - INFO - Skipping blue loop analysis for M=6.0, Z=0.0165 as analyze_blue_loop is False.
+2025-06-17 09:45:55,786 - INFO - Skipping blue loop analysis for M=6.0, Z=0.006 as analyze_blue_loop is False.
+2025-06-17 09:45:56,400 - INFO - Skipping blue loop analysis for M=8.5, Z=0.019 as analyze_blue_loop is False.
+2025-06-17 09:45:57,013 - INFO - Skipping blue loop analysis for M=6.0, Z=0.0185 as analyze_blue_loop is False.
+2025-06-17 09:45:57,551 - INFO - Skipping blue loop analysis for M=8.0, Z=0.0055 as analyze_blue_loop is False.
+2025-06-17 09:45:58,162 - INFO - Skipping blue loop analysis for M=3.5, Z=0.0035 as analyze_blue_loop is False.
+2025-06-17 09:45:58,773 - INFO - Skipping blue loop analysis for M=10.5, Z=0.0195 as analyze_blue_loop is False.
+2025-06-17 09:45:59,359 - INFO - Skipping blue loop analysis for M=6.0, Z=0.012 as analyze_blue_loop is False.
+2025-06-17 09:45:59,972 - INFO - Skipping blue loop analysis for M=7.0, Z=0.014 as analyze_blue_loop is False.
+2025-06-17 09:46:00,584 - INFO - Skipping blue loop analysis for M=7.0, Z=0.018 as analyze_blue_loop is False.
+2025-06-17 09:46:01,190 - INFO - Skipping blue loop analysis for M=8.0, Z=0.0095 as analyze_blue_loop is False.
+2025-06-17 09:46:01,789 - INFO - Skipping blue loop analysis for M=9.0, Z=0.0195 as analyze_blue_loop is False.
+2025-06-17 09:46:02,301 - INFO - Skipping blue loop analysis for M=8.5, Z=0.0055 as analyze_blue_loop is False.
+2025-06-17 09:46:02,909 - INFO - Skipping blue loop analysis for M=6.5, Z=0.011 as analyze_blue_loop is False.
+2025-06-17 09:46:03,514 - INFO - Skipping blue loop analysis for M=6.5, Z=0.005 as analyze_blue_loop is False.
+2025-06-17 09:46:04,129 - INFO - Skipping blue loop analysis for M=4.0, Z=0.0075 as analyze_blue_loop is False.
+2025-06-17 09:46:04,738 - INFO - Skipping blue loop analysis for M=5.5, Z=0.0035 as analyze_blue_loop is False.
+2025-06-17 09:46:05,347 - INFO - Skipping blue loop analysis for M=6.0, Z=0.002 as analyze_blue_loop is False.
+2025-06-17 09:46:05,955 - INFO - Skipping blue loop analysis for M=7.0, Z=0.017 as analyze_blue_loop is False.
+2025-06-17 09:46:06,570 - INFO - Skipping blue loop analysis for M=3.5, Z=0.0025 as analyze_blue_loop is False.
+2025-06-17 09:46:07,184 - INFO - Skipping blue loop analysis for M=10.0, Z=0.015 as analyze_blue_loop is False.
+2025-06-17 09:46:07,796 - INFO - Skipping blue loop analysis for M=6.5, Z=0.0125 as analyze_blue_loop is False.
+2025-06-17 09:46:08,412 - INFO - Skipping blue loop analysis for M=6.5, Z=0.0195 as analyze_blue_loop is False.
+2025-06-17 09:46:09,025 - INFO - Skipping blue loop analysis for M=4.5, Z=0.002 as analyze_blue_loop is False.
+2025-06-17 09:46:09,644 - INFO - Skipping blue loop analysis for M=10.0, Z=0.0185 as analyze_blue_loop is False.
+2025-06-17 09:46:10,257 - INFO - Skipping blue loop analysis for M=10.0, Z=0.0095 as analyze_blue_loop is False.
+2025-06-17 09:46:10,832 - INFO - Skipping blue loop analysis for M=8.5, Z=0.004 as analyze_blue_loop is False.
+2025-06-17 09:46:11,406 - INFO - Skipping blue loop analysis for M=4.5, Z=0.0055 as analyze_blue_loop is False.
+2025-06-17 09:46:12,028 - INFO - Skipping blue loop analysis for M=7.0, Z=0.0085 as analyze_blue_loop is False.
+2025-06-17 09:46:12,577 - INFO - Skipping blue loop analysis for M=6.0, Z=0.0095 as analyze_blue_loop is False.
+2025-06-17 09:46:13,304 - INFO - Skipping blue loop analysis for M=7.0, Z=0.019 as analyze_blue_loop is False.
+2025-06-17 09:46:13,923 - INFO - Skipping blue loop analysis for M=7.5, Z=0.0145 as analyze_blue_loop is False.
+2025-06-17 09:46:14,545 - INFO - Skipping blue loop analysis for M=9.5, Z=0.009 as analyze_blue_loop is False.
+2025-06-17 09:46:15,169 - INFO - Skipping blue loop analysis for M=7.5, Z=0.003 as analyze_blue_loop is False.
+2025-06-17 09:46:15,796 - INFO - Skipping blue loop analysis for M=7.5, Z=0.012 as analyze_blue_loop is False.
+2025-06-17 09:46:16,417 - INFO - Skipping blue loop analysis for M=9.5, Z=0.003 as analyze_blue_loop is False.
+2025-06-17 09:46:16,981 - INFO - Skipping blue loop analysis for M=4.5, Z=0.0025 as analyze_blue_loop is False.
+2025-06-17 09:46:17,604 - INFO - Skipping blue loop analysis for M=5.5, Z=0.0115 as analyze_blue_loop is False.
+2025-06-17 09:46:18,218 - INFO - Skipping blue loop analysis for M=5.5, Z=0.016 as analyze_blue_loop is False.
+2025-06-17 09:46:18,841 - INFO - Skipping blue loop analysis for M=5.5, Z=0.003 as analyze_blue_loop is False.
+2025-06-17 09:46:19,408 - INFO - Skipping blue loop analysis for M=5.5, Z=0.0065 as analyze_blue_loop is False.
+2025-06-17 09:46:20,035 - INFO - Skipping blue loop analysis for M=7.0, Z=0.007 as analyze_blue_loop is False.
+2025-06-17 09:46:20,626 - INFO - Skipping blue loop analysis for M=6.0, Z=0.005 as analyze_blue_loop is False.
+2025-06-17 09:46:21,248 - INFO - Skipping blue loop analysis for M=6.0, Z=0.0025 as analyze_blue_loop is False.

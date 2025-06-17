@@ -1,0 +1,74 @@
+2025-06-17 10:54:36,913 - INFO - Logging set up. Log file: ./mesagrid_output/mesagrid_run_20250617_105436.log
+2025-06-17 10:54:36,913 - DEBUG - Debug mode enabled.
+2025-06-17 10:54:36,913 - INFO - MESA Grid Analysis started. Input directory: /home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid, Output directory: ./mesagrid_output
+2025-06-17 10:54:36,913 - INFO - Created/ensured directory: ./mesagrid_output/analysis_results
+2025-06-17 10:54:36,913 - INFO - Created/ensured directory: ./mesagrid_output/detail_files
+2025-06-17 10:54:36,913 - DEBUG - --- RE-ANALYSIS DEBUG ---
+2025-06-17 10:54:36,913 - DEBUG -     force_reanalysis (from arguments): True
+2025-06-17 10:54:36,913 - DEBUG -     summary_csv_path: ./mesagrid_output/analysis_results/mesa_grid_analysis_summary.csv
+2025-06-17 10:54:36,913 - DEBUG -     Does summary_csv_path exist? False
+2025-06-17 10:54:36,913 - DEBUG -     cross_csv_path: ./mesagrid_output/analysis_results/mesa_grid_cross.csv
+2025-06-17 10:54:36,913 - DEBUG -     Does cross_csv_path exist? False
+2025-06-17 10:54:36,913 - INFO - Analysis started. Reanalysis needed: True
+2025-06-17 10:54:36,916 - INFO - Starting full analysis of MESA runs...
+2025-06-17 10:54:36,919 - INFO - Scanning '/home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid' for MESA run directories...
+2025-06-17 10:54:36,932 - INFO - Inlist file 'inlist_project' not found in '/home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid/.mesa_temp_cache'. Skipping this directory.
+2025-06-17 10:54:36,932 - INFO - history.data not found at '/home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid/.mesa_temp_cache/LOGS/history.data'. Skipping this directory.
+2025-06-17 10:54:36,935 - INFO - Finished scanning. Found 440 valid MESA runs.
+2025-06-17 10:54:37,003 - INFO - Generated YAML overview of processed runs: ./mesagrid_output/analysis_results/processed_runs_overview.yaml
+2025-06-17 10:59:24,536 - INFO - Generated summary CSV will contain 440 blue loop entries.
+2025-06-17 10:59:24,548 - INFO - Summary CSV written to ./mesagrid_output/analysis_results/summary_results.csv
+2025-06-17 10:59:24,551 - INFO - Cross-grid CSV written to ./mesagrid_output/analysis_results/crossing_count_grid.csv
+2025-06-17 10:59:25,001 - INFO - Written concatenated detail CSV for Z=0.0015 with all columns to ./mesagrid_output/detail_files/detail_z0.0015.csv
+2025-06-17 10:59:25,366 - INFO - Written concatenated detail CSV for Z=0.002 with all columns to ./mesagrid_output/detail_files/detail_z0.0020.csv
+2025-06-17 10:59:25,687 - INFO - Written concatenated detail CSV for Z=0.0025 with all columns to ./mesagrid_output/detail_files/detail_z0.0025.csv
+2025-06-17 10:59:25,939 - INFO - Written concatenated detail CSV for Z=0.003 with all columns to ./mesagrid_output/detail_files/detail_z0.0030.csv
+2025-06-17 10:59:26,137 - INFO - Written concatenated detail CSV for Z=0.0035 with all columns to ./mesagrid_output/detail_files/detail_z0.0035.csv
+2025-06-17 10:59:26,317 - INFO - Written concatenated detail CSV for Z=0.004 with all columns to ./mesagrid_output/detail_files/detail_z0.0040.csv
+2025-06-17 10:59:26,493 - INFO - Written concatenated detail CSV for Z=0.0045 with all columns to ./mesagrid_output/detail_files/detail_z0.0045.csv
+2025-06-17 10:59:26,674 - INFO - Written concatenated detail CSV for Z=0.005 with all columns to ./mesagrid_output/detail_files/detail_z0.0050.csv
+2025-06-17 10:59:26,890 - INFO - Written concatenated detail CSV for Z=0.0055 with all columns to ./mesagrid_output/detail_files/detail_z0.0055.csv
+2025-06-17 10:59:27,128 - INFO - Written concatenated detail CSV for Z=0.006 with all columns to ./mesagrid_output/detail_files/detail_z0.0060.csv
+2025-06-17 10:59:27,376 - INFO - Written concatenated detail CSV for Z=0.0065 with all columns to ./mesagrid_output/detail_files/detail_z0.0065.csv
+2025-06-17 10:59:27,657 - INFO - Written concatenated detail CSV for Z=0.007 with all columns to ./mesagrid_output/detail_files/detail_z0.0070.csv
+2025-06-17 10:59:27,942 - INFO - Written concatenated detail CSV for Z=0.0075 with all columns to ./mesagrid_output/detail_files/detail_z0.0075.csv
+2025-06-17 10:59:28,218 - INFO - Written concatenated detail CSV for Z=0.008 with all columns to ./mesagrid_output/detail_files/detail_z0.0080.csv
+2025-06-17 10:59:28,532 - INFO - Written concatenated detail CSV for Z=0.0085 with all columns to ./mesagrid_output/detail_files/detail_z0.0085.csv
+2025-06-17 10:59:28,839 - INFO - Written concatenated detail CSV for Z=0.009 with all columns to ./mesagrid_output/detail_files/detail_z0.0090.csv
+2025-06-17 10:59:29,148 - INFO - Written concatenated detail CSV for Z=0.0095 with all columns to ./mesagrid_output/detail_files/detail_z0.0095.csv
+2025-06-17 10:59:29,449 - INFO - Written concatenated detail CSV for Z=0.01 with all columns to ./mesagrid_output/detail_files/detail_z0.0100.csv
+2025-06-17 10:59:29,711 - INFO - Written concatenated detail CSV for Z=0.0105 with all columns to ./mesagrid_output/detail_files/detail_z0.0105.csv
+2025-06-17 10:59:30,007 - INFO - Written concatenated detail CSV for Z=0.011 with all columns to ./mesagrid_output/detail_files/detail_z0.0110.csv
+2025-06-17 10:59:30,269 - INFO - Written concatenated detail CSV for Z=0.0115 with all columns to ./mesagrid_output/detail_files/detail_z0.0115.csv
+2025-06-17 10:59:30,558 - INFO - Written concatenated detail CSV for Z=0.012 with all columns to ./mesagrid_output/detail_files/detail_z0.0120.csv
+2025-06-17 10:59:30,838 - INFO - Written concatenated detail CSV for Z=0.0125 with all columns to ./mesagrid_output/detail_files/detail_z0.0125.csv
+2025-06-17 10:59:31,079 - INFO - Written concatenated detail CSV for Z=0.013 with all columns to ./mesagrid_output/detail_files/detail_z0.0130.csv
+2025-06-17 10:59:31,377 - INFO - Written concatenated detail CSV for Z=0.0135 with all columns to ./mesagrid_output/detail_files/detail_z0.0135.csv
+2025-06-17 10:59:31,677 - INFO - Written concatenated detail CSV for Z=0.014 with all columns to ./mesagrid_output/detail_files/detail_z0.0140.csv
+2025-06-17 10:59:31,966 - INFO - Written concatenated detail CSV for Z=0.0145 with all columns to ./mesagrid_output/detail_files/detail_z0.0145.csv
+2025-06-17 10:59:32,245 - INFO - Written concatenated detail CSV for Z=0.015 with all columns to ./mesagrid_output/detail_files/detail_z0.0150.csv
+2025-06-17 10:59:32,528 - INFO - Written concatenated detail CSV for Z=0.0155 with all columns to ./mesagrid_output/detail_files/detail_z0.0155.csv
+2025-06-17 10:59:32,805 - INFO - Written concatenated detail CSV for Z=0.016 with all columns to ./mesagrid_output/detail_files/detail_z0.0160.csv
+2025-06-17 10:59:33,075 - INFO - Written concatenated detail CSV for Z=0.0165 with all columns to ./mesagrid_output/detail_files/detail_z0.0165.csv
+2025-06-17 10:59:33,331 - INFO - Written concatenated detail CSV for Z=0.017 with all columns to ./mesagrid_output/detail_files/detail_z0.0170.csv
+2025-06-17 10:59:33,588 - INFO - Written concatenated detail CSV for Z=0.0175 with all columns to ./mesagrid_output/detail_files/detail_z0.0175.csv
+2025-06-17 10:59:33,832 - INFO - Written concatenated detail CSV for Z=0.018 with all columns to ./mesagrid_output/detail_files/detail_z0.0180.csv
+2025-06-17 10:59:34,075 - INFO - Written concatenated detail CSV for Z=0.0185 with all columns to ./mesagrid_output/detail_files/detail_z0.0185.csv
+2025-06-17 10:59:34,306 - INFO - Written concatenated detail CSV for Z=0.019 with all columns to ./mesagrid_output/detail_files/detail_z0.0190.csv
+2025-06-17 10:59:34,541 - INFO - Written concatenated detail CSV for Z=0.0195 with all columns to ./mesagrid_output/detail_files/detail_z0.0195.csv
+2025-06-17 10:59:34,768 - INFO - Written concatenated detail CSV for Z=0.02 with all columns to ./mesagrid_output/detail_files/detail_z0.0200.csv
+2025-06-17 10:59:34,998 - INFO - Generating GYRE input CSV 'sorted_mass_Z_min_max.csv' from MESA summary data...
+2025-06-17 10:59:35,002 - INFO - GYRE input CSV saved to: ./mesagrid_output/analysis_results/sorted_mass_Z_min_max.csv
+2025-06-17 10:59:35,012 - INFO - Starting integrated GYRE workflow (input generation and simulation).
+2025-06-17 10:59:35,013 - INFO - GYRE input CSV found: './mesagrid_output/analysis_results/sorted_mass_Z_min_max.csv'.
+2025-06-17 10:59:35,013 - INFO - Calling gyre_modules.run_gyre_workflow with config: gyre_config.in
+2025-06-17 10:59:35,013 - ERROR - Error during integrated GYRE workflow: name 'gyre_modules' is not defined
+2025-06-17 10:59:35,013 - ERROR - Integrated GYRE workflow exception details:
+Traceback (most recent call last):
+  File "/home/tnd/mesagrid/mesa_blue_loop/mesalab/cli.py", line 123, in main
+    gyre_modules.run_gyre_workflow(config_file=gyre_config_file_path, profiles_csv_path=gyre_input_csv_generated_path)
+NameError: name 'gyre_modules' is not defined
+2025-06-17 10:59:35,013 - INFO - Heatmap generation skipped.
+2025-06-17 10:59:35,013 - INFO - HR diagram generation skipped based on --generate-hr-diagrams setting.
+2025-06-17 10:59:35,013 - INFO - Blue loop plots with BCs generation skipped.
+2025-06-17 10:59:35,013 - INFO - MESA Grid Analysis and workflow completed.
