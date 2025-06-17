@@ -11,7 +11,7 @@ from tqdm import tqdm
 import re # Often useful for parsing run names, keeping it in case you add such logic.
 
 # --- Import core logic module for MESA analysis ---
-from mesalab import mesa_analyzer
+from mesalab.analysis import mesa_analyzer
 
 # --- Import GYRE specific module ---
 # This import assumes gyre_modules.py is in mesalab/gyretools/
