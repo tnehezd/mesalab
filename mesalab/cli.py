@@ -23,7 +23,7 @@ from .analyzis.mesa_analyzer import perform_mesa_analysis
 from .allplots.plot_handlers import handle_heatmap_generation, handle_blue_loop_bc_plotting, handle_hr_diagram_generation
 
 # >>> NEW/MODIFIED IMPORT FOR GYRE_MODULES
-from .gyretools.gyre_modules import run_single_gyre_model, run_gyre_workflow, 
+from .gyretools.gyre_modules import run_single_gyre_model, run_gyre_workflow
 
 def setup_logging_to_file(output_dir: str, debug_mode: bool = False):
     """
