@@ -212,7 +212,7 @@ def plot_gyre_hrd(df_modes_filtered):
     sns.scatterplot(data=df_modes_filtered,
                     x='log_Teff',
                     y='log_L',
-                    hue='n_p', # Color by 'n_p' mode number
+                    hue=df_modes_filtered['n_p'].astype(int) if 'n_p' in df_modes_filtered.columns else None, # Color by 'n_p' mode number
                     palette='viridis', # Choose a colormap
                     s=50, # Marker size
                     alpha=0.7, # Transparency
@@ -224,7 +224,11 @@ def plot_gyre_hrd(df_modes_filtered):
     plt.title(f'Hertzsprung-Russell Diagram - GYRE Modes by $n_p$ (Total Modes: {len(df_modes_filtered)})')
     plt.gca().invert_xaxis() # Invert x-axis for traditional HRD (Teff increases to the left)
     plt.grid(True, linestyle='--', alpha=0.6)
-    plt.legend(title='$n_p$ Mode Number', bbox_to_anchor=(1.05, 1), loc='upper left')
+    if 'n_p' in df_modes_filtered.columns and not df_modes_filtered['n_p'].isnull().all():
+        plt.legend(title=r'$n_p$ Mode Number', bbox_to_anchor=(1.05, 1), loc='upper left', labels=df_modes_filtered['n_p'].astype(int).unique())
+    else:
+        plt.legend(title=r'$n_p$ Mode Number', bbox_to_anchor=(1.05, 1), loc='upper left') # Fallback if n_p is empty
+
     plt.tight_layout()
 
     plot_filename_np = os.path.join(plot_output_dir, "hrd_gyre_modes_by_np.png")
@@ -257,7 +261,7 @@ def plot_gyre_hrd(df_modes_filtered):
 
         plot_filename_imag = os.path.join(plot_output_dir, "hrd_gyre_modes_by_freq_imag.png")
         plt.savefig(plot_filename_imag, dpi=300)
-        print(f"HRD plot (by $\mathrm{Im}(\omega)$) saved to: {plot_filename_imag}")
+        print(f"HRD plot (by Im(omega)) saved to: {plot_filename_imag}") # Remove LaTeX from print statement
     else:
         print("No unstable modes found for plotting.")
 
