@@ -254,7 +254,8 @@ def run_gyre_workflow(config_file: str):
             return    
 
         # Check for required columns in the DataFrame
-        required_cols = ['initial_mass', 'initial_Z', 'min_model_number', 'max_model_number', 'run_dir_path']        if not all(col in filter_df.columns for col in required_cols):
+        required_cols = ['initial_mass', 'initial_Z', 'min_model_number', 'max_model_number', 'run_dir_path']
+        if not all(col in filter_df.columns for col in required_cols):
             raise ValueError(f"Filtered profiles CSV '{filtered_csv_path}' must contain the columns: {', '.join(required_cols)}")
 
         for index, row in filter_df.iterrows():
