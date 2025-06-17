@@ -212,7 +212,7 @@ def plot_gyre_hrd(df_modes_filtered):
     sns.scatterplot(data=df_modes_filtered,
                     x='log_Teff',
                     y='log_L',
-                    hue=df_modes_filtered['n_p'].astype(int) if 'n_p' in df_modes_filtered.columns else None, # Color by 'n_p' mode number
+                    hue=df_modes_filtered['n_p'].astype(str) if 'n_p' in df_modes_filtered.columns else None, # Convert to string to handle potential NaN values for plotting
                     palette='viridis', # Choose a colormap
                     s=50, # Marker size
                     alpha=0.7, # Transparency
