@@ -1,4 +1,4 @@
-# mesalab/io/config_parser.py (Recommended Revision)
+# mesalab/io/config_parser.py (Final Version for Flat YAML)
 
 import os
 import argparse
@@ -7,16 +7,20 @@ import sys
 import logging
 from datetime import datetime
 
-logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
+# Initialize logging for this module
+logger = logging.getLogger(__name__)
+# Ensure basicConfig is only called once if this is the main entry point,
+# otherwise it will be configured by the main script.
+if not logging.root.handlers:
+    logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
 def parsing_options():
     parser = argparse.ArgumentParser(description="Analyze MESA stellar evolution grid runs and generate GYRE input files.")
 
-    # Define ALL command-line arguments, including their default values.
-    # IMPORTANT: The default values here are the ultimate fallback if not
-    # specified in YAML or on the command line.
+    # Define ALL command-line arguments with their DEFAULT VALUES.
+    # These defaults will be overridden by YAML, then by CLI.
     parser.add_argument("--config", type=str, help="Path to a YAML configuration file.")
-    parser.add_argument("-i", "--input-dir", type=str, default=None, # Set default to None to easily check if it was set
+    parser.add_argument("-i", "--input-dir", type=str, default=None, # Will be explicitly validated later
                         help="Directory containing MESA run subdirectories.")
     parser.add_argument("-o", "--output-dir", type=str, default='./mesagrid_output',
                         help="Output base directory for analysis results.")
@@ -33,8 +37,8 @@ def parsing_options():
     parser.add_argument("--generate-plots", action="store_true", default=False,
                         help="Generate general plots.")
 
-    # NEW GYRE-RELATED ARGUMENTS (ensure default=False for store_true flags)
-    parser.add_argument('--run-gyre-workflow', action='store_true', default=False, # <--- CRITICAL: default=False
+    # GYRE-RELATED ARGUMENTS
+    parser.add_argument('--run-gyre-workflow', action='store_true', default=False,
                         help='Execute the full GYRE workflow: generate input CSV and run GYRE simulations.')
     parser.add_argument('--gyre-config-path', type=str, default='gyre_config.in',
                         help='Path to the GYRE-specific configuration file (e.g., gyre_config.in).')
@@ -47,67 +51,85 @@ def parsing_options():
                         help="Enable debug mode for more verbose logging output.")
 
     # Parse arguments from the command line first. This gives us CLI values and argparse's defaults.
+    # At this stage, args_from_cli contains:
+    # 1. Values explicitly provided on CLI
+    # 2. Argparse's default values for arguments not provided on CLI
     args_from_cli = parser.parse_args()
 
+    # Create a dictionary from the parsed CLI arguments (including their argparse defaults)
+    final_config = vars(args_from_cli).copy()
+
     # Load settings from YAML file if a config file was specified on the CLI
-    config_from_yaml = {}
     if args_from_cli.config:
         if not os.path.exists(args_from_cli.config):
-            logging.error(f"Configuration file not found: {args_from_cli.config}")
+            logger.error(f"Configuration file not found: {args_from_cli.config}")
             sys.exit(1)
         try:
             with open(args_from_cli.config, 'r') as f:
                 config_from_yaml = yaml.safe_load(f)
-            logging.info(f"Loaded configuration from: {args_from_cli.config}")
+            logger.info(f"Loaded configuration from: {args_from_cli.config}")
+            logger.debug(f"YAML content raw: {config_from_yaml}")
+
+            # Merge YAML config into final_config.
+            # YAML values (from 'config_from_yaml') will OVERWRITE argparse defaults.
+            # However, CLI values (already in 'final_config') should take precedence.
+            # So, iterate through YAML and only apply if CLI didn't explicitly set it.
+
+            for key, yaml_value in config_from_yaml.items():
+                # Check if this key exists as an argparse argument
+                if key in final_config:
+                    arg_action = None
+                    for action in parser._actions:
+                        if action.dest == key:
+                            arg_action = action
+                            break
+
+                    # If it's a boolean flag (store_true/store_false) and CLI value is its default,
+                    # or if it's not a boolean flag and CLI value is None (meaning not set by CLI)
+                    # then apply the YAML value.
+                    # This ensures CLI explicit values (even if they happen to match YAML default) are kept.
+                    if arg_action:
+                        is_boolean_flag = isinstance(arg_action, (argparse._StoreTrueAction, argparse._StoreFalseAction))
+
+                        if (is_boolean_flag and final_config[key] == arg_action.default) or \
+                           (not is_boolean_flag and final_config[key] is None):
+                            final_config[key] = yaml_value
+                    else:
+                        # If it's not a direct argparse argument (e.g., a nested YAML key in old parser),
+                        # just apply it directly. (This should not happen with flat YAML)
+                        final_config[key] = yaml_value
+                else:
+                    # If the key is in YAML but not an argparse argument, keep it in final_config
+                    # This happens for nested structures in old parser. For flat, this is not needed.
+                    final_config[key] = yaml_value
+
+            logger.debug(f"Config after YAML merge: {final_config}")
+
         except yaml.YAMLError as e:
-            logging.error(f"Error parsing YAML configuration file {args_from_cli.config}: {e}")
+            logger.error(f"Error parsing YAML configuration file {args_from_cli.config}: {e}")
             sys.exit(1)
 
-    # Create a new Namespace object to hold the final combined arguments.
-    # Initialize it with values from YAML, if present, otherwise with CLI-parsed defaults.
-    final_args = argparse.Namespace()
-    for arg_name, cli_value in vars(args_from_cli).items():
-        # The 'config' argument is handled separately; we don't want it in the final_args for processing.
-        if arg_name == 'config':
-            continue
-
-        # Get the default value for this argument as defined by argparse.
-        # This is important for 'store_true' flags where default is False.
-        arg_action = None
-        for action in parser._actions:
-            if action.dest == arg_name:
-                arg_action = action
-                break
-        
-        default_value = arg_action.default if arg_action else None # Get original argparse default
-
-        # Prioritize values: CLI > YAML > Argparse_Default
-
-        # Start with the default or None
-        value_to_set = default_value
-        
-        # If the argument is in YAML, use the YAML value
-        if arg_name in config_from_yaml:
-            value_to_set = config_from_yaml[arg_name]
-
-        # If the CLI value is different from its argparse default (meaning it was explicitly set on CLI)
-        # Or if it's a 'store_true' flag and CLI value is True (overriding a default False)
-        # Or if it's not a boolean flag and CLI value is not None (meaning it was provided)
-        if (isinstance(arg_action, (argparse._StoreTrueAction, argparse._StoreFalseAction)) and cli_value != default_value) or \
-           (not isinstance(arg_action, (argparse._StoreTrueAction, argparse._StoreFalseAction)) and cli_value is not None):
-            value_to_set = cli_value
-
-        setattr(final_args, arg_name, value_to_set)
+    # Convert the final_config dictionary back to a Namespace object for consistency
+    final_args_namespace = argparse.Namespace(**final_config)
 
     # Final validation for required arguments (like input_dir)
-    if not hasattr(final_args, 'input_dir') or final_args.input_dir is None:
-        logging.critical("ERROR: --input-dir is required either via command-line or in the config file.")
+    if final_args_namespace.input_dir is None:
+        logger.critical("ERROR: 'input_dir' must be specified either via command-line (--input-dir) or in the config file.")
         sys.exit(1)
-    
-    # Set default for output_dir if not specified (explicitly defining default here as well)
-    if not hasattr(final_args, 'output_dir') or final_args.output_dir is None:
-        final_args.output_dir = './mesagrid_output'
-        logging.warning(f"No --output-dir specified. Using default: {final_args.output_dir}")
 
-    logging.debug(f"Final combined arguments: {final_args}")
-    return final_args
+    # Set logger level based on debug setting
+    if final_args_namespace.debug:
+        logging.root.setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG) # Set module specific logger too
+        logger.debug("Debug mode enabled.")
+
+    logger.info(f"Final resolved configuration: {final_args_namespace}")
+    return final_args_namespace
+
+if __name__ == '__main__':
+    # This block is for testing the config parser itself
+    # Run with: python -m mesalab.io.config_parser --config your_config.yaml -i /path/to/override
+    parsed_config = parsing_options()
+    print("\n--- Parsed Config (Namespace) ---")
+    print(parsed_config)
+    # You can access like: parsed_config.input_dir, parsed_config.analyze_blue_loop
