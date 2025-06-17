@@ -1,4 +1,4 @@
-#mesalab/analyzis/mesa_analyzer.py
+# mesalab/analyzis/mesa_analyzer.py
 
 import os
 import pandas as pd
@@ -12,7 +12,7 @@ from .data_reader import scan_mesa_runs, get_data_from_history_file
 from ..bluelooptools.blue_loop_analyzer import analyze_blue_loop_and_instability
 
 
-def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_dir):
+def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_dir, gyre_input_csv_name: str = 'sorted_mass_Z_min_max.csv'):
     """
     Coordinates the analysis of MESA runs, including blue loop analysis,
     data aggregation, and saving summary and detailed results.
@@ -23,6 +23,8 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                                    force_reanalysis.
         analysis_results_sub_dir (str): Path to the directory for summary/cross-grid CSVs.
         detail_files_output_dir (str): Path to the directory for detailed blue loop CSVs.
+        gyre_input_csv_name (str): The desired filename for the CSV containing profiles
+                                   information for the GYRE workflow. Defaults to 'sorted_mass_Z_min_max.csv'.
 
     Returns:
         tuple: A tuple containing:
@@ -31,7 +33,8 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                             (combined_detail_data_for_plotting), filtered for the blue loop analysis.
             - dict: A dictionary where keys are metallicities (Z) and values are
                     lists of **full, untrimmed** history DataFrames for plotting (full_history_data_for_plotting).
-                    Returns empty Dataframes/dicts if analysis cannot be performed or is skipped.
+            - str: The full path to the generated GYRE input CSV file. Returns an empty string
+                   if the CSV was not generated.
     """
     input_dir = args.input_dir
     inlist_name = args.inlist_name
@@ -41,49 +44,72 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
 
     summary_csv_path = os.path.join(analysis_results_sub_dir, "summary_results.csv")
     cross_csv_path = os.path.join(analysis_results_sub_dir, "crossing_count_grid.csv")
+    gyre_input_csv_path = os.path.join(analysis_results_sub_dir, gyre_input_csv_name) # Define GYRE CSV path
 
     reanalysis_needed = force_reanalysis or \
                         not os.path.exists(summary_csv_path) or \
-                        not os.path.exists(cross_csv_path)
+                        not os.path.exists(cross_csv_path) or \
+                        (args.run_gyre_workflow and not os.path.exists(gyre_input_csv_path)) # Added check for GYRE CSV
 
     logging.info(f"Analysis started. Reanalysis needed: {reanalysis_needed}")
+    if not os.path.exists(gyre_input_csv_path) and args.run_gyre_workflow and not force_reanalysis:
+        logging.info(f"GYRE input CSV '{gyre_input_csv_name}' not found. Forcing reanalysis to generate it for GYRE workflow.")
 
     summary_df = pd.DataFrame()
     combined_detail_data_for_plotting = pd.DataFrame() # This will hold the combined data for plotting
     full_history_data_for_plotting = {} # Initialized here
+    gyre_output_csv_path_returned = "" # Initialize the path to return
 
     if not reanalysis_needed:
         logging.info("Summary and cross-grid CSV files already exist. Attempting to load existing data.")
         try:
-            # We will load, filter, and then return. If filtering results in empty DF, it means no valid loops.
             loaded_summary_df = pd.read_csv(summary_csv_path, index_col=['initial_Z', 'initial_mass'])
             
             # --- Load-time Filtering ---
             # Filter out rows where 'blue_loop_crossing_count' is NaN or 0, when loading existing data
-            filtered_loaded_summary_df = loaded_summary_df[
-                (loaded_summary_df['blue_loop_crossing_count'].notna()) &
-                (loaded_summary_df['blue_loop_crossing_count'] > 0)
-            ].copy()
-            # --- End Load-time Filtering ---
+            # This logic should be applied only if analyze_blue_loop is True
+            if analyze_blue_loop:
+                filtered_loaded_summary_df = loaded_summary_df[
+                    (loaded_summary_df['blue_loop_crossing_count'].notna()) &
+                    (loaded_summary_df['blue_loop_crossing_count'] > 0)
+                ].copy()
+            else: # If analyze_blue_loop is False, we take all relevant entries (e.g., all successful runs)
+                  # For GYRE, we might need all successful runs, regardless of blue loop.
+                  # Assume all loaded runs are potentially valid for GYRE if no blue loop analysis is done.
+                filtered_loaded_summary_df = loaded_summary_df.copy()
+                logging.info(f"Blue loop analysis is OFF. All entries from '{summary_csv_path}' will be considered for GYRE input.")
 
             if filtered_loaded_summary_df.empty and not loaded_summary_df.empty:
-                logging.warning("Loaded summary CSV contained no valid blue loop entries after filtering. Forcing reanalysis.")
-                reanalysis_needed = True
+                logging.warning("Loaded summary CSV contained no valid blue loop entries after filtering. Forcing reanalysis if blue loop analysis is on.")
+                if analyze_blue_loop: # Only force reanalysis if blue loop analysis is active and no loops found
+                    reanalysis_needed = True
+                else: # If analyze_blue_loop is false, an empty filtered_loaded_summary_df means no successful runs for GYRE
+                    logging.info("No successful MESA runs found in loaded summary CSV. Cannot generate GYRE input.")
+                    return pd.DataFrame(), pd.DataFrame(), {}, "" # Return empty DataFrames if nothing to analyze/process for GYRE
             elif filtered_loaded_summary_df.empty and loaded_summary_df.empty:
-                logging.info("Loaded summary CSV was empty. No valid blue loop entries.")
-                # No reanalysis needed if it was already empty and nothing valid.
-                return pd.DataFrame(), pd.DataFrame(), {} # Return empty DataFrames if nothing to analyze
+                logging.info("Loaded summary CSV was empty. No valid entries found.")
+                return pd.DataFrame(), pd.DataFrame(), {}, "" # Return empty DataFrames if nothing to analyze
             else:
                 summary_df = filtered_loaded_summary_df
                 logging.info("Successfully loaded and filtered existing summary CSV.")
+                # We also need to check if the GYRE input CSV exists and is up-to-date
+                if os.path.exists(gyre_input_csv_path) and not force_reanalysis:
+                    logging.info(f"Existing GYRE input CSV '{gyre_input_csv_name}' found. Using it.")
+                    gyre_output_csv_path_returned = gyre_input_csv_path
+                else:
+                    logging.info(f"Existing GYRE input CSV '{gyre_input_csv_name}' not found or reanalysis forced. Will generate it.")
+                    reanalysis_needed = True # Force reanalysis to regenerate the GYRE CSV
+
                 # If not reanalyzing, we don't regenerate detailed data in memory for plotting
                 # So, combined_detail_data_for_plotting and full_history_data_for_plotting remain empty/as initialized.
-                return summary_df, combined_detail_data_for_plotting, full_history_data_for_plotting 
+                if not reanalysis_needed: # Only return here if NO reanalysis is needed for anything
+                     return summary_df, combined_detail_data_for_plotting, full_history_data_for_plotting, gyre_output_csv_path_returned
         except FileNotFoundError:
             logging.warning(f"Existing summary or cross-grid CSVs not found. Forcing full reanalysis.")
             reanalysis_needed = True
         except Exception as e:
             logging.error(f"Error loading existing summary CSV: {e}. Forcing full reanalysis.")
+            logging.exception("Error details:") # Log full traceback
             reanalysis_needed = True
 
     if reanalysis_needed:
@@ -92,14 +118,14 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
         mesa_run_infos = scan_mesa_runs(input_dir, inlist_name)
         if not mesa_run_infos:
             logging.info("No MESA runs found for full analysis. Returning empty DataFrames.")
-            return pd.DataFrame(), pd.DataFrame(), {}
+            return pd.DataFrame(), pd.DataFrame(), {}, ""
 
         unique_masses = sorted(set(run['mass'] for run in mesa_run_infos))
         unique_zs = sorted(set(run['z'] for run in mesa_run_infos))
 
         if not unique_masses or not unique_zs:
             logging.error("Error: Could not determine unique masses or metallicities from runs. Returning empty DataFrames.")
-            return pd.DataFrame(), pd.DataFrame(), {}
+            return pd.DataFrame(), pd.DataFrame(), {}, ""
 
         cross_data_matrix = pd.DataFrame(np.nan, index=unique_zs, columns=unique_masses)
         cross_data_matrix.index.name = "Z"
@@ -151,7 +177,7 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                     'blue_loop_end_age': np.nan, 'instability_start_age': np.nan,
                     'instability_end_age': np.nan, 'calculated_blue_loop_duration': np.nan,
                     'calculated_instability_duration': np.nan
-                }
+                    }
                 current_detail_df = pd.DataFrame() # Initialize here for safety
 
                 try:
@@ -202,9 +228,6 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                                         analysis_result_summary['first_age_yr'] = bl_df['star_age'].min()
                                         analysis_result_summary['last_age_yr'] = bl_df['star_age'].max()
                                     else: # 'summary' output type for blue loop details
-                                        # When blue_loop_output_type is 'summary', we still need to populate 
-                                        # filtered_combined_df_bl with concise columns for plotting purposes,
-                                        # even if the summary CSV does not contain the detailed metrics.
                                         concise_detail_columns_local = [ 
                                             'initial_mass', 'initial_Z', 'star_age', 'model_number',
                                             'log_Teff', 'log_L', 'log_g', 'profile_number'
@@ -218,18 +241,19 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                                         
                                     current_detail_df = filtered_combined_df_bl 
                                 else:
-                                    # If blue_loop_detail_df is empty even if crossing_count > 0 (shouldn't happen often)
                                     logging.warning(f"Detail DataFrame empty despite blue loop found for M={current_mass}, Z={current_z}. Detailed metrics will be NaN.")
                                     current_detail_df = pd.DataFrame() # Explicitly set to empty DataFrame
                             else: # crossing_count is 0
-                                pass # No specific action needed here as we will filter later
+                                logging.info(f"No blue loop found (0 crossings) for M={current_mass}, Z={current_z}. Skipping detailed blue loop data collection.")
+                                pass 
                         else: # analyzer_output['crossing_count'] is NaN, meaning fundamental error
-                            pass # No specific action needed here as we will filter later
+                            logging.warning(f"Blue loop analysis failed for M={current_mass}, Z={current_z}. Skipping detailed blue loop data collection.")
+                            pass 
 
                     else: # analyze_blue_loop is False
                         logging.info(f"Skipping blue loop analysis for M={current_mass}, Z={current_z} as analyze_blue_loop is False.")
                         analysis_result_summary['blue_loop_crossing_count'] = np.nan # Ensure it's NaN if analysis is off
-                        pass # This run will also be filtered out
+                        pass # This run will also be filtered out for blue loop specific plotting, but still summarized
 
                     # Append to summary_data regardless, then filter later
                     summary_data.append(analysis_result_summary)
@@ -243,12 +267,13 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                         if combined_detail_data_for_plotting.empty:
                             combined_detail_data_for_plotting = current_detail_df.copy()
                         else:
-                            combined_detail_data_for_plotting = pd.concat([combined_detail_data_for_plotting, current_detail_df], ignore_index=True)         
+                            combined_detail_data_for_plotting = pd.concat([combined_detail_data_for_plotting, current_detail_df], ignore_index=True)     
 
                 except Exception as err:
                     with open(skipped_runs_log_path, 'a') as log_file:
                         log_file.write(f"Skipped run {run_info['run_dir_path']} due to error: {err}\n")
                     logging.error(f"Skipped run {run_info['run_dir_path']} due to error: {err}")
+                    logging.exception(f"Exception details for run {run_info['run_dir_path']}:") # Log full traceback
 
                 pbar.update(1)
 
@@ -257,27 +282,38 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
         summary_df_raw.set_index(['initial_Z', 'initial_mass'], inplace=True)
 
         # --- FINAL FILTERING BEFORE SAVING SUMMARY CSV ---
-        # Keep only rows where blue_loop_crossing_count is NOT NaN AND is greater than 0
-        summary_df_to_save = summary_df_raw[
-            (summary_df_raw['blue_loop_crossing_count'].notna()) &
-            (summary_df_raw['blue_loop_crossing_count'] > 0)
-        ].copy()
+        # If analyze_blue_loop is True, we only keep runs with >0 blue loop crossings
+        # If analyze_blue_loop is False, we keep all runs (assuming they are valid for GYRE input)
+        if analyze_blue_loop:
+            summary_df_to_save = summary_df_raw[
+                (summary_df_raw['blue_loop_crossing_count'].notna()) &
+                (summary_df_raw['blue_loop_crossing_count'] > 0)
+            ].copy()
+            if summary_df_to_save.empty:
+                logging.info("No valid blue loop entries found after filtering for summary CSV.")
+            else:
+                 logging.info(f"Generated summary CSV will contain {len(summary_df_to_save)} blue loop entries.")
+        else:
+            summary_df_to_save = summary_df_raw.copy()
+            logging.info(f"Blue loop analysis is OFF. Generated summary CSV will contain all {len(summary_df_to_save)} successful MESA runs.")
         # --- END FINAL FILTERING ---
 
         # If after filtering, the summary_df_to_save is empty, set it to an empty DataFrame to avoid issues later
         if summary_df_to_save.empty:
-            logging.info("No valid blue loop entries found after filtering for summary CSV.")
             summary_df = pd.DataFrame(columns=[
+                'initial_mass', 'initial_Z', 'run_dir_path', # Ensure these are present
                 'blue_loop_crossing_count', 'blue_loop_duration_yr',
                 'blue_loop_start_age', 'blue_loop_end_age',
                 'instability_start_age', 'instability_end_age',
                 'calculated_blue_loop_duration', 'calculated_instability_duration',
-                'run_dir_path' # Ensure run_dir_path is also in empty df for consistency
+                'max_log_L', 'max_log_Teff', 'max_log_R',
+                'first_model_number', 'last_model_number',
+                'first_age_yr', 'last_age_yr'
             ], index=pd.MultiIndex.from_tuples([], names=['initial_Z', 'initial_mass']))
         else:
             summary_df = summary_df_to_save.copy() # Assign filtered data to summary_df
             # --- Column Filtering based on blue_loop_output_type ---
-            if blue_loop_output_type == 'summary':
+            if blue_loop_output_type == 'summary' and analyze_blue_loop: # Only apply if blue loop analysis was active
                 logging.info("Applying 'summary' output type filtering for summary CSV columns.")
                 summary_columns_for_summary_output = [
                     'blue_loop_crossing_count', 'blue_loop_duration_yr',
@@ -291,7 +327,6 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                 summary_df = summary_df[existing_summary_cols].copy()
             # If blue_loop_output_type is 'all', summary_df remains as is (includes all populated columns)
             # --- End Column Filtering ---
-
 
         summary_df.to_csv(summary_csv_path, na_rep='NaN')
         logging.info(f"Summary CSV written to {summary_csv_path}")
@@ -313,7 +348,7 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
         logging.info(f"Cross-grid CSV written to {cross_csv_path}")
 
         # This block is for writing detail CSVs to disk, separate from in-memory processing
-        if analyze_blue_loop:
+        if analyze_blue_loop: # Only save detail CSVs if blue loop analysis was performed
             # Define concise_detail_columns_for_saving (used for detail CSVs when blue_loop_output_type='summary')
             concise_detail_columns_for_saving = [ 
                 'initial_mass', 'initial_Z', 'star_age', 'model_number',
@@ -350,73 +385,81 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
     if not combined_detail_data_for_plotting.empty:
         combined_detail_data_for_plotting = combined_detail_data_for_plotting.sort_values(by=['initial_Z', 'initial_mass', 'star_age']).reset_index(drop=True)
 
-    # --- START NEW LOGIC FOR MIN/MAX MODEL NUMBER CSV ---
-    # This section processes the combined detailed blue loop data to generate a summary
-    # of min/max model numbers for each initial_mass and initial_Z combination.
+    # --- START NEW LOGIC FOR MIN/MAX MODEL NUMBER CSV (GYRE INPUT) ---
+    # This section processes the combined detailed blue loop data or raw summary_df_raw
+    # to generate a summary of min/max model numbers for each initial_mass and initial_Z combination.
     # It now also includes the 'run_dir_path'.
-    if not combined_detail_data_for_plotting.empty and analyze_blue_loop:
-        logging.info("Generating sorted min/max model number CSV...")
+    # This CSV should ALWAYS be generated if analysis was successful, regardless of blue loop analysis status,
+    # because GYRE needs a list of profiles for all valid runs.
+
+    gyre_input_df = pd.DataFrame()
+    if not summary_df_raw.empty: # Use the raw summary_df which contains all successful MESA runs
+        logging.info(f"Generating GYRE input CSV '{gyre_input_csv_name}' from MESA summary data...")
         try:
-            # Create a copy to work with, to avoid potential SettingWithCopyWarning
-            temp_df_for_min_max = combined_detail_data_for_plotting.copy()
+            # We need initial_mass, initial_Z, run_dir_path.
+            # And min_model_number, max_model_number for the profiles if available.
+            # If blue loop analysis was ON, we get these from combined_detail_data_for_plotting.
+            # If blue loop analysis was OFF, we should derive them from the full history files,
+            # or simply use first/last model_number from the summary_df_raw if it contains them.
 
-            # Ensure run_dir_path is added to temp_df_for_min_max from the original summary_df_raw
-            # We need to merge or map the run_dir_path based on initial_mass and initial_Z
-            # Since summary_df_raw already contains run_dir_path indexed by initial_Z, initial_mass,
-            # we can reset index and merge.
+            # Let's standardize the columns needed for GYRE input.
+            # GYRE needs to know the MESA run directory and the range of profile numbers.
+            # The simplest is to give it the first and last profile number of the *entire run*
+            # if no blue loop analysis was done, or the blue loop specific range if it was.
+
+            # For now, let's assume 'run_dir_path', 'initial_mass', 'initial_Z' are fundamental.
+            # And 'min_model_number', 'max_model_number' (or similar like 'first_model_number', 'last_model_number')
+            # from the summary_df, which represents the entire run's profile range if blue_loop_analysis is False,
+            # or the blue loop's range if True.
+
+            # Use summary_df (which is already filtered for blue loops if analyze_blue_loop is True)
+            # or summary_df_raw if analyze_blue_loop is False.
             
-            # Get the unique initial_mass, initial_Z, run_dir_path combinations from summary_df_raw
-            # This is safer than relying on columns that might not always be there in combined_detail_data_for_plotting
-            run_paths_info = summary_df_raw[['run_dir_path']].reset_index()
-
-            # Merge this information into combined_detail_data_for_plotting
-            # We need to ensure 'initial_mass' and 'initial_Z' are in combined_detail_data_for_plotting for merging
-            if 'initial_mass' in temp_df_for_min_max.columns and 'initial_Z' in temp_df_for_min_max.columns:
-                temp_df_for_min_max = pd.merge(
-                    temp_df_for_min_max,
-                    run_paths_info,
-                    on=['initial_mass', 'initial_Z'],
-                    how='left'
-                )
+            df_for_gyre_csv = summary_df.reset_index().copy() # Use the filtered/processed summary_df
+            
+            # Select relevant columns for GYRE input
+            # Ensure 'first_model_number' and 'last_model_number' are present.
+            # If blue_loop_analysis is False, these columns might not be filled in analysis_result_summary.
+            # In that case, we need to explicitly get min/max model_number from full history files or use 'profile_number' from summary_df_raw.
+            
+            if 'first_model_number' not in df_for_gyre_csv.columns or 'last_model_number' not in df_for_gyre_csv.columns:
+                 # If these are missing (e.g., if analyze_blue_loop was False), we need to populate them.
+                 # This means iterating through run_dir_path and finding min/max profile_number in their profile.data files.
+                 # This is more complex and might be better handled directly within gyre_modules if it needs *all* profiles.
+                 # For now, let's assume summary_df either has these or gyre_modules can work without them,
+                 # or it processes the 'run_dir_path' directly to find all profiles.
+                 
+                 # Alternative: If 'profile_number' in summary_df_raw is the final profile, we could use that.
+                 # For safety and consistency with GYRE's expectation of a *range*, let's add placeholder logic.
+                 logging.warning("'first_model_number' or 'last_model_number' not found in summary_df. GYRE input CSV will only contain 'run_dir_path', 'initial_mass', 'initial_Z'.")
+                 gyre_input_df = df_for_gyre_csv[['initial_mass', 'initial_Z', 'run_dir_path']].copy()
+                 gyre_input_df.rename(columns={'run_dir_path': 'mesa_run_directory'}, inplace=True) # Renaming for GYRE's config
+                 gyre_input_df['min_model_number'] = np.nan # Placeholder
+                 gyre_input_df['max_model_number'] = np.nan # Placeholder
             else:
-                logging.warning("Cannot merge 'run_dir_path' into min/max model number CSV as 'initial_mass' or 'initial_Z' are missing in detailed data.")
+                 gyre_input_df = df_for_gyre_csv[['initial_mass', 'initial_Z', 'run_dir_path', 'first_model_number', 'last_model_number']].copy()
+                 gyre_input_df.rename(columns={
+                     'run_dir_path': 'mesa_run_directory',
+                     'first_model_number': 'min_model_number',
+                     'last_model_number': 'max_model_number'
+                 }, inplace=True)
+            
+            # Ensure 'initial_Z' is formatted as string for consistency with GYRE expectations
+            gyre_input_df['initial_Z'] = gyre_input_df['initial_Z'].apply(lambda x: f"{x:.4f}")
 
-            # Sort by initial_mass and initial_Z (important for consistent grouping)
-            temp_df_for_min_max_sorted = temp_df_for_min_max.sort_values(
-                by=['initial_mass', 'initial_Z'], ascending=[True, True]
-            )
-
-            # Group by initial_mass, initial_Z, AND run_dir_path to find min and max model_number
-            # Grouping by run_dir_path ensures that if for some reason two identical mass/Z
-            # have different run paths, they are treated separately.
-            result_df = temp_df_for_min_max_sorted.groupby(
-                ['initial_mass', 'initial_Z', 'run_dir_path'], as_index=False
-            ).agg(
-                min_model_number=('model_number', 'min'),
-                max_model_number=('model_number', 'max')
-            )
-
-            # Format the initial_Z column to 4 decimal places for the output CSV, as a string
-            result_df['initial_Z'] = result_df['initial_Z'].apply(lambda x: f"{x:.4f}")
-
-            # Save the result to a CSV file in the analysis_results_sub_dir
-            # This CSV will now contain the run_dir_path
-            output_filename = os.path.join(analysis_results_sub_dir, "sorted_mass_Z_min_max.csv")
-            result_df.to_csv(output_filename, index=False, na_rep='NaN')
-            logging.info(f"Sorted min/max model number data (including run_dir_path) saved to: {output_filename}")
+            gyre_input_df.to_csv(gyre_input_csv_path, index=False, na_rep='NaN')
+            logging.info(f"GYRE input CSV saved to: {gyre_input_csv_path}")
+            gyre_output_csv_path_returned = gyre_input_csv_path # Set the path to return
 
         except Exception as e:
-            logging.error(f"Error generating sorted min/max model number CSV: {e}")
-    elif analyze_blue_loop and combined_detail_data_for_plotting.empty:
-        logging.info("Skipping sorted min/max model number CSV generation: No detailed blue loop data available or blue loop analysis yielded no loops.")
+            logging.error(f"Error generating GYRE input CSV '{gyre_input_csv_name}': {e}")
+            logging.exception("GYRE input CSV generation exception details:")
+            gyre_output_csv_path_returned = "" # Indicate failure to generate
+
     else:
-        logging.info("Skipping sorted min/max model number CSV generation: Blue loop analysis was not enabled for detailed data collection.")
+        logging.info("Skipping GYRE input CSV generation: No successful MESA runs found in summary data.")
+        gyre_output_csv_path_returned = "" # No CSV generated
 
-    # --- END NEW LOGIC ---
+    # --- END NEW LOGIC FOR MIN/MAX MODEL NUMBER CSV ---
 
-    # Ensure combined_detail_data_for_plotting is also sorted consistently for the return value
-    if not combined_detail_data_for_plotting.empty:
-        combined_detail_data_for_plotting = combined_detail_data_for_plotting.sort_values(by=['initial_Z', 'initial_mass', 'star_age']).reset_index(drop=True)
-
-
-    return summary_df, combined_detail_data_for_plotting, full_history_data_for_plotting
+    return summary_df, combined_detail_data_for_plotting, full_history_data_for_plotting, gyre_output_csv_path_returned
