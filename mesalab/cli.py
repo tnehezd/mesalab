@@ -1,3 +1,5 @@
+# cli.py
+
 import sys
 import os
 import argparse
@@ -8,97 +10,91 @@ import pandas as pd
 import numpy as np
 
 # Set up base logging configuration before any other imports that might log
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
-logging.getLogger('matplotlib').setLevel(logging.WARNING) # or logging.INFO if you want to see INFO messages
+# This ensures all modules use a consistent logging format
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s: %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout) # Log to console
+    ]
+)
+# Suppress matplotlib font warnings, if any
+logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
-
-# Attempt to import GYRE related modules
+# Attempt to import MESA analysis modules
 try:
-    from mesalab.gyre import gyre_modules
-except ImportError:
-    logging.warning("mesalab.gyre.gyre_modules not found in cli.py. Using a dummy placeholder.")
-    # Create a dummy object if gyre_modules cannot be imported
+    from mesalab.mesatools import mesa_analyzer
+    from mesalab.plotting import plot_hr_diagrams, plot_heatmaps, plot_blue_loop_summary
+    # Adjusted import path for gyre_modules
+    from mesalab.gyretools import gyre_modules
+except ImportError as e:
+    logging.error(f"Failed to import MESA/GYRE modules: {e}")
+    logging.warning("MESA analysis and GYRE workflow will be skipped due to missing modules.")
+
+    # Create dummy classes/functions if imports fail to prevent immediate crashes
+    class DummyMesaAnalyzer:
+        def perform_mesa_analysis(self, *args, **kwargs):
+            logging.info("MESA analysis skipped due to missing mesa_analyzer.")
+            return pd.DataFrame(), None, None, None
+    mesa_analyzer = DummyMesaAnalyzer()
+
+    class DummyPlotting:
+        def __getattr__(self, name):
+            # This allows calling any method on the dummy object without error
+            def dummy_method(*args, **kwargs):
+                logging.info(f"Plotting function '{name}' skipped due to missing plotting modules.")
+            return dummy_method
+    plot_hr_diagrams = DummyPlotting()
+    plot_heatmaps = DummyPlotting()
+    plot_blue_loop_summary = DummyPlotting()
+
     class DummyGyreModules:
-        def __init__(self):
-            logging.warning("Dummy gyre_modules will be used. GYRE workflow will be skipped.")
         def run_gyre_workflow(self, *args, **kwargs):
             logging.info("GYRE workflow skipped due to missing gyre_modules.")
-            return pd.DataFrame() # Return empty DataFrame or suitable dummy
+            return pd.DataFrame()
     gyre_modules = DummyGyreModules()
-
-# Attempt to import MIST Bolometric Correction Grid related modules
-try:
-    # This assumes 'bcgrid' is a module you have or plan to use for BCs
-    from mesalab.plotting.bc_grid import BCGrid
-    BC_GRID_AVAILABLE = True
-except ImportError:
-    logging.warning("MIST Bolometric Correction Grid not imported. Some visualizations might not be available.")
-    BC_GRID_AVAILABLE = False
-    class DummyBCGrid:
-        def __init__(self):
-            pass
-        def apply_bolometric_corrections(self, df):
-            logging.warning("Bolometric corrections skipped: BCGrid not available.")
-            return df # Return the original DataFrame unmodified
-    BCGrid = DummyBCGrid
-
-
-# Import other core modules
-from mesalab.analyzis import mesa_analyzer
-from mesalab.plotting import mesa_plotter
-
-
-def setup_logging(output_dir, debug_mode):
-    """
-    Sets up the logging configuration, including a file handler.
-    """
-    # Ensure the output directory exists for the log file
-    os.makedirs(output_dir, exist_ok=True)
-
-    log_filename = datetime.datetime.now().strftime("mesagrid_run_%Y%m%d_%H%M%S.log")
-    log_filepath = os.path.join(output_dir, log_filename)
-
-    # Remove previous handlers to avoid duplicate logs if called multiple times
-    for handler in logging.root.handlers[:]:
-        logging.root.removeHandler(handler)
-
-    # Set base level for the root logger
-    if debug_mode:
-        logging.root.setLevel(logging.DEBUG)
-    else:
-        logging.root.setLevel(logging.INFO)
-
-    # Console handler
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
-    logging.root.addHandler(console_handler)
-
-    # File handler
-    file_handler = logging.FileHandler(log_filepath)
-    file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s'))
-    logging.root.addHandler(file_handler)
-
-    logging.info("Logging set up. Log file: %s", log_filepath)
 
 
 def main():
-    """
-    Main function to parse arguments, configure analysis, and execute workflows.
-    """
-    parser = argparse.ArgumentParser(description="MESA Grid Analysis Lab (mesalab)")
-    parser.add_argument('--config', type=str, help='Path to the YAML configuration file.')
-    parser.add_argument('--debug', action='store_true', help='Enable debug logging.')
+    parser = argparse.ArgumentParser(description="MESA Grid Analysis and Blue Loop Identification with GYRE integration.")
+    parser.add_argument('config_file', type=str,
+                        help="Path to the main configuration file (e.g., 'mysett.yaml').")
+    parser.add_argument('--debug', action='store_true',
+                        help='Enable debug logging.')
+    args = parser.parse_args()
 
-    cli_args = parser.parse_args()
+    # Set logging level based on debug flag
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+        logging.debug("Debug logging enabled.")
 
-    # Default configuration
+    config_file_path = args.config_file
+    if not os.path.exists(config_file_path):
+        logging.critical(f"Configuration file '{config_file_path}' not found.")
+        sys.exit(1)
+
+    logging.info(f"Loading configuration from '{config_file_path}'...")
+    try:
+        with open(config_file_path, 'r') as f:
+            user_config = yaml.safe_load(f)
+        if user_config is None:
+            logging.error(f"Configuration file '{config_file_path}' is empty or invalid YAML.")
+            sys.exit(1)
+    except yaml.YAMLError as e:
+        logging.critical(f"Error parsing YAML configuration file '{config_file_path}': {e}")
+        sys.exit(1)
+    except Exception as e:
+        logging.critical(f"An unexpected error occurred while reading configuration '{config_file_path}': {e}")
+        sys.exit(1)
+
+    # Define default configuration
     config = {
         'general_settings': {
             'input_dir': './',
             'output_dir': './output',
             'inlist_name': 'inlist_project',
             'force_reanalysis': False,
-            'debug': False # Default to False, can be overridden by CLI or YAML
+            'debug': False # This will be overridden by CLI --debug flag
         },
         'blue_loop_analysis': {
             'analyze_blue_loop': True,
@@ -112,138 +108,153 @@ def main():
         },
         'gyre_workflow': {
             'run_gyre_workflow': False,
-            'gyre_config_path': 'gyre_config.in',
-            'gyre_input_csv_name': 'sorted_mass_Z_min_max.csv'
+            'gyre_config_file': 'gyre_config.in', # This file will contain all GYRE settings
+            'filtered_profiles_csv_name': 'sorted_mass_Z_min_max.csv' # Name of the CSV generated by analyzer
         }
     }
 
-    # Load configuration from YAML if provided
-    if cli_args.config:
-        try:
-            with open(cli_args.config, 'r') as f:
-                yaml_config = yaml.safe_load(f)
-            # Merge YAML config into default config
-            for key, value in yaml_config.items():
-                if key in config and isinstance(config[key], dict) and isinstance(value, dict):
-                    config[key].update(value)
-                else:
-                    config[key] = value
-            logging.info(f"Loaded configuration from: {cli_args.config}")
-        except FileNotFoundError:
-            logging.error(f"Configuration file not found: {cli_args.config}. Using default settings.")
-        except yaml.YAMLError as e:
-            logging.error(f"Error parsing YAML configuration file: {e}. Using default settings.")
+    # Merge user configuration with defaults
+    for key in config:
+        if key in user_config:
+            config[key].update(user_config[key])
 
-    # Override debug setting if --debug flag is used
-    if cli_args.debug:
+    # Override debug setting if CLI flag is used
+    if args.debug:
         config['general_settings']['debug'] = True
+        logging.getLogger().setLevel(logging.DEBUG) # Re-set if not already set by initial block
 
-    # Setup logging with the determined debug mode and output directory
-    debug_mode = config['general_settings']['debug']
-    output_dir = config['general_settings']['output_dir']
-    setup_logging(output_dir, debug_mode)
+    # Create a flat config object for easier access in functions
+    # (Optional, but can simplify parameter passing if many are needed)
+    class ConfigObject:
+        def __init__(self, d):
+            for k, v in d.items():
+                if isinstance(v, dict):
+                    setattr(self, k, ConfigObject(v))
+                else:
+                    setattr(self, k, v)
+        # Flatten for direct access where possible, but maintain hierarchy
+        @property
+        def input_dir(self): return self.general_settings.input_dir
+        @property
+        def output_dir(self): return self.general_settings.output_dir
+        @property
+        def inlist_name(self): return self.general_settings.inlist_name
+        @property
+        def force_reanalysis(self): return self.general_settings.force_reanalysis
+        @property
+        def debug(self): return self.general_settings.debug
 
-    if debug_mode:
-        logging.debug("Debug mode enabled.")
-        logging.debug(f"Full configuration dictionary: {config}")
+        @property
+        def analyze_blue_loop(self): return self.blue_loop_analysis.analyze_blue_loop
+        @property
+        def blue_loop_output_type(self): return self.blue_loop_analysis.blue_loop_output_type
 
-    # Convert config dictionary to a Namespace object for easier access,
-    # mimicking argparse.Namespace attributes.
-    # This also flattens the dictionary for simplicity in passing to functions.
-    config_for_analyzer = argparse.Namespace()
-    for section_key, section_dict in config.items():
-        for item_key, item_value in section_dict.items():
-            setattr(config_for_analyzer, item_key, item_value)
+        @property
+        def generate_heatmaps(self): return self.plotting_settings.generate_heatmaps
+        @property
+        def generate_plots(self): return self.plotting_settings.generate_plots
+        @property
+        def generate_hr_diagrams(self): return self.plotting_settings.generate_hr_diagrams
+        @property
+        def generate_blue_loop_plots_with_bc(self): return self.plotting_settings.generate_blue_loop_plots_with_bc
 
-    if debug_mode:
-        logging.debug(f"Config object for analyzer: {config_for_analyzer}")
+        @property
+        def run_gyre_workflow(self): return self.gyre_workflow.run_gyre_workflow
+        @property
+        def gyre_config_file(self): return self.gyre_workflow.gyre_config_file
+        @property
+        def filtered_profiles_csv_name(self): return self.gyre_workflow.filtered_profiles_csv_name
 
-    logging.info("\n--- Starting MESA Grid Analysis ---")
 
-    # Define output subdirectories
-    analysis_results_sub_dir = os.path.join(output_dir, "analysis_results")
-    blue_loop_plots_dir = os.path.join(output_dir, "blue_loop_plots")
-    heatmap_output_dir = os.path.join(output_dir, "heatmaps")
-    hr_diagrams_output_dir = os.path.join(output_dir, "hr_diagrams")
-    detail_files_output_dir = os.path.join(output_dir, "blue_loop_detail_files") # For detailed blue loop CSVs
+    config_for_analyzer = ConfigObject(config)
 
-    # Ensure output directories exist
+    # Define output directories
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_base_dir = os.path.abspath(config_for_analyzer.output_dir)
+    session_output_dir = os.path.join(output_base_dir, f"mesa_analysis_{timestamp}")
+    analysis_results_sub_dir = os.path.join(session_output_dir, 'analysis_results')
+    detail_files_output_dir = os.path.join(session_output_dir, 'detail_files')
+    plots_output_dir = os.path.join(session_output_dir, 'plots')
+
     os.makedirs(analysis_results_sub_dir, exist_ok=True)
-    os.makedirs(blue_loop_plots_dir, exist_ok=True)
-    os.makedirs(heatmap_output_dir, exist_ok=True)
-    os.makedirs(hr_diagrams_output_dir, exist_ok=True)
-    os.makedirs(detail_files_output_dir, exist_ok=True) # Ensure this directory exists
+    os.makedirs(detail_files_output_dir, exist_ok=True)
+    os.makedirs(plots_output_dir, exist_ok=True)
+    logging.info(f"All outputs will be saved in: '{session_output_dir}'")
 
     # --- Call the MESA Analysis Workflow ---
-    # This is the corrected call to the function in mesa_analyzer.py
+    # The mesa_analyzer will generate the gyre_input_csv_path if blue loop analysis is enabled
     summary_df, combined_detail_data, full_history_data, gyre_input_csv_path = \
         mesa_analyzer.perform_mesa_analysis(
             config_for_analyzer,
             analysis_results_sub_dir,
-            detail_files_output_dir, # Pass the detail_files_output_dir
-            config_for_analyzer.gyre_input_csv_name # Pass the GYRE input CSV name
+            detail_files_output_dir,
+            config_for_analyzer.filtered_profiles_csv_name # This is the name for the CSV generated by analyzer
         )
 
     if summary_df.empty:
         logging.info("No summary data generated from MESA analysis. Skipping plotting and GYRE workflow.")
-        sys.exit(0) # Exit gracefully if no data to process further
+        sys.exit(0)
 
     # --- Plotting Workflow ---
     if config_for_analyzer.generate_plots:
         logging.info("\n--- Starting Plotting Workflow ---")
         if config_for_analyzer.generate_heatmaps:
-            logging.info("Generating heatmaps...")
-            mesa_plotter.handle_heatmap_generation(
-                config_for_analyzer,
-                summary_df, # summary_df_for_plotting, passed as a placeholder/if needed by handler
-                heatmap_output_dir, # plots_sub_dir
-                analysis_results_sub_dir, # analysis_results_sub_dir
-                config_for_analyzer.input_dir # input_dir for model_name
-            )
-            logging.info("Heatmaps generated.")
-
-        if config_for_analyzer.generate_hr_diagrams != 'none' and not full_history_data:
-            logging.warning("Cannot generate HR diagrams: No full history data available. This might happen if 'force_reanalysis' was False and data was loaded, but full history was not retained for plotting.")
-        elif config_for_analyzer.generate_hr_diagrams != 'none':
-            logging.info("Generating HR Diagrams...")
-            mesa_plotter.handle_hr_diagram_generation(
-                config_for_analyzer,
-                hr_diagrams_output_dir,
+            plot_heatmaps.generate_mass_z_heatmaps(summary_df, plots_output_dir)
+        if config_for_analyzer.generate_hr_diagrams != 'none':
+            plot_hr_diagrams.generate_all_hr_diagrams(
                 full_history_data,
-                config_for_analyzer.generate_hr_diagrams == 'drop_zams' # Pass True if 'drop_zams' requested
+                plots_output_dir,
+                hr_diagram_type=config_for_analyzer.generate_hr_diagrams
             )
-            logging.info("HR Diagrams generated.")
+        if config_for_analyzer.analyze_blue_loop:
+            plot_blue_loop_summary.plot_blue_loop_data(
+                summary_df,
+                plots_output_dir,
+                blue_loop_output_type=config_for_analyzer.blue_loop_output_type,
+                generate_plots_with_bc=config_for_analyzer.generate_blue_loop_plots_with_bc
+            )
+        logging.info("Plotting workflow completed.")
+    else:
+        logging.info("Plotting workflow is disabled in configuration.")
 
-        if config_for_analyzer.analyze_blue_loop and config_for_analyzer.generate_blue_loop_plots_with_bc:
-            logging.info("Generating Blue Loop CMD/HRD with Bolometric Corrections...")
-            mesa_plotter.handle_blue_loop_bc_plotting(
-                config_for_analyzer,
-                combined_detail_data, # This is the DataFrame from mesa_analyzer
-                blue_loop_plots_dir, # Output directory for these plots
-                detail_files_output_dir # Directory where individual detail files might be if loading is needed
-            )
-            logging.info("Blue Loop CMD/HRD with Bolometric Corrections generated.")
-        elif config_for_analyzer.analyze_blue_loop and not config_for_analyzer.generate_blue_loop_plots_with_bc:
-            logging.info("Blue loop analysis is enabled, but 'generate_blue_loop_plots_with_bc' is False. Skipping blue loop BC plots.")
-        else:
-            logging.info("Blue loop analysis is disabled. Skipping all blue loop related plots.")
 
     # --- GYRE Workflow ---
-    if config_for_analyzer.run_gyre_workflow and not isinstance(gyre_modules, DummyGyreModules): # Check if gyre_modules is not the Dummy
-        if gyre_input_csv_path and os.path.exists(gyre_input_csv_path):
-            logging.info("\n--- Starting GYRE Workflow ---")
-            logging.info(f"Using GYRE configuration file: {config_for_analyzer.gyre_config_path}")
-            gyre_modules.run_gyre_workflow(
-                gyre_input_csv_path,
-                config_for_analyzer.gyre_config_path,
-                output_dir,
-                config_for_analyzer.debug # Pass debug flag to GYRE workflow
-            )
-            logging.info("GYRE workflow completed.")
+    if config_for_analyzer.run_gyre_workflow and not isinstance(gyre_modules, DummyGyreModules):
+        # Determine the full path to the GYRE config file
+        # It's assumed to be in the same directory as cli.py or specified absolutely
+        gyre_config_full_path = os.path.abspath(config_for_analyzer.gyre_config_file)
+        
+        # Check if the GYRE config file exists
+        if not os.path.exists(gyre_config_full_path):
+            logging.error(f"GYRE configuration file not found at '{gyre_config_full_path}'. Skipping GYRE workflow.")
+        # Check if the filtered profiles CSV exists (if it was supposed to be generated)
+        elif config_for_analyzer.analyze_blue_loop and (not gyre_input_csv_path or not os.path.exists(gyre_input_csv_path)):
+             logging.warning(f"GYRE workflow enabled, but the filtered profiles CSV was not generated or not found at '{gyre_input_csv_path}'. "
+                             "This might be expected if 'FILTERED_PROFILES' run mode is not used, "
+                             "or indicates an issue with MESA analysis if it is. Skipping GYRE workflow unless it's 'ALL_PROFILES' mode.")
+             # The gyre_modules will handle this warning more specifically if 'FILTERED_PROFILES' is chosen.
+             # We still proceed to call gyre_modules, which will then raise an error if required CSV is missing.
         else:
-            logging.warning("GYRE input CSV not found. Skipping GYRE workflow.")
+            logging.info("\n--- Starting GYRE Workflow ---")
+            logging.info(f"Using GYRE specific settings from: {gyre_config_full_path}")
+            try:
+                # Call the run_gyre_workflow function from gyre_modules.
+                # gyre_modules will read all its required settings from gyre_config_full_path.
+                # We pass global_mesa_base_dir and global_output_base_dir as overall reference points.
+                # filtered_profiles_csv_path is passed if it exists and is relevant.
+                gyre_modules.run_gyre_workflow(
+                    gyre_config_path=gyre_config_full_path,
+                    filtered_profiles_csv_path=gyre_input_csv_path, # Path to the CSV generated by mesa_analyzer
+                    global_mesa_base_dir=os.path.abspath(config_for_analyzer.input_dir), # Top-level MESA grid directory
+                    global_output_base_dir=session_output_dir, # This session's specific output directory
+                    debug_mode=config_for_analyzer.debug
+                )
+                logging.info("GYRE workflow completed.")
+            except Exception as e:
+                logging.critical(f"Error during GYRE workflow: {e}")
+                logging.exception("GYRE workflow exception details:")
     elif config_for_analyzer.run_gyre_workflow and isinstance(gyre_modules, DummyGyreModules):
-        logging.warning("GYRE modules not available. Skipping GYRE workflow.")
+        logging.warning("GYRE modules not available (ImportError). Skipping GYRE workflow.")
     else:
         logging.info("GYRE workflow is disabled in configuration.")
 
