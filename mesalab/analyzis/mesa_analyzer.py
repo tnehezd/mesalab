@@ -1,5 +1,3 @@
-# mesalab/analyzis/mesa_analyzer.py
-
 import os
 import pandas as pd
 import numpy as np
@@ -52,7 +50,7 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                         not os.path.exists(summary_csv_path) or \
                         not os.path.exists(cross_csv_path) or \
                         (args.gyre_workflow.run_gyre_workflow and not os.path.exists(gyre_input_csv_path)) # <-- CORRECTED
-    
+
     # Check if detail CSVs exist. If not, and blue loop analysis is on, force reanalysis
     # even if summary and cross CSVs exist. This is the crucial part that was missing.
     detail_csvs_exist = True
@@ -103,7 +101,7 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
             else:
                 summary_df = filtered_loaded_summary_df
                 logging.info("Successfully loaded and filtered existing summary CSV.")
-                
+
                 if os.path.exists(gyre_input_csv_path) and not force_reanalysis:
                     logging.info(f"Existing GYRE input CSV '{gyre_input_csv_name}' found. Using it.")
                     gyre_output_csv_path_returned = gyre_input_csv_path
@@ -226,9 +224,9 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                     'instability_end_age': np.nan, 'calculated_blue_loop_duration': np.nan,
                     'calculated_instability_duration': np.nan
                     }
-                
+
                 # Initialize current_detail_df for the current run. Will be populated if blue loop analysis is active.
-                current_detail_df = pd.DataFrame() 
+                current_detail_df = pd.DataFrame()
 
                 try:
                     df_full_history = get_data_from_history_file(history_file_path)
@@ -432,26 +430,52 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
         try:
             df_for_gyre_csv = summary_df_raw.reset_index().copy()
 
+            # --- ÚJ SZŰRÉS ITT ---
+            # A gyre_input_csv_name csak a kék hurkot tartalmazó futásokat írja ki, ha a blue loop analízis aktív.
+            if args.blue_loop_analysis.analyze_blue_loop:
+                # Ha a blue loop analízis aktív, csak azokat a bejegyzéseket vesszük, ahol a blue_loop_crossing_count > 0
+                original_rows = len(df_for_gyre_csv)
+                df_for_gyre_csv = df_for_gyre_csv[
+                    (df_for_gyre_csv['blue_loop_crossing_count'].notna()) &
+                    (df_for_gyre_csv['blue_loop_crossing_count'] > 0)
+                ].copy()
+                if len(df_for_gyre_csv) < original_rows:
+                    logging.info(f"Filtered GYRE input CSV: Removed {original_rows - len(df_for_gyre_csv)} entries with no blue loop crossings.")
+                if df_for_gyre_csv.empty:
+                    logging.warning("After filtering, no entries remain for GYRE input CSV. It will be empty.")
+                    gyre_output_csv_path_returned = "" # Biztosítjuk, hogy üres string legyen
+            else:
+                logging.info("Blue loop analysis is OFF. All successful MESA runs will be included in GYRE input CSV.")
+            # --- SZŰRÉS VÉGE ---
+
             if 'first_model_number' not in df_for_gyre_csv.columns or 'last_model_number' not in df_for_gyre_csv.columns:
-                logging.warning("'first_model_number' or 'last_model_number' not found in summary_df_raw. GYRE input CSV will only contain 'run_dir_path', 'initial_mass', 'initial_Z'.")
+                logging.warning("'first_model_number' or 'last_model_number' not found in filtered GYRE data. GYRE input CSV will only contain 'run_dir_path', 'initial_mass', 'initial_Z'.")
                 gyre_input_df = df_for_gyre_csv[['initial_mass', 'initial_Z', 'run_dir_path']].copy()
                 gyre_input_df['min_model_number'] = np.nan
                 gyre_input_df['max_model_number'] = np.nan
-            else:
+            elif not df_for_gyre_csv.empty: # Csak akkor próbáljuk meg kinyerni, ha nem üres a DF
                 gyre_input_df = df_for_gyre_csv[['initial_mass', 'initial_Z', 'run_dir_path', 'first_model_number', 'last_model_number']].copy()
-            
-            gyre_input_df.rename(columns={
-                'run_dir_path': 'mesa_run_directory',
-                'first_model_number': 'min_model_number',
-                'last_model_number': 'max_model_number'
-            }, inplace=True)
+            else: # Ha a df_for_gyre_csv üres, akkor a gyre_input_df is üres marad
+                gyre_input_df = pd.DataFrame() # Biztosítjuk, hogy üres legyen
 
-            gyre_input_df['initial_Z'] = gyre_input_df['initial_Z'].apply(lambda x: f"{x:.4f}")
-            gyre_input_df.sort_values(['initial_mass', 'initial_Z'], inplace=True)
-            
-            gyre_input_df.to_csv(gyre_input_csv_path, index=False, na_rep='NaN')
-            logging.info(f"GYRE input CSV saved to: {gyre_input_csv_path}")
-            gyre_output_csv_path_returned = gyre_input_csv_path
+
+            if not gyre_input_df.empty: # Csak akkor mentsük, ha van benne adat
+                gyre_input_df.rename(columns={
+                    'run_dir_path': 'mesa_run_directory',
+                    'first_model_number': 'min_model_number',
+                    'last_model_number': 'max_model_number'
+                }, inplace=True)
+
+                gyre_input_df['initial_Z'] = gyre_input_df['initial_Z'].apply(lambda x: f"{x:.4f}")
+                gyre_input_df.sort_values(['initial_mass', 'initial_Z'], inplace=True)
+
+                gyre_input_df.to_csv(gyre_input_csv_path, index=False, na_rep='NaN')
+                logging.info(f"GYRE input CSV saved to: {gyre_input_csv_path}")
+                gyre_output_csv_path_returned = gyre_input_csv_path
+            else:
+                logging.info("No data to write to GYRE input CSV after filtering.")
+                gyre_output_csv_path_returned = ""
+
 
         except Exception as e:
             logging.error(f"Error generating GYRE input CSV '{gyre_input_csv_name}': {e}")
