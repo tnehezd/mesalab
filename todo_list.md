@@ -37,3 +37,4 @@ GYRE RUN IMPLEMENTÁLÁSA?!
 ehhez leírás: GYRE_DIR környezeti változó hozzáadása! ... /gyre/gyre ... itt make, majd a gyre/gyre/bin/gyre-rel lehet futtatni... számomra most már csak az a kérdés, hogy mesadk nélkül megy-e! -- lehet külön is, de a mesasdk összegyűjti
 
 
+all hrd not all z?
