@@ -149,7 +149,7 @@ def run_gyre_workflow(
         global_mesa_base_dir (str): The root directory containing MESA run directories (e.g., '/path/to/my_mesa_grid/').
                                     This is typically the 'input_dir' from the main CLI config.
         global_output_base_dir (str): The base directory for all outputs of the current analysis session.
-                                      GYRE's specific outputs will go into a subdirectory here.
+                                    GYRE's specific outputs will go into a subdirectory here.
         debug_mode (bool, optional): If True, sets logging level to DEBUG for this module. Defaults to False.
     """
     if debug_mode:
@@ -278,8 +278,9 @@ def run_gyre_workflow(
             return # Exit the function if CSV is empty
 
         # Check for required columns in the DataFrame
-        # 'run_dir_path' is expected to be an absolute path to the MESA run directory
-        required_cols = ['initial_mass', 'initial_Z', 'min_model_number', 'max_model_number', 'run_dir_path']
+        # 'mesa_run_directory' is expected to be an absolute path to the MESA run
+        # MODIFIED: Changed 'run_dir_path' to 'mesa_run_directory' to match your CSV
+        required_cols = ['initial_mass', 'initial_Z', 'min_model_number', 'max_model_number', 'mesa_run_directory']
         if not all(col in filter_df.columns for col in required_cols):
             raise ValueError(f"Filtered profiles CSV '{filtered_profiles_csv_path}' must contain the columns: {', '.join(required_cols)}")
         
@@ -293,11 +294,16 @@ def run_gyre_workflow(
                 gyre_logger.warning(f"Skipping row {index} in CSV due to missing initial_mass or initial_Z.")
                 continue
 
+            # Check for NaN in model numbers specifically
+            if pd.isna(row['min_model_number']) or pd.isna(row['max_model_number']):
+                gyre_logger.warning(f"Skipping row {index} for M={mass}, Z={Z} due to missing (NaN) min_model_number or max_model_number. GYRE requires valid model ranges.")
+                continue
+            
             min_model = int(row['min_model_number'])
             max_model = int(row['max_model_number'])
             
-            # The 'run_dir_path' from the CSV is assumed to be an absolute path to the MESA run
-            mesa_run_specific_dir = row['run_dir_path']
+            # The 'mesa_run_directory' from the CSV is assumed to be an absolute path to the MESA run
+            mesa_run_specific_dir = row['mesa_run_directory']
             
             current_mesa_run_logs_dir = os.path.join(mesa_run_specific_dir, 'LOGS')
             current_profiles_index_path = os.path.join(current_mesa_run_logs_dir, 'profiles.index')
