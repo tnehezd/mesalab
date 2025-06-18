@@ -63,7 +63,7 @@ def main():
     
     # Call config_parser.parsing_options with the raw CLI arguments.
     # This function will handle all parsing, merging with YAML, and setting defaults.
-    config = config_parser.parsing_options(args=sys.argv[1:])
+    config = config_parser.parsing_options()
 
     # At this point, 'config' is an argparse.Namespace object from config_parser.
     # Its attributes reflect the final resolved configuration.
