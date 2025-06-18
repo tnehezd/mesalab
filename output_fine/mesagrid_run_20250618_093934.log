@@ -1,0 +1,628 @@
+2025-06-18 09:39:34,264 - INFO - cli.py:81 - Logging set up. Log file: /home/tnd/mesagrid/mesa_blue_loop/output/mesagrid_run_20250618_093934.log
+2025-06-18 09:39:34,265 - DEBUG - cli.py:147 - Debug mode enabled.
+2025-06-18 09:39:34,265 - DEBUG - cli.py:148 - Full configuration dictionary: {'general_settings': {'input_dir': '/home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid', 'output_dir': '/home/tnd/mesagrid/mesa_blue_loop/output', 'inlist_name': 'inlist_project', 'force_reanalysis': True, 'debug': True}, 'blue_loop_analysis': {'analyze_blue_loop': True, 'blue_loop_output_type': 'all'}, 'plotting_settings': {'generate_heatmaps': True, 'generate_plots': True, 'generate_hr_diagrams': 'drop_zams', 'generate_blue_loop_plots_with_bc': True}, 'gyre_workflow': {'run_gyre_workflow': True, 'gyre_config_path': 'gyre_config.in', 'gyre_input_csv_name': 'sorted_mass_Z_min_max.csv'}}
+2025-06-18 09:39:34,265 - DEBUG - cli.py:159 - Config object for analyzer: Namespace(input_dir='/home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid', output_dir='/home/tnd/mesagrid/mesa_blue_loop/output', inlist_name='inlist_project', force_reanalysis=True, debug=True, analyze_blue_loop=True, blue_loop_output_type='all', generate_heatmaps=True, generate_plots=True, generate_hr_diagrams='drop_zams', generate_blue_loop_plots_with_bc=True, run_gyre_workflow=True, gyre_config_path='gyre_config.in', gyre_input_csv_name='sorted_mass_Z_min_max.csv')
+2025-06-18 09:39:34,265 - INFO - cli.py:161 - 
+--- Starting MESA Grid Analysis ---
+2025-06-18 09:39:34,265 - INFO - mesa_analyzer.py:54 - Analysis started. Reanalysis needed: True
+2025-06-18 09:39:34,267 - INFO - mesa_analyzer.py:116 - Starting full analysis of MESA runs...
+2025-06-18 09:39:34,270 - INFO - data_reader.py:89 - Scanning '/home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid' for MESA run directories...
+2025-06-18 09:39:34,294 - INFO - data_reader.py:115 - Finished scanning. Found 440 valid MESA runs.
+2025-06-18 09:39:34,361 - INFO - mesa_analyzer.py:153 - Generated YAML overview of processed runs: /home/tnd/mesagrid/mesa_blue_loop/output/analysis_results/processed_runs_overview.yaml
+2025-06-18 09:44:11,143 - INFO - mesa_analyzer.py:296 - Generated summary CSV will contain 440 blue loop entries.
+2025-06-18 09:44:11,154 - INFO - mesa_analyzer.py:333 - Summary CSV written to /home/tnd/mesagrid/mesa_blue_loop/output/analysis_results/summary_results.csv
+2025-06-18 09:44:11,157 - INFO - mesa_analyzer.py:349 - Cross-grid CSV written to /home/tnd/mesagrid/mesa_blue_loop/output/analysis_results/crossing_count_grid.csv
+2025-06-18 09:44:11,157 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.0015.
+2025-06-18 09:44:11,157 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.002.
+2025-06-18 09:44:11,157 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.0025.
+2025-06-18 09:44:11,157 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.003.
+2025-06-18 09:44:11,157 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.0035.
+2025-06-18 09:44:11,157 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.004.
+2025-06-18 09:44:11,157 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.0045.
+2025-06-18 09:44:11,157 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.005.
+2025-06-18 09:44:11,157 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.0055.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.006.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.0065.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.007.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.0075.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.008.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.0085.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.009.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.0095.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.01.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.0105.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.011.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.0115.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.012.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.0125.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.013.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.0135.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.014.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.0145.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.015.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.0155.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.016.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.0165.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.017.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.0175.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.018.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.0185.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.019.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.0195.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:383 - No detailed data to write for Z=0.02.
+2025-06-18 09:44:11,158 - INFO - mesa_analyzer.py:398 - Generating GYRE input CSV 'sorted_mass_Z_min_max.csv' from MESA summary data...
+2025-06-18 09:44:11,163 - INFO - mesa_analyzer.py:429 - GYRE input CSV saved to: /home/tnd/mesagrid/mesa_blue_loop/output/analysis_results/sorted_mass_Z_min_max.csv
+2025-06-18 09:44:11,164 - INFO - cli.py:193 - 
+--- Starting Plotting Workflow ---
+2025-06-18 09:44:11,164 - INFO - cli.py:195 - Generating heatmaps...
+2025-06-18 09:44:11,164 - INFO - mesa_plotter.py:32 - Attempting to generate heatmaps...
+2025-06-18 09:44:13,634 - INFO - mesa_plotter.py:76 - Heatmaps generated successfully.
+2025-06-18 09:44:13,634 - INFO - cli.py:203 - Heatmaps generated.
+2025-06-18 09:44:13,634 - INFO - cli.py:208 - Generating HR Diagrams...
+2025-06-18 09:44:13,634 - INFO - mesa_plotter.py:138 - Attempting to generate HR diagrams using pre-loaded full history data...
+2025-06-18 09:44:13,634 - INFO - mesa_plotter.py:151 - Preparing to generate HR diagrams with drop_zams=True.
+2025-06-18 09:44:13,634 - INFO - all_hrd_plotter.py:52 - Starting HR diagram generation for model 'nad_convos_mid'.
+2025-06-18 09:44:13,639 - INFO - all_hrd_plotter.py:69 - Sorted 17 runs by mass for Z=0.0015.
+2025-06-18 09:44:13,639 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0015 with 17 masses...
+2025-06-18 09:44:13,839 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=2.5 (Z=0.0015).
+2025-06-18 09:44:13,844 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=3.0 (Z=0.0015).
+2025-06-18 09:44:13,850 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=3.5 (Z=0.0015).
+2025-06-18 09:44:13,854 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.0 (Z=0.0015).
+2025-06-18 09:44:13,858 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.5 (Z=0.0015).
+2025-06-18 09:44:13,863 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.0 (Z=0.0015).
+2025-06-18 09:44:13,867 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0015).
+2025-06-18 09:44:13,871 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0015).
+2025-06-18 09:44:13,875 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0015).
+2025-06-18 09:44:13,879 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0015).
+2025-06-18 09:44:13,883 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0015).
+2025-06-18 09:44:13,887 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0015).
+2025-06-18 09:44:13,891 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0015).
+2025-06-18 09:44:13,895 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0015).
+2025-06-18 09:44:13,900 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0015).
+2025-06-18 09:44:13,904 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0015).
+2025-06-18 09:44:13,908 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.5 (Z=0.0015).
+2025-06-18 09:44:17,558 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0015.png
+2025-06-18 09:44:17,559 - INFO - all_hrd_plotter.py:69 - Sorted 16 runs by mass for Z=0.0020.
+2025-06-18 09:44:17,559 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0020 with 16 masses...
+2025-06-18 09:44:17,763 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=3.0 (Z=0.0020).
+2025-06-18 09:44:17,769 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=3.5 (Z=0.0020).
+2025-06-18 09:44:17,774 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.0 (Z=0.0020).
+2025-06-18 09:44:17,779 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.5 (Z=0.0020).
+2025-06-18 09:44:17,783 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.0 (Z=0.0020).
+2025-06-18 09:44:17,787 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0020).
+2025-06-18 09:44:17,792 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0020).
+2025-06-18 09:44:17,796 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0020).
+2025-06-18 09:44:17,800 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0020).
+2025-06-18 09:44:17,805 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0020).
+2025-06-18 09:44:17,809 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0020).
+2025-06-18 09:44:17,813 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0020).
+2025-06-18 09:44:17,818 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0020).
+2025-06-18 09:44:17,822 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0020).
+2025-06-18 09:44:17,826 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0020).
+2025-06-18 09:44:17,830 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.5 (Z=0.0020).
+2025-06-18 09:44:21,176 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0020.png
+2025-06-18 09:44:21,176 - INFO - all_hrd_plotter.py:69 - Sorted 16 runs by mass for Z=0.0025.
+2025-06-18 09:44:21,177 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0025 with 16 masses...
+2025-06-18 09:44:21,267 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=3.0 (Z=0.0025).
+2025-06-18 09:44:21,272 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=3.5 (Z=0.0025).
+2025-06-18 09:44:21,277 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.0 (Z=0.0025).
+2025-06-18 09:44:21,282 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.5 (Z=0.0025).
+2025-06-18 09:44:21,286 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.0 (Z=0.0025).
+2025-06-18 09:44:21,290 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0025).
+2025-06-18 09:44:21,294 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0025).
+2025-06-18 09:44:21,299 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0025).
+2025-06-18 09:44:21,303 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0025).
+2025-06-18 09:44:21,307 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0025).
+2025-06-18 09:44:21,312 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0025).
+2025-06-18 09:44:21,316 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0025).
+2025-06-18 09:44:21,320 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0025).
+2025-06-18 09:44:21,324 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0025).
+2025-06-18 09:44:21,330 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0025).
+2025-06-18 09:44:21,334 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.5 (Z=0.0025).
+2025-06-18 09:44:24,883 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0025.png
+2025-06-18 09:44:24,884 - INFO - all_hrd_plotter.py:69 - Sorted 14 runs by mass for Z=0.0030.
+2025-06-18 09:44:24,884 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0030 with 14 masses...
+2025-06-18 09:44:24,974 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=3.5 (Z=0.0030).
+2025-06-18 09:44:24,979 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.0 (Z=0.0030).
+2025-06-18 09:44:24,984 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.5 (Z=0.0030).
+2025-06-18 09:44:24,988 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.0 (Z=0.0030).
+2025-06-18 09:44:24,994 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0030).
+2025-06-18 09:44:24,998 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0030).
+2025-06-18 09:44:25,002 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0030).
+2025-06-18 09:44:25,006 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0030).
+2025-06-18 09:44:25,010 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0030).
+2025-06-18 09:44:25,014 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0030).
+2025-06-18 09:44:25,018 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0030).
+2025-06-18 09:44:25,022 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0030).
+2025-06-18 09:44:25,027 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0030).
+2025-06-18 09:44:25,031 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0030).
+2025-06-18 09:44:28,204 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0030.png
+2025-06-18 09:44:28,204 - INFO - all_hrd_plotter.py:69 - Sorted 12 runs by mass for Z=0.0035.
+2025-06-18 09:44:28,204 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0035 with 12 masses...
+2025-06-18 09:44:28,273 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=3.5 (Z=0.0035).
+2025-06-18 09:44:28,278 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.0 (Z=0.0035).
+2025-06-18 09:44:28,282 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.5 (Z=0.0035).
+2025-06-18 09:44:28,287 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.0 (Z=0.0035).
+2025-06-18 09:44:28,291 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0035).
+2025-06-18 09:44:28,295 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0035).
+2025-06-18 09:44:28,300 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0035).
+2025-06-18 09:44:28,304 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0035).
+2025-06-18 09:44:28,308 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0035).
+2025-06-18 09:44:28,313 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0035).
+2025-06-18 09:44:28,317 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0035).
+2025-06-18 09:44:28,322 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0035).
+2025-06-18 09:44:30,869 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0035.png
+2025-06-18 09:44:30,869 - INFO - all_hrd_plotter.py:69 - Sorted 11 runs by mass for Z=0.0040.
+2025-06-18 09:44:30,869 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0040 with 11 masses...
+2025-06-18 09:44:30,939 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=3.5 (Z=0.0040).
+2025-06-18 09:44:30,944 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.0 (Z=0.0040).
+2025-06-18 09:44:30,948 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.5 (Z=0.0040).
+2025-06-18 09:44:30,952 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.0 (Z=0.0040).
+2025-06-18 09:44:30,956 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0040).
+2025-06-18 09:44:30,960 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0040).
+2025-06-18 09:44:30,964 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0040).
+2025-06-18 09:44:30,969 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0040).
+2025-06-18 09:44:30,973 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0040).
+2025-06-18 09:44:30,976 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0040).
+2025-06-18 09:44:30,981 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0040).
+2025-06-18 09:44:33,526 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0040.png
+2025-06-18 09:44:33,527 - INFO - all_hrd_plotter.py:69 - Sorted 11 runs by mass for Z=0.0045.
+2025-06-18 09:44:33,527 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0045 with 11 masses...
+2025-06-18 09:44:33,597 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=3.5 (Z=0.0045).
+2025-06-18 09:44:33,601 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.0 (Z=0.0045).
+2025-06-18 09:44:33,605 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.5 (Z=0.0045).
+2025-06-18 09:44:33,610 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.0 (Z=0.0045).
+2025-06-18 09:44:33,614 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0045).
+2025-06-18 09:44:33,618 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0045).
+2025-06-18 09:44:33,623 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0045).
+2025-06-18 09:44:33,626 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0045).
+2025-06-18 09:44:33,630 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0045).
+2025-06-18 09:44:33,635 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0045).
+2025-06-18 09:44:33,639 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0045).
+2025-06-18 09:44:36,008 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0045.png
+2025-06-18 09:44:36,009 - INFO - all_hrd_plotter.py:69 - Sorted 10 runs by mass for Z=0.0050.
+2025-06-18 09:44:36,009 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0050 with 10 masses...
+2025-06-18 09:44:36,249 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.0 (Z=0.0050).
+2025-06-18 09:44:36,253 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.5 (Z=0.0050).
+2025-06-18 09:44:36,257 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.0 (Z=0.0050).
+2025-06-18 09:44:36,262 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0050).
+2025-06-18 09:44:36,266 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0050).
+2025-06-18 09:44:36,271 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0050).
+2025-06-18 09:44:36,275 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0050).
+2025-06-18 09:44:36,279 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0050).
+2025-06-18 09:44:36,283 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0050).
+2025-06-18 09:44:36,287 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0050).
+2025-06-18 09:44:38,468 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0050.png
+2025-06-18 09:44:38,469 - INFO - all_hrd_plotter.py:69 - Sorted 11 runs by mass for Z=0.0055.
+2025-06-18 09:44:38,469 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0055 with 11 masses...
+2025-06-18 09:44:38,541 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.0 (Z=0.0055).
+2025-06-18 09:44:38,546 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.5 (Z=0.0055).
+2025-06-18 09:44:38,550 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.0 (Z=0.0055).
+2025-06-18 09:44:38,555 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0055).
+2025-06-18 09:44:38,559 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0055).
+2025-06-18 09:44:38,564 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0055).
+2025-06-18 09:44:38,568 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0055).
+2025-06-18 09:44:38,572 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0055).
+2025-06-18 09:44:38,576 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0055).
+2025-06-18 09:44:38,581 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0055).
+2025-06-18 09:44:38,585 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0055).
+2025-06-18 09:44:40,951 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0055.png
+2025-06-18 09:44:40,952 - INFO - all_hrd_plotter.py:69 - Sorted 11 runs by mass for Z=0.0060.
+2025-06-18 09:44:40,952 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0060 with 11 masses...
+2025-06-18 09:44:41,183 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.0 (Z=0.0060).
+2025-06-18 09:44:41,187 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.5 (Z=0.0060).
+2025-06-18 09:44:41,192 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.0 (Z=0.0060).
+2025-06-18 09:44:41,197 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0060).
+2025-06-18 09:44:41,202 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0060).
+2025-06-18 09:44:41,207 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0060).
+2025-06-18 09:44:41,212 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0060).
+2025-06-18 09:44:41,217 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0060).
+2025-06-18 09:44:41,221 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0060).
+2025-06-18 09:44:41,225 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0060).
+2025-06-18 09:44:41,229 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0060).
+2025-06-18 09:44:43,604 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0060.png
+2025-06-18 09:44:43,604 - INFO - all_hrd_plotter.py:69 - Sorted 11 runs by mass for Z=0.0065.
+2025-06-18 09:44:43,605 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0065 with 11 masses...
+2025-06-18 09:44:43,674 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.0 (Z=0.0065).
+2025-06-18 09:44:43,679 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.5 (Z=0.0065).
+2025-06-18 09:44:43,684 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.0 (Z=0.0065).
+2025-06-18 09:44:43,689 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0065).
+2025-06-18 09:44:43,693 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0065).
+2025-06-18 09:44:43,698 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0065).
+2025-06-18 09:44:43,702 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0065).
+2025-06-18 09:44:43,707 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0065).
+2025-06-18 09:44:43,712 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0065).
+2025-06-18 09:44:43,716 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0065).
+2025-06-18 09:44:43,720 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0065).
+2025-06-18 09:44:46,273 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0065.png
+2025-06-18 09:44:46,273 - INFO - all_hrd_plotter.py:69 - Sorted 12 runs by mass for Z=0.0070.
+2025-06-18 09:44:46,273 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0070 with 12 masses...
+2025-06-18 09:44:46,343 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.0 (Z=0.0070).
+2025-06-18 09:44:46,348 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.5 (Z=0.0070).
+2025-06-18 09:44:46,352 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.0 (Z=0.0070).
+2025-06-18 09:44:46,356 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0070).
+2025-06-18 09:44:46,361 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0070).
+2025-06-18 09:44:46,366 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0070).
+2025-06-18 09:44:46,370 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0070).
+2025-06-18 09:44:46,375 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0070).
+2025-06-18 09:44:46,379 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0070).
+2025-06-18 09:44:46,383 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0070).
+2025-06-18 09:44:46,388 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0070).
+2025-06-18 09:44:46,393 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0070).
+2025-06-18 09:44:48,939 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0070.png
+2025-06-18 09:44:48,939 - INFO - all_hrd_plotter.py:69 - Sorted 12 runs by mass for Z=0.0075.
+2025-06-18 09:44:48,940 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0075 with 12 masses...
+2025-06-18 09:44:49,145 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.0 (Z=0.0075).
+2025-06-18 09:44:49,151 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.5 (Z=0.0075).
+2025-06-18 09:44:49,156 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.0 (Z=0.0075).
+2025-06-18 09:44:49,160 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0075).
+2025-06-18 09:44:49,164 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0075).
+2025-06-18 09:44:49,168 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0075).
+2025-06-18 09:44:49,173 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0075).
+2025-06-18 09:44:49,177 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0075).
+2025-06-18 09:44:49,181 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0075).
+2025-06-18 09:44:49,186 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0075).
+2025-06-18 09:44:49,190 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0075).
+2025-06-18 09:44:49,195 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0075).
+2025-06-18 09:44:51,765 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0075.png
+2025-06-18 09:44:51,765 - INFO - all_hrd_plotter.py:69 - Sorted 11 runs by mass for Z=0.0080.
+2025-06-18 09:44:51,765 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0080 with 11 masses...
+2025-06-18 09:44:51,835 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.5 (Z=0.0080).
+2025-06-18 09:44:51,840 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.0 (Z=0.0080).
+2025-06-18 09:44:51,844 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0080).
+2025-06-18 09:44:51,849 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0080).
+2025-06-18 09:44:51,853 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0080).
+2025-06-18 09:44:51,857 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0080).
+2025-06-18 09:44:51,862 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0080).
+2025-06-18 09:44:51,866 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0080).
+2025-06-18 09:44:51,870 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0080).
+2025-06-18 09:44:51,874 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0080).
+2025-06-18 09:44:51,878 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0080).
+2025-06-18 09:44:54,426 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0080.png
+2025-06-18 09:44:54,426 - INFO - all_hrd_plotter.py:69 - Sorted 12 runs by mass for Z=0.0085.
+2025-06-18 09:44:54,426 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0085 with 12 masses...
+2025-06-18 09:44:54,495 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.5 (Z=0.0085).
+2025-06-18 09:44:54,500 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.0 (Z=0.0085).
+2025-06-18 09:44:54,505 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0085).
+2025-06-18 09:44:54,509 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0085).
+2025-06-18 09:44:54,513 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0085).
+2025-06-18 09:44:54,518 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0085).
+2025-06-18 09:44:54,522 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0085).
+2025-06-18 09:44:54,526 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0085).
+2025-06-18 09:44:54,531 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0085).
+2025-06-18 09:44:54,536 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0085).
+2025-06-18 09:44:54,540 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0085).
+2025-06-18 09:44:54,544 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0085).
+2025-06-18 09:44:57,114 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0085.png
+2025-06-18 09:44:57,115 - INFO - all_hrd_plotter.py:69 - Sorted 12 runs by mass for Z=0.0090.
+2025-06-18 09:44:57,115 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0090 with 12 masses...
+2025-06-18 09:44:57,183 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.5 (Z=0.0090).
+2025-06-18 09:44:57,187 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.0 (Z=0.0090).
+2025-06-18 09:44:57,192 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0090).
+2025-06-18 09:44:57,196 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0090).
+2025-06-18 09:44:57,202 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0090).
+2025-06-18 09:44:57,206 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0090).
+2025-06-18 09:44:57,210 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0090).
+2025-06-18 09:44:57,215 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0090).
+2025-06-18 09:44:57,220 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0090).
+2025-06-18 09:44:57,225 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0090).
+2025-06-18 09:44:57,229 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0090).
+2025-06-18 09:44:57,234 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0090).
+2025-06-18 09:44:59,935 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0090.png
+2025-06-18 09:44:59,935 - INFO - all_hrd_plotter.py:69 - Sorted 12 runs by mass for Z=0.0095.
+2025-06-18 09:44:59,935 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0095 with 12 masses...
+2025-06-18 09:45:00,005 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.5 (Z=0.0095).
+2025-06-18 09:45:00,011 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.0 (Z=0.0095).
+2025-06-18 09:45:00,015 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0095).
+2025-06-18 09:45:00,020 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0095).
+2025-06-18 09:45:00,024 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0095).
+2025-06-18 09:45:00,029 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0095).
+2025-06-18 09:45:00,033 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0095).
+2025-06-18 09:45:00,038 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0095).
+2025-06-18 09:45:00,043 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0095).
+2025-06-18 09:45:00,047 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0095).
+2025-06-18 09:45:00,052 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0095).
+2025-06-18 09:45:00,056 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0095).
+2025-06-18 09:45:02,631 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0095.png
+2025-06-18 09:45:02,632 - INFO - all_hrd_plotter.py:69 - Sorted 12 runs by mass for Z=0.0100.
+2025-06-18 09:45:02,632 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0100 with 12 masses...
+2025-06-18 09:45:02,888 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=4.5 (Z=0.0100).
+2025-06-18 09:45:02,893 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.0 (Z=0.0100).
+2025-06-18 09:45:02,898 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0100).
+2025-06-18 09:45:02,902 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0100).
+2025-06-18 09:45:02,907 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0100).
+2025-06-18 09:45:02,912 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0100).
+2025-06-18 09:45:02,916 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0100).
+2025-06-18 09:45:02,921 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0100).
+2025-06-18 09:45:02,925 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0100).
+2025-06-18 09:45:02,929 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0100).
+2025-06-18 09:45:02,934 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0100).
+2025-06-18 09:45:02,938 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0100).
+2025-06-18 09:45:05,499 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0100.png
+2025-06-18 09:45:05,499 - INFO - all_hrd_plotter.py:69 - Sorted 10 runs by mass for Z=0.0105.
+2025-06-18 09:45:05,499 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0105 with 10 masses...
+2025-06-18 09:45:05,569 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.0 (Z=0.0105).
+2025-06-18 09:45:05,574 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0105).
+2025-06-18 09:45:05,579 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0105).
+2025-06-18 09:45:05,583 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0105).
+2025-06-18 09:45:05,588 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0105).
+2025-06-18 09:45:05,592 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0105).
+2025-06-18 09:45:05,597 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0105).
+2025-06-18 09:45:05,601 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0105).
+2025-06-18 09:45:05,606 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0105).
+2025-06-18 09:45:05,610 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0105).
+2025-06-18 09:45:07,805 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0105.png
+2025-06-18 09:45:07,806 - INFO - all_hrd_plotter.py:69 - Sorted 11 runs by mass for Z=0.0110.
+2025-06-18 09:45:07,806 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0110 with 11 masses...
+2025-06-18 09:45:08,041 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.0 (Z=0.0110).
+2025-06-18 09:45:08,047 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0110).
+2025-06-18 09:45:08,051 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0110).
+2025-06-18 09:45:08,056 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0110).
+2025-06-18 09:45:08,061 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0110).
+2025-06-18 09:45:08,065 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0110).
+2025-06-18 09:45:08,070 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0110).
+2025-06-18 09:45:08,075 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0110).
+2025-06-18 09:45:08,080 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0110).
+2025-06-18 09:45:08,085 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0110).
+2025-06-18 09:45:08,089 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0110).
+2025-06-18 09:45:10,450 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0110.png
+2025-06-18 09:45:10,450 - INFO - all_hrd_plotter.py:69 - Sorted 10 runs by mass for Z=0.0115.
+2025-06-18 09:45:10,450 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0115 with 10 masses...
+2025-06-18 09:45:10,518 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.0 (Z=0.0115).
+2025-06-18 09:45:10,523 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0115).
+2025-06-18 09:45:10,527 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0115).
+2025-06-18 09:45:10,532 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0115).
+2025-06-18 09:45:10,537 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0115).
+2025-06-18 09:45:10,541 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0115).
+2025-06-18 09:45:10,545 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0115).
+2025-06-18 09:45:10,549 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0115).
+2025-06-18 09:45:10,553 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0115).
+2025-06-18 09:45:10,557 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0115).
+2025-06-18 09:45:12,918 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0115.png
+2025-06-18 09:45:12,918 - INFO - all_hrd_plotter.py:69 - Sorted 11 runs by mass for Z=0.0120.
+2025-06-18 09:45:12,918 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0120 with 11 masses...
+2025-06-18 09:45:12,987 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.0 (Z=0.0120).
+2025-06-18 09:45:12,991 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0120).
+2025-06-18 09:45:12,996 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0120).
+2025-06-18 09:45:13,001 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0120).
+2025-06-18 09:45:13,006 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0120).
+2025-06-18 09:45:13,010 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0120).
+2025-06-18 09:45:13,014 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0120).
+2025-06-18 09:45:13,018 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0120).
+2025-06-18 09:45:13,023 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0120).
+2025-06-18 09:45:13,028 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0120).
+2025-06-18 09:45:13,033 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0120).
+2025-06-18 09:45:15,415 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0120.png
+2025-06-18 09:45:15,416 - INFO - all_hrd_plotter.py:69 - Sorted 11 runs by mass for Z=0.0125.
+2025-06-18 09:45:15,416 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0125 with 11 masses...
+2025-06-18 09:45:15,484 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.0 (Z=0.0125).
+2025-06-18 09:45:15,488 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0125).
+2025-06-18 09:45:15,493 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0125).
+2025-06-18 09:45:15,498 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0125).
+2025-06-18 09:45:15,502 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0125).
+2025-06-18 09:45:15,507 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0125).
+2025-06-18 09:45:15,511 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0125).
+2025-06-18 09:45:15,515 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0125).
+2025-06-18 09:45:15,520 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0125).
+2025-06-18 09:45:15,525 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0125).
+2025-06-18 09:45:15,530 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0125).
+2025-06-18 09:45:18,060 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0125.png
+2025-06-18 09:45:18,060 - INFO - all_hrd_plotter.py:69 - Sorted 10 runs by mass for Z=0.0130.
+2025-06-18 09:45:18,061 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0130 with 10 masses...
+2025-06-18 09:45:18,129 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.0 (Z=0.0130).
+2025-06-18 09:45:18,134 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0130).
+2025-06-18 09:45:18,139 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0130).
+2025-06-18 09:45:18,144 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0130).
+2025-06-18 09:45:18,149 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0130).
+2025-06-18 09:45:18,153 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0130).
+2025-06-18 09:45:18,158 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0130).
+2025-06-18 09:45:18,162 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0130).
+2025-06-18 09:45:18,167 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0130).
+2025-06-18 09:45:18,171 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0130).
+2025-06-18 09:45:20,373 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0130.png
+2025-06-18 09:45:20,373 - INFO - all_hrd_plotter.py:69 - Sorted 12 runs by mass for Z=0.0135.
+2025-06-18 09:45:20,374 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0135 with 12 masses...
+2025-06-18 09:45:20,621 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.0 (Z=0.0135).
+2025-06-18 09:45:20,626 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0135).
+2025-06-18 09:45:20,631 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0135).
+2025-06-18 09:45:20,636 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0135).
+2025-06-18 09:45:20,640 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0135).
+2025-06-18 09:45:20,644 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0135).
+2025-06-18 09:45:20,649 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0135).
+2025-06-18 09:45:20,653 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0135).
+2025-06-18 09:45:20,658 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0135).
+2025-06-18 09:45:20,662 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0135).
+2025-06-18 09:45:20,666 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0135).
+2025-06-18 09:45:20,671 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.5 (Z=0.0135).
+2025-06-18 09:45:23,232 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0135.png
+2025-06-18 09:45:23,233 - INFO - all_hrd_plotter.py:69 - Sorted 12 runs by mass for Z=0.0140.
+2025-06-18 09:45:23,233 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0140 with 12 masses...
+2025-06-18 09:45:23,301 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.0 (Z=0.0140).
+2025-06-18 09:45:23,306 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0140).
+2025-06-18 09:45:23,311 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0140).
+2025-06-18 09:45:23,315 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0140).
+2025-06-18 09:45:23,320 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0140).
+2025-06-18 09:45:23,324 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0140).
+2025-06-18 09:45:23,330 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0140).
+2025-06-18 09:45:23,334 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0140).
+2025-06-18 09:45:23,338 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0140).
+2025-06-18 09:45:23,343 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0140).
+2025-06-18 09:45:23,348 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0140).
+2025-06-18 09:45:23,352 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.5 (Z=0.0140).
+2025-06-18 09:45:25,905 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0140.png
+2025-06-18 09:45:25,906 - INFO - all_hrd_plotter.py:69 - Sorted 12 runs by mass for Z=0.0145.
+2025-06-18 09:45:25,906 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0145 with 12 masses...
+2025-06-18 09:45:26,146 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.0 (Z=0.0145).
+2025-06-18 09:45:26,152 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0145).
+2025-06-18 09:45:26,156 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0145).
+2025-06-18 09:45:26,161 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0145).
+2025-06-18 09:45:26,166 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0145).
+2025-06-18 09:45:26,171 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0145).
+2025-06-18 09:45:26,175 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0145).
+2025-06-18 09:45:26,180 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0145).
+2025-06-18 09:45:26,184 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0145).
+2025-06-18 09:45:26,188 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0145).
+2025-06-18 09:45:26,193 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0145).
+2025-06-18 09:45:26,198 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.5 (Z=0.0145).
+2025-06-18 09:45:28,759 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0145.png
+2025-06-18 09:45:28,760 - INFO - all_hrd_plotter.py:69 - Sorted 11 runs by mass for Z=0.0150.
+2025-06-18 09:45:28,760 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0150 with 11 masses...
+2025-06-18 09:45:28,830 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0150).
+2025-06-18 09:45:28,835 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0150).
+2025-06-18 09:45:28,840 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0150).
+2025-06-18 09:45:28,844 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0150).
+2025-06-18 09:45:28,848 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0150).
+2025-06-18 09:45:28,853 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0150).
+2025-06-18 09:45:28,858 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0150).
+2025-06-18 09:45:28,862 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0150).
+2025-06-18 09:45:28,866 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0150).
+2025-06-18 09:45:28,871 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0150).
+2025-06-18 09:45:28,876 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.5 (Z=0.0150).
+2025-06-18 09:45:31,417 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0150.png
+2025-06-18 09:45:31,417 - INFO - all_hrd_plotter.py:69 - Sorted 11 runs by mass for Z=0.0155.
+2025-06-18 09:45:31,417 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0155 with 11 masses...
+2025-06-18 09:45:31,488 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0155).
+2025-06-18 09:45:31,493 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0155).
+2025-06-18 09:45:31,498 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0155).
+2025-06-18 09:45:31,502 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0155).
+2025-06-18 09:45:31,507 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0155).
+2025-06-18 09:45:31,512 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0155).
+2025-06-18 09:45:31,516 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0155).
+2025-06-18 09:45:31,521 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0155).
+2025-06-18 09:45:31,526 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0155).
+2025-06-18 09:45:31,530 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0155).
+2025-06-18 09:45:31,534 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.5 (Z=0.0155).
+2025-06-18 09:45:33,936 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0155.png
+2025-06-18 09:45:33,937 - INFO - all_hrd_plotter.py:69 - Sorted 11 runs by mass for Z=0.0160.
+2025-06-18 09:45:33,937 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0160 with 11 masses...
+2025-06-18 09:45:34,008 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0160).
+2025-06-18 09:45:34,013 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0160).
+2025-06-18 09:45:34,017 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0160).
+2025-06-18 09:45:34,022 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0160).
+2025-06-18 09:45:34,027 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0160).
+2025-06-18 09:45:34,031 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0160).
+2025-06-18 09:45:34,036 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0160).
+2025-06-18 09:45:34,040 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0160).
+2025-06-18 09:45:34,044 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0160).
+2025-06-18 09:45:34,049 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0160).
+2025-06-18 09:45:34,053 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.5 (Z=0.0160).
+2025-06-18 09:45:36,603 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0160.png
+2025-06-18 09:45:36,604 - INFO - all_hrd_plotter.py:69 - Sorted 11 runs by mass for Z=0.0165.
+2025-06-18 09:45:36,604 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0165 with 11 masses...
+2025-06-18 09:45:36,674 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0165).
+2025-06-18 09:45:36,680 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0165).
+2025-06-18 09:45:36,684 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0165).
+2025-06-18 09:45:36,689 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0165).
+2025-06-18 09:45:36,694 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0165).
+2025-06-18 09:45:36,698 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0165).
+2025-06-18 09:45:36,702 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0165).
+2025-06-18 09:45:36,706 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0165).
+2025-06-18 09:45:36,711 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0165).
+2025-06-18 09:45:36,715 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0165).
+2025-06-18 09:45:36,720 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.5 (Z=0.0165).
+2025-06-18 09:45:39,112 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0165.png
+2025-06-18 09:45:39,113 - INFO - all_hrd_plotter.py:69 - Sorted 11 runs by mass for Z=0.0170.
+2025-06-18 09:45:39,113 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0170 with 11 masses...
+2025-06-18 09:45:39,182 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0170).
+2025-06-18 09:45:39,365 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0170).
+2025-06-18 09:45:39,371 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0170).
+2025-06-18 09:45:39,375 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0170).
+2025-06-18 09:45:39,380 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0170).
+2025-06-18 09:45:39,385 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0170).
+2025-06-18 09:45:39,389 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0170).
+2025-06-18 09:45:39,393 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0170).
+2025-06-18 09:45:39,398 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0170).
+2025-06-18 09:45:39,403 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0170).
+2025-06-18 09:45:39,407 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.5 (Z=0.0170).
+2025-06-18 09:45:41,799 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0170.png
+2025-06-18 09:45:41,799 - INFO - all_hrd_plotter.py:69 - Sorted 11 runs by mass for Z=0.0175.
+2025-06-18 09:45:41,799 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0175 with 11 masses...
+2025-06-18 09:45:41,870 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0175).
+2025-06-18 09:45:41,876 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0175).
+2025-06-18 09:45:41,880 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0175).
+2025-06-18 09:45:41,885 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0175).
+2025-06-18 09:45:41,889 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0175).
+2025-06-18 09:45:41,893 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0175).
+2025-06-18 09:45:41,897 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0175).
+2025-06-18 09:45:41,902 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0175).
+2025-06-18 09:45:41,906 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0175).
+2025-06-18 09:45:41,910 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0175).
+2025-06-18 09:45:41,914 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.5 (Z=0.0175).
+2025-06-18 09:45:44,312 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0175.png
+2025-06-18 09:45:44,313 - INFO - all_hrd_plotter.py:69 - Sorted 11 runs by mass for Z=0.0180.
+2025-06-18 09:45:44,313 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0180 with 11 masses...
+2025-06-18 09:45:44,560 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0180).
+2025-06-18 09:45:44,565 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0180).
+2025-06-18 09:45:44,569 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0180).
+2025-06-18 09:45:44,575 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0180).
+2025-06-18 09:45:44,580 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0180).
+2025-06-18 09:45:44,584 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0180).
+2025-06-18 09:45:44,589 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0180).
+2025-06-18 09:45:44,593 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0180).
+2025-06-18 09:45:44,597 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0180).
+2025-06-18 09:45:44,601 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0180).
+2025-06-18 09:45:44,605 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.5 (Z=0.0180).
+2025-06-18 09:45:46,997 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0180.png
+2025-06-18 09:45:46,998 - INFO - all_hrd_plotter.py:69 - Sorted 11 runs by mass for Z=0.0185.
+2025-06-18 09:45:46,998 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0185 with 11 masses...
+2025-06-18 09:45:47,067 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=5.5 (Z=0.0185).
+2025-06-18 09:45:47,073 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0185).
+2025-06-18 09:45:47,077 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0185).
+2025-06-18 09:45:47,082 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0185).
+2025-06-18 09:45:47,086 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0185).
+2025-06-18 09:45:47,090 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0185).
+2025-06-18 09:45:47,094 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0185).
+2025-06-18 09:45:47,098 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0185).
+2025-06-18 09:45:47,103 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0185).
+2025-06-18 09:45:47,107 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0185).
+2025-06-18 09:45:47,111 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.5 (Z=0.0185).
+2025-06-18 09:45:49,658 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0185.png
+2025-06-18 09:45:49,659 - INFO - all_hrd_plotter.py:69 - Sorted 10 runs by mass for Z=0.0190.
+2025-06-18 09:45:49,659 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0190 with 10 masses...
+2025-06-18 09:45:49,728 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0190).
+2025-06-18 09:45:49,733 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0190).
+2025-06-18 09:45:49,737 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0190).
+2025-06-18 09:45:49,742 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0190).
+2025-06-18 09:45:49,746 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0190).
+2025-06-18 09:45:49,751 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0190).
+2025-06-18 09:45:49,755 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0190).
+2025-06-18 09:45:49,759 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0190).
+2025-06-18 09:45:49,763 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0190).
+2025-06-18 09:45:49,768 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.5 (Z=0.0190).
+2025-06-18 09:45:51,966 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0190.png
+2025-06-18 09:45:51,967 - INFO - all_hrd_plotter.py:69 - Sorted 10 runs by mass for Z=0.0195.
+2025-06-18 09:45:51,967 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0195 with 10 masses...
+2025-06-18 09:45:52,035 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0195).
+2025-06-18 09:45:52,040 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0195).
+2025-06-18 09:45:52,044 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0195).
+2025-06-18 09:45:52,048 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0195).
+2025-06-18 09:45:52,053 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0195).
+2025-06-18 09:45:52,057 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0195).
+2025-06-18 09:45:52,062 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0195).
+2025-06-18 09:45:52,066 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0195).
+2025-06-18 09:45:52,071 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0195).
+2025-06-18 09:45:52,075 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.5 (Z=0.0195).
+2025-06-18 09:45:54,445 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0195.png
+2025-06-18 09:45:54,445 - INFO - all_hrd_plotter.py:69 - Sorted 10 runs by mass for Z=0.0200.
+2025-06-18 09:45:54,445 - INFO - all_hrd_plotter.py:75 - ➡ Processing HR diagrams for Z=0.0200 with 10 masses...
+2025-06-18 09:45:54,515 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.0 (Z=0.0200).
+2025-06-18 09:45:54,520 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=6.5 (Z=0.0200).
+2025-06-18 09:45:54,525 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.0 (Z=0.0200).
+2025-06-18 09:45:54,529 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=7.5 (Z=0.0200).
+2025-06-18 09:45:54,533 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.0 (Z=0.0200).
+2025-06-18 09:45:54,537 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=8.5 (Z=0.0200).
+2025-06-18 09:45:54,541 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.0 (Z=0.0200).
+2025-06-18 09:45:54,545 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=9.5 (Z=0.0200).
+2025-06-18 09:45:54,549 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.0 (Z=0.0200).
+2025-06-18 09:45:54,554 - INFO - all_hrd_plotter.py:135 - Trimmed pre-MS using 'center_h1' drop criterion (threshold=0.0001) for M=10.5 (Z=0.0200).
+2025-06-18 09:45:56,754 - INFO - all_hrd_plotter.py:219 - ✔ Saved HR diagram: /home/tnd/mesagrid/mesa_blue_loop/output/hr_diagrams/HR_diagram_nad_convos_mid_z0.0200.png
+2025-06-18 09:45:56,754 - INFO - all_hrd_plotter.py:221 - ✅ All HR diagram generation complete.
+2025-06-18 09:45:56,754 - INFO - mesa_plotter.py:163 - HR diagrams generated successfully.
+2025-06-18 09:45:56,754 - INFO - cli.py:215 - HR Diagrams generated.
+2025-06-18 09:45:56,754 - INFO - cli.py:218 - Generating Blue Loop CMD/HRD with Bolometric Corrections...
+2025-06-18 09:45:56,754 - INFO - mesa_plotter.py:98 - Attempting to generate blue loop specific plots with BCs...
+2025-06-18 09:45:56,754 - WARNING - mesa_plotter.py:112 - No blue loop detail data available for BC plots. Cannot generate plots.
+2025-06-18 09:45:56,754 - INFO - cli.py:225 - Blue Loop CMD/HRD with Bolometric Corrections generated.
+2025-06-18 09:45:56,754 - WARNING - cli.py:246 - GYRE modules not available. Skipping GYRE workflow.
+2025-06-18 09:45:56,754 - INFO - cli.py:250 - 
+--- MESA Grid Analysis Finished ---
