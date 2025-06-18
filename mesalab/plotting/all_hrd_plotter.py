@@ -1,4 +1,4 @@
-#mesalab/allplots/all_hrd_plotter.py
+#mesalab/plotting/all_hrd_plotter.py
 
 import numpy as np
 import matplotlib.pyplot as plt

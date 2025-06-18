@@ -1,4 +1,4 @@
-#mesalab/allplots/plot_handlers.py
+#mesalab/plotting/plot_handlers.py
 
 import os
 import logging

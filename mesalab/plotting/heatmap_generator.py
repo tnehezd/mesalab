@@ -1,4 +1,4 @@
-#mesalab/allplots/heatmap_generator.py
+#mesalab/plotting/heatmap_generator.py
 
 import pandas as pd
 import numpy as np
