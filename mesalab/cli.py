@@ -12,8 +12,7 @@ import re # Often useful for parsing run names, keeping it in case you add such 
 
 # --- Import core logic module from mesa_analyzer ---
 # This is the corrected import. It assumes mesa_analyzer.py is directly in mesalab/
-# If it's in mesalab/analysis/, change this to: from mesalab.analysis import mesa_analyzer
-from mesalab import mesa_analyzer
+from mesalab.analyzis import mesa_analyzer
 
 # --- Adjust GYRE specific module import to match mesa_analyzer.py's dummy import path ---
 # This import assumes gyre_modules.py is in mesalab/gyre/
