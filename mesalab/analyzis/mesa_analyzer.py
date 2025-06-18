@@ -20,7 +20,7 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
     Args:
         args (argparse.Namespace): Command-line arguments containing input_dir,
                                    inlist_name, analyze_blue_loop, blue_loop_output_type,
-                                   force_reanalysis.
+                                   force_reanalysis. (This docstring is now slightly out of date as 'args' is the whole config)
         analysis_results_sub_dir (str): Path to the directory for summary/cross-grid CSVs.
         detail_files_output_dir (str): Path to the directory for detailed blue loop CSVs.
         gyre_input_csv_name (str): The desired filename for the CSV containing profiles
@@ -36,11 +36,12 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
             - str: The full path to the generated GYRE input CSV file. Returns an empty string
                     if the CSV was not generated.
     """
-    input_dir = args.input_dir
-    inlist_name = args.inlist_name
-    analyze_blue_loop = args.analyze_blue_loop
-    blue_loop_output_type = args.blue_loop_output_type
-    force_reanalysis = args.force_reanalysis
+    # CORRECTED LINES BELOW:
+    input_dir = args.general_settings.input_dir
+    inlist_name = args.general_settings.inlist_name # <-- CORRECTED
+    analyze_blue_loop = args.blue_loop_analysis.analyze_blue_loop # <-- CORRECTED
+    blue_loop_output_type = args.blue_loop_analysis.blue_loop_output_type # <-- CORRECTED
+    force_reanalysis = args.general_settings.force_reanalysis # <-- CORRECTED
 
     summary_csv_path = os.path.join(analysis_results_sub_dir, "summary_results.csv")
     cross_csv_path = os.path.join(analysis_results_sub_dir, "crossing_count_grid.csv")
@@ -50,7 +51,7 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
     reanalysis_needed = force_reanalysis or \
                         not os.path.exists(summary_csv_path) or \
                         not os.path.exists(cross_csv_path) or \
-                        (args.run_gyre_workflow and not os.path.exists(gyre_input_csv_path))
+                        (args.gyre_workflow.run_gyre_workflow and not os.path.exists(gyre_input_csv_path)) # <-- CORRECTED
     
     # Check if detail CSVs exist. If not, and blue loop analysis is on, force reanalysis
     # even if summary and cross CSVs exist. This is the crucial part that was missing.
@@ -66,7 +67,7 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                 reanalysis_needed = True
 
     logging.info(f"Analysis started. Reanalysis needed: {reanalysis_needed}")
-    if not os.path.exists(gyre_input_csv_path) and args.run_gyre_workflow and not force_reanalysis:
+    if not os.path.exists(gyre_input_csv_path) and args.gyre_workflow.run_gyre_workflow and not force_reanalysis: # <-- CORRECTED
         logging.info(f"GYRE input CSV '{gyre_input_csv_name}' not found. Forcing reanalysis to generate it for GYRE workflow.")
 
     summary_df = pd.DataFrame()
