@@ -1,11 +1,8 @@
-# mesalab/analyzis/grid_analyzer.py
-import os
-import logging # ADDED: Import logging
-from ..io.inlist_parser import get_mesa_params_from_inlist
+#mesalab/analyzis/grid_analyzer.py
 
-# Configure logging for this module if it's run independently,
-# but main cli.py will set global config.
-# logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+import os
+import logging
+from ..io.inlist_parser import get_mesa_params_from_inlist
 
 def analyze_mesa_grid_directory(grid_root_path,
                                 mesa_output_subdir="LOGS",
@@ -20,7 +17,8 @@ def analyze_mesa_grid_directory(grid_root_path,
         mesa_output_subdir (str): The name of the subdirectory within each MESA run
                                   where output files (like history.data) are found.
         inlist_filename (str): The primary filename for the MESA inlist file.
-        inlist_alternatives (list): A list of alternative inlist filenames to check if the primary is not found.
+        inlist_alternatives (list): A list of alternative inlist filenames to check
+                                    if the primary is not found.
 
     Returns:
         list: A list of dictionaries, each containing 'path', 'mass', and 'z'
@@ -44,19 +42,19 @@ def analyze_mesa_grid_directory(grid_root_path,
         if os.path.isdir(current_run_path) and \
            os.path.exists(os.path.join(current_run_path, mesa_output_subdir)):
             
-            logging.debug(f"Checking MESA run directory: '{current_run_path}'") # Changed print to logging.debug
+            logging.debug(f"Checking MESA run directory: '{current_run_path}'")
             
             # Pass the config values to get_mesa_params_from_inlist
             params = get_mesa_params_from_inlist(current_run_path, inlist_filename, inlist_alternatives)
             
-            if params and 'initial_mass' in params and 'initial_z' in params: # Ensure both keys exist
+            if params and 'initial_mass' in params and 'initial_z' in params:
                 found_runs.append({
                     'path': current_run_path,
-                    'mass': params['initial_mass'], # Using direct access now that we check for existence
-                    'z': params['initial_z']      # Using direct access now that we check for existence
+                    'mass': params['initial_mass'],
+                    'z': params['initial_z']
                 })
             else:
-                logging.warning(f"Could not extract 'initial_mass' or 'initial_z' from inlist in '{current_run_path}'. Skipping.") # Changed print to logging.warning
+                logging.warning(f"Could not extract 'initial_mass' or 'initial_z' from inlist in '{current_run_path}'. Skipping.")
 
     return found_runs
 
@@ -77,9 +75,9 @@ if __name__ == "__main__":
     # Create dummy inlist files if you're using the dummy 'inlist_parser' or no real inlists
     # You would need to add content that get_mesa_params_from_inlist can parse
     with open(os.path.join(test_grid_path, "run_1.0MSUN_z0.0140", "inlist"), "w") as f:
-        f.write("&star_job\n  initial_mass = 1.0\n  initial_z = 0.0140\n/\n")
+        f.write("&star_job\n   initial_mass = 1.0\n   initial_z = 0.0140\n/\n")
     with open(os.path.join(test_grid_path, "run_3.0MSUN_z0.0070", "inlist"), "w") as f:
-        f.write("&star_job\n  initial_mass = 3.0\n  initial_z = 0.0070\n/\n")
+        f.write("&star_job\n   initial_mass = 3.0\n   initial_z = 0.0070\n/\n")
 
 
     results = analyze_mesa_grid_directory(
