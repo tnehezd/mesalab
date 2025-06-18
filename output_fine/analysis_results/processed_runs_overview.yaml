@@ -50,6 +50,15 @@ Z_0.0015:
     M_10.5:
         run_directory: run_nad_convos_mid_10.5MSUN_z0.0015
         history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0015
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0015
+        history_file: history.data
+    M_12.0:
+        run_directory: run_nad_convos_mid_12.0MSUN_z0.0015
+        history_file: history.data
 Z_0.0020:
     M_3.0:
         run_directory: run_nad_convos_mid_3.0MSUN_z0.0020
@@ -98,6 +107,15 @@ Z_0.0020:
         history_file: history.data
     M_10.5:
         run_directory: run_nad_convos_mid_10.5MSUN_z0.0020
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0020
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0020
+        history_file: history.data
+    M_12.0:
+        run_directory: run_nad_convos_mid_12.0MSUN_z0.0020
         history_file: history.data
 Z_0.0025:
     M_3.0:
@@ -148,6 +166,15 @@ Z_0.0025:
     M_10.5:
         run_directory: run_nad_convos_mid_10.5MSUN_z0.0025
         history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0025
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0025
+        history_file: history.data
+    M_12.0:
+        run_directory: run_nad_convos_mid_12.0MSUN_z0.0025
+        history_file: history.data
 Z_0.0030:
     M_3.5:
         run_directory: run_nad_convos_mid_3.5MSUN_z0.0030
@@ -191,6 +218,18 @@ Z_0.0030:
     M_10.0:
         run_directory: run_nad_convos_mid_10.0MSUN_z0.0030
         history_file: history.data
+    M_10.5:
+        run_directory: run_nad_convos_mid_10.5MSUN_z0.0030
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0030
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0030
+        history_file: history.data
+    M_12.0:
+        run_directory: run_nad_convos_mid_12.0MSUN_z0.0030
+        history_file: history.data
 Z_0.0035:
     M_3.5:
         run_directory: run_nad_convos_mid_3.5MSUN_z0.0035
@@ -228,6 +267,18 @@ Z_0.0035:
     M_9.0:
         run_directory: run_nad_convos_mid_9.0MSUN_z0.0035
         history_file: history.data
+    M_10.0:
+        run_directory: run_nad_convos_mid_10.0MSUN_z0.0035
+        history_file: history.data
+    M_10.5:
+        run_directory: run_nad_convos_mid_10.5MSUN_z0.0035
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0035
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0035
+        history_file: history.data
 Z_0.0040:
     M_3.5:
         run_directory: run_nad_convos_mid_3.5MSUN_z0.0040
@@ -261,6 +312,18 @@ Z_0.0040:
         history_file: history.data
     M_8.5:
         run_directory: run_nad_convos_mid_8.5MSUN_z0.0040
+        history_file: history.data
+    M_10.0:
+        run_directory: run_nad_convos_mid_10.0MSUN_z0.0040
+        history_file: history.data
+    M_10.5:
+        run_directory: run_nad_convos_mid_10.5MSUN_z0.0040
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0040
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0040
         history_file: history.data
 Z_0.0045:
     M_3.5:
@@ -296,6 +359,18 @@ Z_0.0045:
     M_8.5:
         run_directory: run_nad_convos_mid_8.5MSUN_z0.0045
         history_file: history.data
+    M_10.0:
+        run_directory: run_nad_convos_mid_10.0MSUN_z0.0045
+        history_file: history.data
+    M_10.5:
+        run_directory: run_nad_convos_mid_10.5MSUN_z0.0045
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0045
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0045
+        history_file: history.data
 Z_0.0050:
     M_4.0:
         run_directory: run_nad_convos_mid_4.0MSUN_z0.0050
@@ -326,6 +401,18 @@ Z_0.0050:
         history_file: history.data
     M_8.5:
         run_directory: run_nad_convos_mid_8.5MSUN_z0.0050
+        history_file: history.data
+    M_10.0:
+        run_directory: run_nad_convos_mid_10.0MSUN_z0.0050
+        history_file: history.data
+    M_10.5:
+        run_directory: run_nad_convos_mid_10.5MSUN_z0.0050
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0050
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0050
         history_file: history.data
 Z_0.0055:
     M_4.0:
@@ -361,6 +448,18 @@ Z_0.0055:
     M_9.0:
         run_directory: run_nad_convos_mid_9.0MSUN_z0.0055
         history_file: history.data
+    M_10.0:
+        run_directory: run_nad_convos_mid_10.0MSUN_z0.0055
+        history_file: history.data
+    M_10.5:
+        run_directory: run_nad_convos_mid_10.5MSUN_z0.0055
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0055
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0055
+        history_file: history.data
 Z_0.0060:
     M_4.0:
         run_directory: run_nad_convos_mid_4.0MSUN_z0.0060
@@ -395,6 +494,18 @@ Z_0.0060:
     M_9.0:
         run_directory: run_nad_convos_mid_9.0MSUN_z0.0060
         history_file: history.data
+    M_10.0:
+        run_directory: run_nad_convos_mid_10.0MSUN_z0.0060
+        history_file: history.data
+    M_10.5:
+        run_directory: run_nad_convos_mid_10.5MSUN_z0.0060
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0060
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0060
+        history_file: history.data
 Z_0.0065:
     M_4.0:
         run_directory: run_nad_convos_mid_4.0MSUN_z0.0065
@@ -428,6 +539,18 @@ Z_0.0065:
         history_file: history.data
     M_9.0:
         run_directory: run_nad_convos_mid_9.0MSUN_z0.0065
+        history_file: history.data
+    M_10.0:
+        run_directory: run_nad_convos_mid_10.0MSUN_z0.0065
+        history_file: history.data
+    M_10.5:
+        run_directory: run_nad_convos_mid_10.5MSUN_z0.0065
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0065
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0065
         history_file: history.data
 Z_0.0070:
     M_4.0:
@@ -466,6 +589,18 @@ Z_0.0070:
     M_9.5:
         run_directory: run_nad_convos_mid_9.5MSUN_z0.0070
         history_file: history.data
+    M_10.0:
+        run_directory: run_nad_convos_mid_10.0MSUN_z0.0070
+        history_file: history.data
+    M_10.5:
+        run_directory: run_nad_convos_mid_10.5MSUN_z0.0070
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0070
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0070
+        history_file: history.data
 Z_0.0075:
     M_4.0:
         run_directory: run_nad_convos_mid_4.0MSUN_z0.0075
@@ -503,6 +638,18 @@ Z_0.0075:
     M_9.5:
         run_directory: run_nad_convos_mid_9.5MSUN_z0.0075
         history_file: history.data
+    M_10.0:
+        run_directory: run_nad_convos_mid_10.0MSUN_z0.0075
+        history_file: history.data
+    M_10.5:
+        run_directory: run_nad_convos_mid_10.5MSUN_z0.0075
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0075
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0075
+        history_file: history.data
 Z_0.0080:
     M_4.5:
         run_directory: run_nad_convos_mid_4.5MSUN_z0.0080
@@ -536,6 +683,18 @@ Z_0.0080:
         history_file: history.data
     M_9.5:
         run_directory: run_nad_convos_mid_9.5MSUN_z0.0080
+        history_file: history.data
+    M_10.0:
+        run_directory: run_nad_convos_mid_10.0MSUN_z0.0080
+        history_file: history.data
+    M_10.5:
+        run_directory: run_nad_convos_mid_10.5MSUN_z0.0080
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0080
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0080
         history_file: history.data
 Z_0.0085:
     M_4.5:
@@ -574,6 +733,15 @@ Z_0.0085:
     M_10.0:
         run_directory: run_nad_convos_mid_10.0MSUN_z0.0085
         history_file: history.data
+    M_10.5:
+        run_directory: run_nad_convos_mid_10.5MSUN_z0.0085
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0085
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0085
+        history_file: history.data
 Z_0.0090:
     M_4.5:
         run_directory: run_nad_convos_mid_4.5MSUN_z0.0090
@@ -610,6 +778,15 @@ Z_0.0090:
         history_file: history.data
     M_10.0:
         run_directory: run_nad_convos_mid_10.0MSUN_z0.0090
+        history_file: history.data
+    M_10.5:
+        run_directory: run_nad_convos_mid_10.5MSUN_z0.0090
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0090
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0090
         history_file: history.data
 Z_0.0095:
     M_4.5:
@@ -648,6 +825,15 @@ Z_0.0095:
     M_10.0:
         run_directory: run_nad_convos_mid_10.0MSUN_z0.0095
         history_file: history.data
+    M_10.5:
+        run_directory: run_nad_convos_mid_10.5MSUN_z0.0095
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0095
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0095
+        history_file: history.data
 Z_0.0100:
     M_4.5:
         run_directory: run_nad_convos_mid_4.5MSUN_z0.0100
@@ -685,6 +871,15 @@ Z_0.0100:
     M_10.0:
         run_directory: run_nad_convos_mid_10.0MSUN_z0.0100
         history_file: history.data
+    M_10.5:
+        run_directory: run_nad_convos_mid_10.5MSUN_z0.0100
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0100
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0100
+        history_file: history.data
 Z_0.0105:
     M_5.0:
         run_directory: run_nad_convos_mid_5.0MSUN_z0.0105
@@ -715,6 +910,15 @@ Z_0.0105:
         history_file: history.data
     M_10.0:
         run_directory: run_nad_convos_mid_10.0MSUN_z0.0105
+        history_file: history.data
+    M_10.5:
+        run_directory: run_nad_convos_mid_10.5MSUN_z0.0105
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0105
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0105
         history_file: history.data
 Z_0.0110:
     M_5.0:
@@ -750,6 +954,15 @@ Z_0.0110:
     M_10.0:
         run_directory: run_nad_convos_mid_10.0MSUN_z0.0110
         history_file: history.data
+    M_10.5:
+        run_directory: run_nad_convos_mid_10.5MSUN_z0.0110
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0110
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0110
+        history_file: history.data
 Z_0.0115:
     M_5.0:
         run_directory: run_nad_convos_mid_5.0MSUN_z0.0115
@@ -780,6 +993,15 @@ Z_0.0115:
         history_file: history.data
     M_10.0:
         run_directory: run_nad_convos_mid_10.0MSUN_z0.0115
+        history_file: history.data
+    M_10.5:
+        run_directory: run_nad_convos_mid_10.5MSUN_z0.0115
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0115
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0115
         history_file: history.data
 Z_0.0120:
     M_5.0:
@@ -815,6 +1037,15 @@ Z_0.0120:
     M_10.0:
         run_directory: run_nad_convos_mid_10.0MSUN_z0.0120
         history_file: history.data
+    M_10.5:
+        run_directory: run_nad_convos_mid_10.5MSUN_z0.0120
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0120
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0120
+        history_file: history.data
 Z_0.0125:
     M_5.0:
         run_directory: run_nad_convos_mid_5.0MSUN_z0.0125
@@ -849,6 +1080,15 @@ Z_0.0125:
     M_10.0:
         run_directory: run_nad_convos_mid_10.0MSUN_z0.0125
         history_file: history.data
+    M_10.5:
+        run_directory: run_nad_convos_mid_10.5MSUN_z0.0125
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0125
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0125
+        history_file: history.data
 Z_0.0130:
     M_5.0:
         run_directory: run_nad_convos_mid_5.0MSUN_z0.0130
@@ -879,6 +1119,15 @@ Z_0.0130:
         history_file: history.data
     M_10.0:
         run_directory: run_nad_convos_mid_10.0MSUN_z0.0130
+        history_file: history.data
+    M_10.5:
+        run_directory: run_nad_convos_mid_10.5MSUN_z0.0130
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0130
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0130
         history_file: history.data
 Z_0.0135:
     M_5.0:
@@ -917,6 +1166,12 @@ Z_0.0135:
     M_10.5:
         run_directory: run_nad_convos_mid_10.5MSUN_z0.0135
         history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0135
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0135
+        history_file: history.data
 Z_0.0140:
     M_5.0:
         run_directory: run_nad_convos_mid_5.0MSUN_z0.0140
@@ -953,6 +1208,12 @@ Z_0.0140:
         history_file: history.data
     M_10.5:
         run_directory: run_nad_convos_mid_10.5MSUN_z0.0140
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0140
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0140
         history_file: history.data
 Z_0.0145:
     M_5.0:
@@ -991,6 +1252,12 @@ Z_0.0145:
     M_10.5:
         run_directory: run_nad_convos_mid_10.5MSUN_z0.0145
         history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0145
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0145
+        history_file: history.data
 Z_0.0150:
     M_5.5:
         run_directory: run_nad_convos_mid_5.5MSUN_z0.0150
@@ -1024,6 +1291,12 @@ Z_0.0150:
         history_file: history.data
     M_10.5:
         run_directory: run_nad_convos_mid_10.5MSUN_z0.0150
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0150
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0150
         history_file: history.data
 Z_0.0155:
     M_5.5:
@@ -1059,6 +1332,12 @@ Z_0.0155:
     M_10.5:
         run_directory: run_nad_convos_mid_10.5MSUN_z0.0155
         history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0155
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0155
+        history_file: history.data
 Z_0.0160:
     M_5.5:
         run_directory: run_nad_convos_mid_5.5MSUN_z0.0160
@@ -1092,6 +1371,12 @@ Z_0.0160:
         history_file: history.data
     M_10.5:
         run_directory: run_nad_convos_mid_10.5MSUN_z0.0160
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0160
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0160
         history_file: history.data
 Z_0.0165:
     M_5.5:
@@ -1127,6 +1412,12 @@ Z_0.0165:
     M_10.5:
         run_directory: run_nad_convos_mid_10.5MSUN_z0.0165
         history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0165
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0165
+        history_file: history.data
 Z_0.0170:
     M_5.5:
         run_directory: run_nad_convos_mid_5.5MSUN_z0.0170
@@ -1160,6 +1451,12 @@ Z_0.0170:
         history_file: history.data
     M_10.5:
         run_directory: run_nad_convos_mid_10.5MSUN_z0.0170
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0170
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0170
         history_file: history.data
 Z_0.0175:
     M_5.5:
@@ -1195,6 +1492,12 @@ Z_0.0175:
     M_10.5:
         run_directory: run_nad_convos_mid_10.5MSUN_z0.0175
         history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0175
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0175
+        history_file: history.data
 Z_0.0180:
     M_5.5:
         run_directory: run_nad_convos_mid_5.5MSUN_z0.0180
@@ -1228,6 +1531,12 @@ Z_0.0180:
         history_file: history.data
     M_10.5:
         run_directory: run_nad_convos_mid_10.5MSUN_z0.0180
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0180
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0180
         history_file: history.data
 Z_0.0185:
     M_5.5:
@@ -1263,6 +1572,12 @@ Z_0.0185:
     M_10.5:
         run_directory: run_nad_convos_mid_10.5MSUN_z0.0185
         history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0185
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0185
+        history_file: history.data
 Z_0.0190:
     M_6.0:
         run_directory: run_nad_convos_mid_6.0MSUN_z0.0190
@@ -1293,6 +1608,12 @@ Z_0.0190:
         history_file: history.data
     M_10.5:
         run_directory: run_nad_convos_mid_10.5MSUN_z0.0190
+        history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0190
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0190
         history_file: history.data
 Z_0.0195:
     M_6.0:
@@ -1325,6 +1646,12 @@ Z_0.0195:
     M_10.5:
         run_directory: run_nad_convos_mid_10.5MSUN_z0.0195
         history_file: history.data
+    M_11.0:
+        run_directory: run_nad_convos_mid_11.0MSUN_z0.0195
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0195
+        history_file: history.data
 Z_0.0200:
     M_6.0:
         run_directory: run_nad_convos_mid_6.0MSUN_z0.0200
@@ -1355,4 +1682,7 @@ Z_0.0200:
         history_file: history.data
     M_10.5:
         run_directory: run_nad_convos_mid_10.5MSUN_z0.0200
+        history_file: history.data
+    M_11.5:
+        run_directory: run_nad_convos_mid_11.5MSUN_z0.0200
         history_file: history.data
