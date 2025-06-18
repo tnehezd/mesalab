@@ -21,7 +21,6 @@ from mesalab.analyzis.data_reader import (
 # Assuming mesa_analyzer.py is in 'mesalab/analyzis/',
 # this import navigates up one level to 'mesalab/' then down to the specific package.
 # WE ARE NOW IMPORTING THE CORRECT FUNCTION NAME: analyze_blue_loop
-from mesalab.bluelooptools.blue_loop_analyzer import analyze_blue_loop # <-- THIS IS THE CORRECTED IMPORT
 # from mesalab.plotting import plotter # Commented out to avoid plotting dependency errors
 # from mesalab.gyre import gyre_modules # Commented out to avoid GYRE dependency errors
 # --- END ACTUAL MODULE IMPORTS ---
