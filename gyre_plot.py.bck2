@@ -184,8 +184,8 @@ def collect_gyre_mesa_data():
                         'freq_imag': mode_row_gyre['omega'].imag if 'omega' in mode_row_gyre.dtype.names else np.nan,
                         'l': mode_row_gyre['l'] if 'l' in mode_row_gyre.dtype.names else np.nan,
                         'n_pg': mode_row_gyre['n_pg'] if 'n_pg' in mode_row_gyre.dtype.names else np.nan,
-                        'n_p': mode_row_gyre['n_p'] if 'n_p' in mode_row_gyre.dtype.names else np.nan, # Added n_p (still read if available)
-                        'n_g': mode_row_gyre['n_g'] if 'n_g' in mode_row_gyre.dtype.names else np.nan, # Added n_g (still read if available)
+                        'n_p': mode_row_gyre['n_p'] if 'n_p' in mode_row_gyre.dtype.names else np.nan, # Added n_p
+                        'n_g': mode_row_gyre['n_g'] if 'n_g' in mode_row_gyre.dtype.names else np.nan, # Added n_g
                         'eta': mode_row_gyre['eta'] if 'eta' in mode_row_gyre.dtype.names else np.nan, # Added eta
                         # Add other history columns you might want, e.g., 'center_h1', 'star_age', 'log_g'
                         'center_h1': mesa_row['center_h1'].iloc[0] if 'center_h1' in mesa_row.columns else np.nan,
@@ -217,28 +217,28 @@ def collect_gyre_mesa_data():
 def plot_gyre_hrd(df_modes_filtered):
     """
     Generates Hertzsprung-Russell Diagram (HRD) plots of GYRE modes.
-    Plots colored by 'n_pg' (mode order, filtered to abs(n_pg) <= 20) and 'eta'.
+    Plots colored by 'n_p' (mode order, filtered to n_p <= 20) and 'eta'.
     """
     if df_modes_filtered.empty:
         print("No data available for plotting after filtering or collection.")
         return
 
-    # --- Plot 1: HRD colored by n_pg (filtered to abs(n_pg) <= 20) ---
+    # --- Plot 1: HRD colored by n_p (filtered) ---
     plt.figure(figsize=(10, 8))
 
-    # Filter for abs(n_pg) <= 20 (and n_pg not NaN)
-    df_npg_filtered = df_modes_filtered[(df_modes_filtered['n_pg'].notna()) & (np.abs(df_modes_filtered['n_pg']) <= 20)].copy()
+    # Filter for n_p <= 20 (and not NaN)
+    df_np_filtered = df_modes_filtered[(df_modes_filtered['n_p'].notna()) & (df_modes_filtered['n_p'] <= 20)].copy()
 
-    if not df_npg_filtered.empty:
-        # Convert n_pg to integer and then string for categorical hue mapping
+    if not df_np_filtered.empty:
+        # Convert n_p to integer and then string for categorical hue mapping
         # Only include unique integer values in the legend
-        unique_npg_values = sorted(df_npg_filtered['n_pg'].dropna().astype(int).unique())
+        unique_np_values = sorted(df_np_filtered['n_p'].dropna().astype(int).unique())
         
-        sns.scatterplot(data=df_npg_filtered,
+        sns.scatterplot(data=df_np_filtered,
                         x='log_Teff',
                         y='log_L',
-                        hue=df_npg_filtered['n_pg'].astype(str), # Convert to string for discrete colors
-                        palette='viridis', # Colormap for n_pg
+                        hue=df_np_filtered['n_p'].astype(str), # Convert to string for discrete colors
+                        palette='viridis', # Colormap for n_p
                         s=50,
                         alpha=0.7,
                         edgecolor='w',
@@ -246,23 +246,23 @@ def plot_gyre_hrd(df_modes_filtered):
 
         plt.xlabel(r'$\log T_{\mathrm{eff}}$')
         plt.ylabel(r'$\log (L/L_{\odot})$')
-        plt.title(f'Hertzsprung-Russell Diagram - GYRE Modes by $|n_{{pg}}|$ (up to 20) ({len(df_npg_filtered)} Modes)')
+        plt.title(f'Hertzsprung-Russell Diagram - GYRE Modes by $n_p$ (up to $n_p=20$) ({len(df_np_filtered)} Modes)')
         plt.gca().invert_xaxis() # Invert x-axis for traditional HRD (Teff increases to the left)
         plt.grid(True, linestyle='--', alpha=0.6)
         
-        # Manually create legend if unique_npg_values are not too many
-        if len(unique_npg_values) < 30: # Limit legend entries for readability
-            plt.legend(title=r'$n_{pg}$ Mode Number', bbox_to_anchor=(1.05, 1), loc='upper left',
-                       labels=[str(int(val)) for val in unique_npg_values])
+        # Manually create legend if unique_np_values are not too many
+        if len(unique_np_values) < 30: # Limit legend entries for readability
+            plt.legend(title=r'$n_p$ Mode Number', bbox_to_anchor=(1.05, 1), loc='upper left',
+                       labels=[str(int(val)) for val in unique_np_values])
         else:
-            plt.legend(title=r'$n_{pg}$ Mode Number', bbox_to_anchor=(1.05, 1), loc='upper left')
+            plt.legend(title=r'$n_p$ Mode Number', bbox_to_anchor=(1.05, 1), loc='upper left')
 
         plt.tight_layout()
-        plot_filename_npg = os.path.join(plot_output_dir, "hrd_gyre_modes_by_npg_filtered.png")
-        plt.savefig(plot_filename_npg, dpi=300)
-        print(f"HRD plot (by $n_{{pg}}$, filtered to $|n_{{pg}}| \le 20$) saved to: {plot_filename_npg}")
+        plot_filename_np = os.path.join(plot_output_dir, "hrd_gyre_modes_by_np_filtered.png")
+        plt.savefig(plot_filename_np, dpi=300)
+        print(f"HRD plot (by $n_p$, filtered to $n_p \le 20$) saved to: {plot_filename_np}")
     else:
-        print("No modes found for plotting HRD by n_pg (after |n_pg| <= 20 filter).")
+        print("No modes found for plotting HRD by n_p (after n_p <= 20 filter).")
 
 
     # --- Plot 2: HRD colored by eta (eigenvalue imaginary part) ---
@@ -334,6 +334,10 @@ if __name__ == '__main__':
 
     # 2. Generate plots from the collected data
     if not df_gyre_modes.empty:
+        # You can filter data here if you only want to plot specific modes
+        # Example: only l=0 modes:
+        # df_modes_to_plot = df_gyre_modes[df_gyre_modes['l'] == 0]
+        # Or all found modes:
         df_modes_to_plot = df_gyre_modes.copy()
         
         plot_gyre_hrd(df_modes_to_plot)
