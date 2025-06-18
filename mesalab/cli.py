@@ -1,4 +1,4 @@
-# cli.py - REVISED for correct plotting handler calls
+# cli.py - REVISED for correct plotting handler calls and enhanced error logging
 
 import sys
 import os
@@ -35,12 +35,14 @@ try:
     from mesalab.plotting.mesa_plotter import handle_hr_diagram_generation
     from mesalab.plotting.mesa_plotter import handle_blue_loop_bc_plotting
 
-    from mesalab.gyretools import gyre_modules # Assuming this import is correctly set up now
+    # Assuming this import is correctly set up now. If there's an ImportError here,
+    # the exc_info=True will help pinpoint it.
+    from mesalab.gyretools import gyre_modules
 except ImportError as e:
-    logger.error(f"Failed to import core MESA/GYRE modules. Some functionalities might be unavailable: {e}")
+    # MODIFICATION HERE: added 'exc_info=True' to log the full traceback
+    logger.error(f"Failed to import core MESA/GYRE modules. Some functionalities might be unavailable: {e}", exc_info=True)
     logger.warning("If you encounter 'module not found' errors later, ensure your PYTHONPATH is configured correctly (e.g., by running 'pip install -e .' in your project root) or dependencies are installed.")
-    logger.warning("Using dummy modules for missing MESA/GYRE components.")
-
+    
     # Define dummy modules to prevent NameError later if imports fail
     class DummyModule:
         def __getattr__(self, name):
@@ -70,10 +72,10 @@ def main():
     # The config_parser sets the root logger level. We ensure cli.py's logger and
     # any other child loggers also reflect the final resolved 'debug' setting.
     if config.general_settings.debug:
-        logging.getLogger().setLevel(logging.DEBUG) # Set cli.py's logger to DEBUG
+        logging.getLogger().setLevel(logging.DEBUG) # Set root logger to DEBUG
         logger.debug("Debug logging confirmed and enabled by final configuration.")
     else:
-        logging.getLogger().setLevel(logging.INFO) # Ensure cli.py's logger is INFO if not debug
+        logging.getLogger().setLevel(logging.INFO) # Ensure root logger is INFO if not debug
         logger.info("Debug mode is OFF. Logging level for cli.py is INFO.") # Clarify INFO level
 
     logger.info(f"Final resolved configuration being used by cli.py: {config}")
@@ -82,7 +84,7 @@ def main():
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     # Access output_dir from general_settings
     output_base_dir = os.path.abspath(config.general_settings.output_dir)
-    session_output_dir = os.path.join(output_base_dir)
+    session_output_dir = os.path.join(output_base_dir) # No timestamped subfolder here
     analysis_results_sub_dir = os.path.join(session_output_dir, 'analysis_results')
     detail_files_output_dir = os.path.join(session_output_dir, 'detail_files')
     plots_output_dir = os.path.join(session_output_dir, 'plots')
@@ -169,10 +171,10 @@ def main():
         # Access analyze_blue_loop from blue_loop_analysis
         # Access filtered_profiles_csv_name from gyre_workflow
         elif config.blue_loop_analysis.analyze_blue_loop and \
-             (not gyre_input_csv_path or not os.path.exists(gyre_input_csv_path)):
+              (not gyre_input_csv_path or not os.path.exists(gyre_input_csv_path)):
             logger.warning(f"GYRE workflow enabled, but the filtered profiles CSV ('{config.gyre_workflow.filtered_profiles_csv_name}') "
-                           f"was not generated or not found at '{gyre_input_csv_path}'. "
-                           "This is required for GYRE to run on filtered profiles. Skipping GYRE workflow.")
+                            f"was not generated or not found at '{gyre_input_csv_path}'. "
+                            "This is required for GYRE to run on filtered profiles. Skipping GYRE workflow.")
         else:
             logger.info(f"Using GYRE specific settings from: '{gyre_config_full_path}'")
             try:
