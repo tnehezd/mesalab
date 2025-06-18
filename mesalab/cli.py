@@ -1,4 +1,4 @@
-# cli.py
+# cli.py - REVISED for correct plotting handler calls
 
 import sys
 import os
@@ -26,17 +26,16 @@ logger = logging.getLogger(__name__) # Logger for cli.py itself
 
 # --- Module Imports with Fallback (Corrected paths based on your files) ---
 try:
-    # Correct import for mesa_analyzer (which is analyze_mesa_grid_directory)
+    # Correct import for mesa_analyzer (which is perform_mesa_analysis from mesa_analyzer.py)
     from mesalab.analyzis.mesa_analyzer import perform_mesa_analysis as mesa_analyzer
-    # Correct imports for plotting functions, with aliases
-    from mesalab.plotting.all_hrd_plotter import generate_all_hr_diagrams as plot_hr_diagrams
-    from mesalab.plotting.heatmap_generator import generate_heatmaps_and_time_diff_csv as plot_heatmaps
-    # The blue loop summary plotting is handled by a function inside mesa_plotter (your plot_handlers.py)
-    # We need to import the handler function itself.
-    # Assuming mesa_plotter.py is the actual filename on disk:
-    from mesalab.plotting.mesa_plotter import handle_blue_loop_bc_plotting as plot_blue_loop_summary
 
-    from mesalab.gyretools import gyre_modules
+    # Correct imports for plotting HANDLER functions from mesa_plotter.py (your plot_handlers.py)
+    # These handlers will then call the specific plotting functions (like generate_heatmaps_and_time_diff_csv)
+    from mesalab.plotting.mesa_plotter import handle_heatmap_generation
+    from mesalab.plotting.mesa_plotter import handle_hr_diagram_generation
+    from mesalab.plotting.mesa_plotter import handle_blue_loop_bc_plotting
+
+    from mesalab.gyretools import gyre_modules # Assuming this import is correctly set up now
 except ImportError as e:
     logger.error(f"Failed to import core MESA/GYRE modules. Some functionalities might be unavailable: {e}")
     logger.warning("If you encounter 'module not found' errors later, ensure your PYTHONPATH is configured correctly (e.g., by running 'pip install -e .' in your project root) or dependencies are installed.")
@@ -49,11 +48,12 @@ except ImportError as e:
                 logger.warning(f"Function '{name}' from a missing module was called. Skipping operation.")
                 return None # Return None or appropriate dummy value
             return dummy_func
-
+            
+    # Assign dummy objects if actual imports failed to prevent NameError later
     mesa_analyzer = DummyModule()
-    plot_hr_diagrams = DummyModule()
-    plot_heatmaps = DummyModule()
-    plot_blue_loop_summary = DummyModule()
+    handle_heatmap_generation = DummyModule()
+    handle_hr_diagram_generation = DummyModule()
+    handle_blue_loop_bc_plotting = DummyModule()
     gyre_modules = DummyModule()
     logger.warning("Using dummy modules for missing MESA/GYRE components.")
 
@@ -98,13 +98,13 @@ def main():
     # --- MESA Analysis Workflow ---
     logger.info("\n--- Starting MESA Analysis Workflow ---")
     try:
+        # Call the perform_mesa_analysis function directly
         summary_df, combined_detail_data, full_history_data, gyre_input_csv_path = \
-            mesa_analyzer(
-                config, # Pass the *entire* config Namespace object to mesa_analyzer
-                analysis_results_sub_dir,
-                detail_files_output_dir,
-                # Access filtered_profiles_csv_name from gyre_workflow settings
-                config.gyre_workflow.filtered_profiles_csv_name 
+            mesa_analyzer( # No '.perform_mesa_analysis' here, call directly
+                args=config, # Pass the entire config object as 'args'
+                analysis_results_sub_dir=analysis_results_sub_dir,
+                detail_files_output_dir=detail_files_output_dir,
+                gyre_input_csv_name=config.gyre_workflow.filtered_profiles_csv_name
             )
         if summary_df.empty:
             logger.info("No summary data generated from MESA analysis. Skipping subsequent steps.")
@@ -120,27 +120,32 @@ def main():
     if config.plotting_settings.generate_plots:
         logger.info("\n--- Starting Plotting Workflow ---")
         try:
-            # Access generate_heatmaps from plotting_settings
+            # Call the heatmap handler
             if config.plotting_settings.generate_heatmaps:
-                plot_heatmaps.generate_mass_z_heatmaps(summary_df, plots_output_dir)
-            
-            # Access generate_hr_diagrams from plotting_settings
-            if config.plotting_settings.generate_hr_diagrams != 'none':
-                plot_hr_diagrams.generate_all_hr_diagrams(
-                    full_history_data,
-                    plots_output_dir,
-                    hr_diagram_type=config.plotting_settings.generate_hr_diagrams
+                handle_heatmap_generation(
+                    args=config,
+                    summary_df_for_plotting=summary_df, # The summary_df is still passed, though not used by handler's current logic
+                    plots_sub_dir=plots_output_dir,
+                    analysis_results_sub_dir=analysis_results_sub_dir,
+                    input_dir=config.general_settings.input_dir # Need input_dir for model_name
                 )
             
-            # Access analyze_blue_loop from blue_loop_analysis
-            if config.blue_loop_analysis.analyze_blue_loop:
-                plot_blue_loop_summary.plot_blue_loop_data(
-                    summary_df,
-                    plots_output_dir,
-                    # Access blue_loop_output_type from blue_loop_analysis
-                    blue_loop_output_type=config.blue_loop_analysis.blue_loop_output_type,
-                    # Access generate_blue_loop_plots_with_bc from plotting_settings
-                    generate_plots_with_bc=config.plotting_settings.generate_blue_loop_plots_with_bc
+            # Call the HR diagrams handler
+            if config.plotting_settings.generate_hr_diagrams != 'none':
+                handle_hr_diagram_generation(
+                    args=config, # Pass the entire config object as 'args'
+                    plots_sub_dir=plots_output_dir,
+                    full_history_data_for_plotting=full_history_data,
+                    drop_zams=(config.plotting_settings.generate_hr_diagrams == 'drop_zams') # Pass boolean
+                )
+            
+            # Call the blue loop plotting handler
+            if config.blue_loop_analysis.analyze_blue_loop: # Use blue_loop_analysis setting here
+                handle_blue_loop_bc_plotting(
+                    args=config, # Pass the entire config object as 'args'
+                    combined_detail_data_for_plotting=combined_detail_data,
+                    blue_loop_plots_bc_sub_dir=plots_output_dir, # Plots go to plots_output_dir
+                    detail_files_output_dir=detail_files_output_dir
                 )
             logger.info("Plotting workflow completed successfully.")
         except Exception as e:
