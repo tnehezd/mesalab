@@ -9,6 +9,8 @@ import numpy as np
 
 # Set up base logging configuration before any other imports that might log
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logging.getLogger('matplotlib').setLevel(logging.WARNING) # or logging.INFO if you want to see INFO messages
+
 
 # Attempt to import GYRE related modules
 try:
