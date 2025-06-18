@@ -4,7 +4,6 @@ import logging
 import pandas as pd
 import numpy as np
 # import matplotlib.pyplot as plt # Commented out as per your request
-
 from tqdm import tqdm
 from datetime import datetime
 
@@ -20,10 +19,11 @@ from mesalab.analyzis.data_reader import (
 
 # --- ACTUAL MODULE IMPORTS (Relative Imports) ---
 # Assuming mesa_analyzer.py is in 'mesalab/analyzis/',
-# these imports navigate up one level to 'mesalab/' then down to the specific package.
-from ..bluelooptools import blue_loop_analyzer
-# from ..plotting import plotter # Commented out to avoid plotting dependency errors
-# from ..gyre import gyre_modules # Commented out to avoid GYRE dependency errors
+# this import navigates up one level to 'mesalab/' then down to the specific package.
+# We import the 'analyze_blue_loop' function directly from blue_loop_analyzer module.
+from mesalab.bluelooptools.blue_loop_analyzer import analyze_blue_loop
+# from mesalab.plotting import plotter # Commented out to avoid plotting dependency errors
+# from mesalab.gyre import gyre_modules # Commented out to avoid GYRE dependency errors
 # --- END ACTUAL MODULE IMPORTS ---
 
 
@@ -60,7 +60,8 @@ def run_analysis_workflow(config):
                 logger.info("Not all MESA run directories from config found in existing summary file. Reanalysis will be performed.")
                 reanalysis_needed = True
             # Check if blue loop analysis is enabled and results are missing from summary
-            elif config.analyze_blue_loop and 'blue_loop_duration_yr' not in summary_df_raw.columns:
+            # This check now looks for a key that the blue_loop_analyzer is guaranteed to provide.
+            elif config.analyze_blue_loop and 'crossing_count' not in summary_df_raw.columns:
                 logger.info("Blue loop analysis enabled but required columns not found in existing summary. Reanalysis will be performed.")
                 reanalysis_needed = True
             # Check for GYRE related columns (first/last model_number)
@@ -98,32 +99,34 @@ def run_analysis_workflow(config):
         logger.error("MESA analysis failed or returned no data. Cannot proceed with plots or GYRE workflow.")
         return
 
-    # --- Plotting and GYRE Workflow (Commented Out) ---
-    # The following blocks are commented out as requested to avoid dependencies.
-    # If you later wish to enable plotting or GYRE, uncomment these lines
-    # and ensure the corresponding 'mesalab/plotting' and 'mesalab/gyre'
-    # directories (with __init__.py and module files) exist.
+    # --- Plotting and GYRE Workflow (Conditional execution based on config) ---
+    # These blocks are structured to run only if their respective config flags are true.
+    # The actual plotting/GYRE module imports are commented at the top to avoid errors
+    # if those modules are not present.
 
+    # Example of how plotting would be called if uncommented
     # if config.generate_heatmaps:
-    #     if 'blue_loop_crossing_count' in summary_df_raw.columns:
+    #     if 'crossing_count' in summary_df_raw.columns: # Adjusted column name from 'blue_loop_crossing_count'
     #         cross_grid_df = summary_df_raw.pivot_table(
-    #             index='initial_mass', columns='initial_Z', values='blue_loop_crossing_count'
+    #             index='initial_mass', columns='initial_Z', values='crossing_count' # Adjusted column name
     #         )
     #         cross_grid_df.to_csv(cross_grid_file_path)
     #         logger.info(f"Cross-grid summary saved to {cross_grid_file_path}")
-    #         plotter.generate_heatmap(cross_grid_df, analysis_results_dir)
+    #         # plotter.generate_heatmap(cross_grid_df, analysis_results_dir)
     #     else:
-    #         logger.warning("Cannot generate heatmaps: 'blue_loop_crossing_count' column not found in summary data.")
+    #         logger.warning("Cannot generate heatmaps: 'crossing_count' column not found in summary data. Make sure blue loop analysis was performed.")
 
     # if config.generate_hr_diagrams != 'none':
-    #     plotter.generate_hr_diagrams(config.input_dir,
-    #                                  config.output_dir,
-    #                                  summary_df_raw,
-    #                                  config.generate_hr_diagrams,
-    #                                  config.generate_blue_loop_plots_with_bc)
+    #     # plotter.generate_hr_diagrams(config.input_dir,
+    #     #                              config.output_dir,
+    #     #                              summary_df_raw,
+    #     #                              config.generate_hr_diagrams,
+    #     #                              config.generate_blue_loop_plots_with_bc)
+    #     pass # Placeholder if plotting is commented out
 
-    # Prepare data for GYRE input (if enabled) - GYRE related code remains
-    # but the actual GYRE run block is commented out if its module is not imported.
+    # Prepare data for GYRE input (if enabled)
+    # This block processes data for GYRE regardless of whether gyre_modules is imported,
+    # but the actual GYRE run `gyre_modules.run_gyre_workflow` remains commented out.
     gyre_input_df = summary_df_raw[['initial_mass', 'initial_Z', 'run_dir_path', 'first_model_number', 'last_model_number']].copy()
     gyre_input_df.rename(columns={'run_dir_path': 'mesa_run_directory'}, inplace=True)
 
@@ -135,13 +138,14 @@ def run_analysis_workflow(config):
     logger.info(f"GYRE input CSV generated: {gyre_input_csv_path}")
 
     # if config.run_gyre_workflow:
-    #     logger.info("Starting GYRE workflow...")
+    #     logger.info("Starting GYRE workflow (if gyre_modules is imported and uncommented)...")
     #     try:
-    #         gyre_modules.run_gyre_workflow(
-    #             gyre_input_csv_path,
-    #             config.gyre_config_path,
-    #             os.path.join(output_base_dir, 'gyre_results')
-    #         )
+    #         # gyre_modules.run_gyre_workflow(
+    #         #     gyre_input_csv_path,
+    #         #     config.gyre_config_path,
+    #         #     os.path.join(output_base_dir, 'gyre_results')
+    #         # )
+    #         pass # Placeholder if GYRE is commented out
     #     except Exception as e:
     #         logger.error(f"GYRE workflow failed: {e}")
 
@@ -203,39 +207,70 @@ def perform_mesa_analysis(mesa_dirs_to_analyze, config):
         if config.analyze_blue_loop:
             logger.debug(f"Analyzing blue loop for M={current_mass}, Z={current_z}")
             try:
-                # Calling analyze_blue_loop with 3 arguments as defined in blue_loop_analyzer.py
-                loop_summary, df_loop_details = blue_loop_analyzer.analyze_blue_loop(df_full_history, current_mass, current_z)
-                analysis_result_summary.update(loop_summary)
+                # Call analyze_blue_loop which returns a single dictionary.
+                # All results, including 'blue_loop_detail_df', are inside this dictionary.
+                analysis_output = analyze_blue_loop(df_full_history, current_mass, current_z)
 
-                # Save detailed blue loop data if output type is 'all'
-                if config.blue_loop_output_type == 'all':
+                # Update the summary with the results from the blue loop analysis.
+                # We use .update() directly as analyze_blue_loop returns a dict with all necessary keys.
+                analysis_result_summary.update(analysis_output)
+
+                # Retrieve the detail DataFrame from the analysis_output dictionary
+                df_loop_details = analysis_output.get('blue_loop_detail_df', pd.DataFrame())
+
+                # Save detailed blue loop data if output type is 'all' and the detail DF is not empty
+                if config.blue_loop_output_type == 'all' and not df_loop_details.empty:
                     z_formatted = f"{current_z:.4f}"
-                    detail_output_path = os.path.join(detail_files_output_dir, f"detail_z{z_formatted}.csv")
-                    
+                    detail_output_path = os.path.join(detail_files_output_dir, f"detail_M{current_mass:.1f}_Z{z_formatted}.csv") # More specific filename
+
                     # Append if file exists, create new if not
+                    # Use header=False when appending to avoid duplicating header row
                     if os.path.exists(detail_output_path):
                         df_loop_details.to_csv(detail_output_path, mode='a', header=False, index=False)
                     else:
                         df_loop_details.to_csv(detail_output_path, index=False)
-                    logger.debug(f"Saved blue loop details for Z={current_z} to {detail_output_path}")
+                    logger.debug(f"Saved blue loop details for M={current_mass}, Z={current_z} to {detail_output_path}")
+                elif config.blue_loop_output_type == 'all' and df_loop_details.empty:
+                    logger.info(f"No detailed blue loop data to save for M={current_mass}, Z={current_z} (DataFrame was empty).")
+
 
             except Exception as e:
                 logger.error(f"Error during blue loop analysis for M={current_mass}, Z={current_z}: {e}")
                 analysis_result_summary['mesa_status'] = 'BLUE_LOOP_ANALYSIS_FAILED'
-                # Ensure all blue loop related keys are set to NaN if analysis fails
-                for key in ['blue_loop_crossing_count', 'blue_loop_duration_yr',
-                             'blue_loop_start_age_yr', 'blue_loop_end_age_yr',
-                             'min_log_Teff_bl', 'max_log_Teff_bl',
-                             'min_log_L_bl', 'max_log_L_bl']: # Ensure these match keys in loop_summary
+                # Ensure all blue loop related keys are set to NaN if analysis fails.
+                # These keys must match exactly what analyze_blue_loop returns (or aims to return as NaN).
+                for key in ['crossing_count', 'blue_loop_duration_yr', 'max_log_L',
+                            'max_log_Teff', 'max_log_R', 'first_model_number',
+                            'last_model_number', 'first_age_yr', 'last_age_yr',
+                            'blue_loop_start_age', 'blue_loop_end_age',
+                            'instability_start_age', 'instability_end_age',
+                            'calculated_blue_loop_duration', 'calculated_instability_duration']:
                     analysis_result_summary[key] = np.nan
+                # Also ensure 'state_times' sub-dictionary keys are NaN if the main analysis failed
+                if 'state_times' not in analysis_result_summary:
+                    analysis_result_summary['state_times'] = {}
+                for skey in ['ms_end_age', 'min_teff_post_ms_age', 'first_is_entry_age',
+                             'first_is_exit_age', 'last_is_entry_age', 'last_is_exit_age',
+                             'instability_start_age', 'instability_end_age']:
+                    analysis_result_summary['state_times'][skey] = np.nan
+
         else:
             logger.info(f"Skipping blue loop analysis for M={current_mass}, Z={current_z} as analyze_blue_loop is False.")
-            # Ensure blue loop related keys are set to NaN if analysis is skipped
-            for key in ['blue_loop_crossing_count', 'blue_loop_duration_yr',
-                         'blue_loop_start_age_yr', 'blue_loop_end_age_yr',
-                         'min_log_Teff_bl', 'max_log_Teff_bl',
-                         'min_log_L_bl', 'max_log_L_bl']:
+            # Ensure blue loop related keys are set to NaN if analysis is skipped (for consistency in summary DF)
+            for key in ['crossing_count', 'blue_loop_duration_yr', 'max_log_L',
+                        'max_log_Teff', 'max_log_R', 'first_model_number',
+                        'last_model_number', 'first_age_yr', 'last_age_yr',
+                        'blue_loop_start_age', 'blue_loop_end_age',
+                        'instability_start_age', 'instability_end_age',
+                        'calculated_blue_loop_duration', 'calculated_instability_duration']:
                 analysis_result_summary[key] = np.nan
+            # Ensure 'state_times' is present but with NaN values if skipped
+            analysis_result_summary['state_times'] = {
+                'ms_end_age': np.nan, 'min_teff_post_ms_age': np.nan,
+                'first_is_entry_age': np.nan, 'first_is_exit_age': np.nan,
+                'last_is_entry_age': np.nan, 'last_is_exit_age': np.nan,
+                'instability_start_age': np.nan, 'instability_end_age': np.nan
+            }
 
         analysis_summary_data.append(analysis_result_summary)
 
