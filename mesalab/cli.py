@@ -4,8 +4,8 @@ import argparse
 import logging
 import datetime
 import yaml
-import pandas as pd # Added for potential DataFrame usage later if not already present
-import numpy as np  # Added for potential numpy usage later if not already present
+import pandas as pd
+import numpy as np
 
 # Set up base logging configuration before any other imports that might log
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
@@ -190,47 +190,44 @@ def main():
     if config_for_analyzer.generate_plots:
         logging.info("\n--- Starting Plotting Workflow ---")
         if config_for_analyzer.generate_heatmaps:
-            logging.info("Generating heatmaps...")
-            mesa_plotter.handle_heatmap_generation(
-                config_for_analyzer,
-                summary_df, # summary_df_for_plotting, passed as a placeholder/if needed by handler
-                heatmap_output_dir, # plots_sub_dir
-                analysis_results_sub_dir, # analysis_results_sub_dir
-                config_for_analyzer.input_dir # input_dir for model_name
-            )
-            logging.info("Heatmaps generated.")
+            logging.info("Generating heatmaps...")
+            mesa_plotter.handle_heatmap_generation(
+                config_for_analyzer,
+                summary_df, # summary_df_for_plotting, passed as a placeholder/if needed by handler
+                heatmap_output_dir, # plots_sub_dir
+                analysis_results_sub_dir, # analysis_results_sub_dir
+                config_for_analyzer.input_dir # input_dir for model_name
+            )
+            logging.info("Heatmaps generated.")
+
         if config_for_analyzer.generate_hr_diagrams != 'none' and not full_history_data:
-             logging.warning("Cannot generate HR diagrams: No full history data available. This might happen if 'force_reanalysis' was False and data was loaded, but full history was not retained for plotting.")
+            logging.warning("Cannot generate HR diagrams: No full history data available. This might happen if 'force_reanalysis' was False and data was loaded, but full history was not retained for plotting.")
         elif config_for_analyzer.generate_hr_diagrams != 'none':
-            logging.info("Generating HR Diagrams...")
-            mesa_plotter.handle_hr_diagram_generation(
-                config_for_analyzer,
-                hr_diagrams_output_dir,
-                full_history_data,
-                config_for_analyzer.generate_hr_diagrams == 'drop_zams' # Pass True if 'drop_zams' requested
-            )
-            logging.info("HR Diagrams generated.")
-            
-        if config_for_analyzer.analyze_blue_loop and config_for_analyzer.generate_blue_loop_plots_with_bc: # Added check for generate_blue_loop_plots_with_bc
-            logging.info("Generating Blue Loop CMD/HRD with Bolometric Corrections...")
-            mesa_plotter.handle_blue_loop_bc_plotting(
-                config_for_analyzer,
-                combined_detail_data, # This is the DataFrame from mesa_analyzer
-                blue_loop_plots_dir, # Output directory for these plots
-                detail_files_output_dir # Directory where individual detail files might be if loading is needed
-            )
-            logging.info("Blue Loop CMD/HRD with Bolometric Corrections generated.")
-            
-        elif config_for_analyzer.analyze_blue_loop and not config_for_analyzer.generate_blue_loop_plots_with_bc: # If blue loop analysis is on but plotting is off
-            logging.info("Blue loop analysis is enabled, but 'generate_blue_loop_plots_with_bc' is False. Skipping blue loop BC plots.")
-        else: # If blue loop analysis is completely off
-            logging.info("Blue loop analysis is disabled. Skipping all blue loop related plots.")        elif config_for_analyzer.analyze_blue_loop and combined_detail_data.empty:
-            logging.info("No detailed blue loop data available for plotting. Skipping blue loop HR diagrams.")
+            logging.info("Generating HR Diagrams...")
+            mesa_plotter.handle_hr_diagram_generation(
+                config_for_analyzer,
+                hr_diagrams_output_dir,
+                full_history_data,
+                config_for_analyzer.generate_hr_diagrams == 'drop_zams' # Pass True if 'drop_zams' requested
+            )
+            logging.info("HR Diagrams generated.")
+
+        if config_for_analyzer.analyze_blue_loop and config_for_analyzer.generate_blue_loop_plots_with_bc:
+            logging.info("Generating Blue Loop CMD/HRD with Bolometric Corrections...")
+            mesa_plotter.handle_blue_loop_bc_plotting(
+                config_for_analyzer,
+                combined_detail_data, # This is the DataFrame from mesa_analyzer
+                blue_loop_plots_dir, # Output directory for these plots
+                detail_files_output_dir # Directory where individual detail files might be if loading is needed
+            )
+            logging.info("Blue Loop CMD/HRD with Bolometric Corrections generated.")
+        elif config_for_analyzer.analyze_blue_loop and not config_for_analyzer.generate_blue_loop_plots_with_bc:
+            logging.info("Blue loop analysis is enabled, but 'generate_blue_loop_plots_with_bc' is False. Skipping blue loop BC plots.")
         else:
-            logging.info("Blue loop analysis is off. Skipping blue loop HR diagrams.")
+            logging.info("Blue loop analysis is disabled. Skipping all blue loop related plots.")
 
     # --- GYRE Workflow ---
-    if config_for_analyzer.run_gyre_workflow and gyre_modules: # Check if gyre_modules is not the Dummy
+    if config_for_analyzer.run_gyre_workflow and not isinstance(gyre_modules, DummyGyreModules): # Check if gyre_modules is not the Dummy
         if gyre_input_csv_path and os.path.exists(gyre_input_csv_path):
             logging.info("\n--- Starting GYRE Workflow ---")
             logging.info(f"Using GYRE configuration file: {config_for_analyzer.gyre_config_path}")
@@ -243,7 +240,7 @@ def main():
             logging.info("GYRE workflow completed.")
         else:
             logging.warning("GYRE input CSV not found. Skipping GYRE workflow.")
-    elif config_for_analyzer.run_gyre_workflow and not gyre_modules:
+    elif config_for_analyzer.run_gyre_workflow and isinstance(gyre_modules, DummyGyreModules):
         logging.warning("GYRE modules not available. Skipping GYRE workflow.")
     else:
         logging.info("GYRE workflow is disabled in configuration.")
