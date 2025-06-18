@@ -24,49 +24,38 @@ logging.basicConfig(
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
 logger = logging.getLogger(__name__) # Logger for cli.py itself
 
-# --- Module Imports with Fallback ---
-# This block attempts to import core modules. If any fail, it creates
-# "DummyModule" placeholders to allow the script to run partially and
-# provide warnings instead of crashing immediately.
+# --- Module Imports with Fallback (Corrected paths based on your files) ---
 try:
-    from mesalab.analyzis import mesa_analyzer
+    # Correct import for mesa_analyzer (which is analyze_mesa_grid_directory)
+    from mesalab.analyzis.grid_analyzer import analyze_mesa_grid_directory as mesa_analyzer
+
+    # Correct imports for plotting functions, with aliases
     from mesalab.plotting.all_hrd_plotter import generate_all_hr_diagrams as plot_hr_diagrams
     from mesalab.plotting.heatmap_generator import generate_heatmaps_and_time_diff_csv as plot_heatmaps
-    # The blue loop summary plot is handled by the blue_loop_cmd_plotter, but its handler is in mesa_plotter (plot_handlers.py)
-    # So we import the handler function directly.
-    from mesalab.plotting.plot_handlers import handle_blue_loop_bc_plotting as plot_blue_loop_summary # Renamed mesa_plotter.py to plot_handlers.py in my mind
+    # The blue loop summary plotting is handled by a function inside mesa_plotter (your plot_handlers.py)
+    # We need to import the handler function itself.
+    # Assuming mesa_plotter.py is the actual filename on disk:
+    from mesalab.plotting.mesa_plotter import handle_blue_loop_bc_plotting as plot_blue_loop_summary
 
     from mesalab.gyretools import gyre_modules
-    logger.debug("Core MESA/GYRE modules imported successfully.")
 except ImportError as e:
     logger.error(f"Failed to import core MESA/GYRE modules. Some functionalities might be unavailable: {e}")
     logger.warning("If you encounter 'module not found' errors later, ensure your PYTHONPATH is configured correctly (e.g., by running 'pip install -e .' in your project root) or dependencies are installed.")
-    
-    # Define dummy placeholders if imports fail, to allow the script to run partially
+    logger.warning("Using dummy modules for missing MESA/GYRE components.")
+
+    # Define dummy modules to prevent NameError later if imports fail
     class DummyModule:
         def __getattr__(self, name):
             def dummy_func(*args, **kwargs):
                 logger.warning(f"Function '{name}' from a missing module was called. Skipping operation.")
-                # Return a default empty DataFrame or None, based on typical return types
-                if 'df' in name or 'data' in name or 'summary' in name or 'history' in name:
-                    return pd.DataFrame()
-                elif 'path' in name:
-                    return "" # Empty string for path
-                else:
-                    return None
+                return None # Return None or appropriate dummy value
             return dummy_func
-            
-    # Assign dummy objects if actual imports failed to prevent NameError later
-    if 'mesa_analyzer' not in sys.modules:
-        mesa_analyzer = DummyModule()
-    if 'plot_hr_diagrams' not in sys.modules:
-        plot_hr_diagrams = DummyModule()
-    if 'plot_heatmaps' not in sys.modules:
-        plot_heatmaps = DummyModule()
-    if 'plot_blue_loop_summary' not in sys.modules:
-        plot_blue_loop_summary = DummyModule()
-    if 'gyre_modules' not in sys.modules:
-        gyre_modules = DummyModule()
+
+    mesa_analyzer = DummyModule()
+    plot_hr_diagrams = DummyModule()
+    plot_heatmaps = DummyModule()
+    plot_blue_loop_summary = DummyModule()
+    gyre_modules = DummyModule()
     logger.warning("Using dummy modules for missing MESA/GYRE components.")
 
 
