@@ -17,7 +17,7 @@ project_base_dir = "/home/tnd/mesagrid/mesa_blue_loop"
 # This is the base directory where your GYRE output 'run_...' folders are located.
 # Each 'run_...' folder is expected to contain 'profileXXXXX' subfolders,
 # and inside those 'profileXXXXX' folders, you'll find 'summary.h5'.
-gyre_results_base_dir = os.path.join(project_base_dir, "mesalab_results")
+gyre_results_base_dir = os.path.join(project_base_dir, "output", "gyre_output")
 
 # This is the base directory where your MESA run LOGS folders are located.
 # Each 'run_...' folder here should contain a 'LOGS' subfolder with 'history.data' and 'profiles.index'.
