@@ -27,8 +27,7 @@ logger = logging.getLogger(__name__) # Logger for cli.py itself
 # --- Module Imports with Fallback (Corrected paths based on your files) ---
 try:
     # Correct import for mesa_analyzer (which is analyze_mesa_grid_directory)
-    from mesalab.analyzis.grid_analyzer import analyze_mesa_grid_directory as mesa_analyzer
-
+    from mesalab.analyzis.mesa_analyzer import perform_mesa_analysis as mesa_analyzer
     # Correct imports for plotting functions, with aliases
     from mesalab.plotting.all_hrd_plotter import generate_all_hr_diagrams as plot_hr_diagrams
     from mesalab.plotting.heatmap_generator import generate_heatmaps_and_time_diff_csv as plot_heatmaps
@@ -100,7 +99,7 @@ def main():
     logger.info("\n--- Starting MESA Analysis Workflow ---")
     try:
         summary_df, combined_detail_data, full_history_data, gyre_input_csv_path = \
-            mesa_analyzer.perform_mesa_analysis(
+            mesa_analyzer(
                 config, # Pass the *entire* config Namespace object to mesa_analyzer
                 analysis_results_sub_dir,
                 detail_files_output_dir,
