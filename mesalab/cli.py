@@ -10,16 +10,28 @@ import pandas as pd
 from tqdm import tqdm
 import re # Often useful for parsing run names, keeping it in case you add such logic.
 
-# --- Import core logic module for MESA analysis ---
-from .analyzis import mesa_analyzer
+# --- Import core logic module from mesa_analyzer ---
+# This is the corrected import. It assumes mesa_analyzer.py is directly in mesalab/
+# If it's in mesalab/analysis/, change this to: from mesalab.analysis import mesa_analyzer
+from mesalab import mesa_analyzer
 
-# --- Import GYRE specific module ---
-# This import assumes gyre_modules.py is in mesalab/gyretools/
-from .gyretools import gyre_modules
+# --- Adjust GYRE specific module import to match mesa_analyzer.py's dummy import path ---
+# This import assumes gyre_modules.py is in mesalab/gyre/
+# If your actual gyre_modules.py is in mesalab/gyretools/, you'll need to change this
+# back to 'from mesalab.gyretools import gyre_modules' and update mesa_analyzer.py's dummy too.
+try:
+    from mesalab.gyre import gyre_modules # Matched with the path in mesa_analyzer.py
+except ImportError:
+    logging.warning("mesalab.gyre.gyre_modules not found in cli.py. Using a dummy placeholder.")
+    # This dummy is for cli.py's direct use. mesa_analyzer.py has its own.
+    class DummyGyreModulesCLI: # Renamed to avoid conflict if both were active
+        def run_gyre_workflow(self, gyre_input_csv_path, gyre_config_path, gyre_output_dir):
+            logging.warning("DUMMY gyre_modules.run_gyre_workflow called from cli.py.")
+            logging.info(f"DUMMY CLI: Would run GYRE with input: {gyre_input_csv_path}, config: {gyre_config_path}, output to: {gyre_output_dir}")
+    gyre_modules = DummyGyreModulesCLI()
+
 
 # --- MIST Bolometric Correction Grid related imports (as seen in your logs) ---
-# It's generally better to place this where it's used (e.g., in plotter.py)
-# but if it's a global dependency for your project's environment setup, it can stay.
 try:
     from MIST_BP_FEH import MIST_BP_FEH
     _bc_grid = MIST_BP_FEH()
@@ -49,8 +61,9 @@ logger.setLevel(logging.INFO) # Default level, will be overridden by config
 
 def main():
     parser = argparse.ArgumentParser(description="MESA Grid Analysis and Post-Processing Tool.")
-    parser.add_argument('--config', type=str, default='config.yaml',
-                        help='Path to the main configuration file (default: config.yaml).')
+    # Default config file name set to mysett.yaml as per your usage
+    parser.add_argument('--config', type=str, default='mysett.yaml',
+                        help='Path to the main configuration file (default: mysett.yaml).')
     args = parser.parse_args()
 
     if not os.path.exists(args.config):
@@ -58,16 +71,14 @@ def main():
         sys.exit(1)
 
     with open(args.config, 'r') as f:
-        full_config = yaml.safe_load(f)
+        full_config_dict = yaml.safe_load(f)
 
     # --- Setup Logging from config ---
-    # Extract output_dir from config for logging setup
-    output_dir = full_config.get('general_settings', {}).get('output_dir', './mesagrid_output')
-    os.makedirs(output_dir, exist_ok=True) # Ensure output directory exists before logging
+    output_dir = full_config_dict.get('general_settings', {}).get('output_dir', './mesagrid_output')
+    os.makedirs(output_dir, exist_ok=True)
     log_filename = f"mesagrid_run_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
     log_filepath = os.path.join(output_dir, log_filename)
 
-    # Clear existing handlers to prevent duplicate logging if run multiple times in same session
     for handler in logger.handlers[:]:
         logger.removeHandler(handler)
 
@@ -79,8 +90,7 @@ def main():
     console_handler.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
     logger.addHandler(console_handler)
 
-    # Apply log level based on config's debug setting
-    debug_mode = full_config.get('general_settings', {}).get('debug', False)
+    debug_mode = full_config_dict.get('general_settings', {}).get('debug', False)
     if debug_mode:
         logger.setLevel(logging.DEBUG)
         logging.debug("Debug mode enabled.")
@@ -89,55 +99,55 @@ def main():
 
     logging.info(f"Loaded configuration from: {args.config}")
     logging.info(f"Logging set up. Log file: {log_filepath}")
-    logging.debug(f"Full configuration dictionary: {full_config}")
+    logging.debug(f"Full configuration dictionary: {full_config_dict}")
 
 
-    # --- Call the main MESA analysis orchestrator from mesa_analyzer ---
-    # mesa_analyzer will now perform the MESA data parsing, analysis, and plotting.
+    # --- Convert dictionary to a Namespace object for consistency with mesa_analyzer.py's expected 'config' ---
+    # The mesa_analyzer.py you provided expects 'config.input_dir' etc. so we convert.
+    class ConfigNamespace:
+        def __init__(self, dictionary):
+            for k, v in dictionary.items():
+                if isinstance(v, dict): # For nested dictionaries like general_settings
+                    setattr(self, k, ConfigNamespace(v))
+                else:
+                    setattr(self, k, v)
+
+    # Flatten nested dicts for direct access in mesa_analyzer.py, as your mesa_analyzer.py expects direct attributes
+    # e.g., config.input_dir, not config.general_settings.input_dir
+    flat_config = {}
+    for section, settings in full_config_dict.items():
+        if isinstance(settings, dict):
+            for key, value in settings.items():
+                flat_config[key] = value
+        else:
+            flat_config[section] = settings # For top-level keys like 'debug' if they existed
+
+    # Also add the individual blue_loop_analysis, plotting_settings, gyre_workflow flags directly
+    # for simpler access in run_analysis_workflow as it expects config.analyze_blue_loop etc.
+    if 'blue_loop_analysis' in full_config_dict:
+        for k, v in full_config_dict['blue_loop_analysis'].items():
+            flat_config[k] = v
+    if 'plotting_settings' in full_config_dict:
+        for k, v in full_config_dict['plotting_settings'].items():
+            flat_config[k] = v
+    if 'gyre_workflow' in full_config_dict:
+        for k, v in full_config_dict['gyre_workflow'].items():
+            flat_config[k] = v
+
+    config_for_analyzer = ConfigNamespace(flat_config)
+    logging.debug(f"Config object for analyzer: {config_for_analyzer.__dict__}")
+
+
+    # --- Call the main MESA analysis workflow from mesa_analyzer ---
     logging.info("\n--- Starting MESA Grid Analysis ---")
-    # The orchestrate_analysis in mesa_analyzer now returns the summary DataFrame
-    # and the path to the generated GYRE input CSV.
-    df_summary, gyre_input_csv_path = mesa_analyzer.orchestrate_analysis(full_config)
-
-    if df_summary is None:
-        logging.error("MESA analysis failed or returned no data. Cannot proceed with plots or GYRE workflow.")
-        sys.exit(1) # Exit if no data for further steps
+    # THE CRITICAL CHANGE: Call the correct function
+    mesa_analyzer.run_analysis_workflow(config_for_analyzer) # Pass the Namespace object
 
 
-    # --- GYRE Workflow Integration ---
-    # This section is now solely handled by cli.py, calling gyre_modules directly.
-    if full_config.get('gyre_workflow', {}).get('run_gyre_workflow', False):
-        logging.info("\n**GYRE Workflow requested. Initiating GYRE pipeline.**")
-        # The gyre_config_path in config.yaml is relative to the config.yaml file's location
-        gyre_config_file_path = os.path.join(os.path.dirname(args.config),
-                                             full_config['gyre_workflow'].get('gyre_config_path', 'gyre_config.in'))
-
-        if not os.path.exists(gyre_config_file_path):
-            logging.critical(f"GYRE configuration file '{gyre_config_file_path}' not found. Cannot run GYRE workflow.")
-            sys.exit(1)
-
-        try:
-            # Call gyre_modules directly with the full config and the generated CSV path.
-            gyre_modules.run_gyre_workflow(full_config, gyre_input_csv_path)
-            logging.info("**GYRE Workflow completed successfully.**")
-        except FileNotFoundError as e:
-            logging.critical(f"GYRE Workflow Error (FileNotFound): {e}")
-            sys.exit(1)
-        except ValueError as e:
-            logging.critical(f"GYRE Workflow Error (Configuration/Value): {e}")
-            sys.exit(1)
-        except IOError as e:
-            logging.critical(f"GYRE Workflow Error (File I/O): {e}")
-            sys.exit(1)
-        except Exception as e: # Catch all other exceptions, including subprocess.CalledProcessError
-            logging.critical(f"GYRE Workflow: An unexpected error occurred: {e}", exc_info=True)
-            if hasattr(e, 'stdout'): # For subprocess.CalledProcessError
-                logging.critical(f"GYRE stdout: {e.stdout}")
-            if hasattr(e, 'stderr'): # For subprocess.CalledProcessError
-                logging.critical(f"GYRE stderr: {e.stderr}")
-            sys.exit(1)
-    else:
-        logging.info("\nGYRE Workflow not requested (run_gyre_workflow = False in config). Skipping.")
+    # The gyre workflow is now handled *within* run_analysis_workflow,
+    # so we remove the redundant call here.
+    # The summary_df and gyre_input_csv_path are now managed and saved by mesa_analyzer.py
+    # and plotter functions are called from there.
 
     logging.info("\n--- MESA Grid Analysis Complete ---")
 
