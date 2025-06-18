@@ -190,38 +190,41 @@ def main():
     if config_for_analyzer.generate_plots:
         logging.info("\n--- Starting Plotting Workflow ---")
         if config_for_analyzer.generate_heatmaps:
-            logging.info("Generating heatmaps...")
-            mesa_plotter.plot_heatmap_from_csv(
-                os.path.join(analysis_results_sub_dir, "crossing_count_grid.csv"),
-                heatmap_output_dir,
-                "blue_loop_crossing_counts.png"
-            )
-            logging.info("Heatmaps generated.")
-
+            logging.info("Generating heatmaps...")
+            mesa_plotter.handle_heatmap_generation(
+                config_for_analyzer,
+                summary_df, # summary_df_for_plotting, passed as a placeholder/if needed by handler
+                heatmap_output_dir, # plots_sub_dir
+                analysis_results_sub_dir, # analysis_results_sub_dir
+                config_for_analyzer.input_dir # input_dir for model_name
+            )
+            logging.info("Heatmaps generated.")
         if config_for_analyzer.generate_hr_diagrams != 'none' and not full_history_data:
              logging.warning("Cannot generate HR diagrams: No full history data available. This might happen if 'force_reanalysis' was False and data was loaded, but full history was not retained for plotting.")
         elif config_for_analyzer.generate_hr_diagrams != 'none':
-            logging.info("Generating HR Diagrams...")
-            mesa_plotter.plot_hr_diagrams_by_z(
-                full_history_data,
-                hr_diagrams_output_dir,
-                config_for_analyzer.generate_hr_diagrams,
-                BC_GRID_AVAILABLE,
-                BCGrid if BC_GRID_AVAILABLE else None
-            )
-            logging.info("HR Diagrams generated.")
-
-        if config_for_analyzer.analyze_blue_loop and not combined_detail_data.empty:
-            logging.info("Generating Blue Loop HR Diagrams...")
-            mesa_plotter.plot_blue_loop_hr_diagrams(
-                combined_detail_data,
-                blue_loop_plots_dir,
-                BC_GRID_AVAILABLE,
-                BCGrid if BC_GRID_AVAILABLE else None,
-                config_for_analyzer.generate_blue_loop_plots_with_bc
-            )
-            logging.info("Blue Loop HR Diagrams generated.")
-        elif config_for_analyzer.analyze_blue_loop and combined_detail_data.empty:
+            logging.info("Generating HR Diagrams...")
+            mesa_plotter.handle_hr_diagram_generation(
+                config_for_analyzer,
+                hr_diagrams_output_dir,
+                full_history_data,
+                config_for_analyzer.generate_hr_diagrams == 'drop_zams' # Pass True if 'drop_zams' requested
+            )
+            logging.info("HR Diagrams generated.")
+            
+        if config_for_analyzer.analyze_blue_loop and config_for_analyzer.generate_blue_loop_plots_with_bc: # Added check for generate_blue_loop_plots_with_bc
+            logging.info("Generating Blue Loop CMD/HRD with Bolometric Corrections...")
+            mesa_plotter.handle_blue_loop_bc_plotting(
+                config_for_analyzer,
+                combined_detail_data, # This is the DataFrame from mesa_analyzer
+                blue_loop_plots_dir, # Output directory for these plots
+                detail_files_output_dir # Directory where individual detail files might be if loading is needed
+            )
+            logging.info("Blue Loop CMD/HRD with Bolometric Corrections generated.")
+            
+        elif config_for_analyzer.analyze_blue_loop and not config_for_analyzer.generate_blue_loop_plots_with_bc: # If blue loop analysis is on but plotting is off
+            logging.info("Blue loop analysis is enabled, but 'generate_blue_loop_plots_with_bc' is False. Skipping blue loop BC plots.")
+        else: # If blue loop analysis is completely off
+            logging.info("Blue loop analysis is disabled. Skipping all blue loop related plots.")        elif config_for_analyzer.analyze_blue_loop and combined_detail_data.empty:
             logging.info("No detailed blue loop data available for plotting. Skipping blue loop HR diagrams.")
         else:
             logging.info("Blue loop analysis is off. Skipping blue loop HR diagrams.")
