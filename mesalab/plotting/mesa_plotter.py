@@ -1,4 +1,4 @@
-#mesalab/plotting/plot_handlers.py
+# mesalab/plotting/mesa_plotter.py (formerly plot_handlers.py)
 
 import os
 import logging
@@ -9,7 +9,8 @@ import numpy as np
 from .heatmap_generator import generate_heatmaps_and_time_diff_csv
 from ..bluelooptools.blue_loop_cmd_plotter import generate_blue_loop_plots_with_bc, load_and_group_data
 from .all_hrd_plotter import generate_all_hr_diagrams # Import the HR diagram generator
-from ..analyzis.grid_analyzer import analyze_mesa_grid_directory 
+# Removed analyze_mesa_grid_directory as it's not used within this file.
+# from ..analyzis.grid_analyzer import analyze_mesa_grid_directory
 
 def handle_heatmap_generation(args, summary_df_for_plotting, plots_sub_dir, analysis_results_sub_dir, input_dir):
     """
@@ -20,12 +21,13 @@ def handle_heatmap_generation(args, summary_df_for_plotting, plots_sub_dir, anal
         args (argparse.Namespace): The command-line arguments object, containing flags like
                                    `generate_heatmaps`, `blue_loop_output_type`, `analyze_blue_loop`.
         summary_df_for_plotting (pd.DataFrame): The summary DataFrame of analyzed MESA runs.
-                                                 (This is still passed but no longer used for heatmap data source).
+                                                    (This is still passed but no longer used for heatmap data source).
         plots_sub_dir (str): The directory where plot images will be saved.
         analysis_results_sub_dir (str): The directory where analysis results (e.g., CSVs) will be saved.
         input_dir (str): The input directory, used to determine the model name for plot titles/filenames.
     """
-    if not args.generate_heatmaps:
+    # FIX 1: Access generate_heatmaps from plotting_settings
+    if not args.plotting_settings.generate_heatmaps:
         logging.debug("Heatmap generation not requested. Skipping.")
         return
 
@@ -70,8 +72,10 @@ def handle_heatmap_generation(args, summary_df_for_plotting, plots_sub_dir, anal
             plots_output_dir=plots_sub_dir,
             analysis_results_output_dir=analysis_results_sub_dir,
             model_name=os.path.basename(input_dir),
-            blue_loop_output_type=args.blue_loop_output_type,
-            analyze_blue_loop=args.analyze_blue_loop
+            # FIX 2: Access blue_loop_output_type from blue_loop_analysis
+            blue_loop_output_type=args.blue_loop_analysis.blue_loop_output_type,
+            # FIX 3: Access analyze_blue_loop from blue_loop_analysis
+            analyze_blue_loop=args.blue_loop_analysis.analyze_blue_loop
         )
         logging.info("Heatmaps generated successfully.")
     except Exception as e:
@@ -86,18 +90,20 @@ def handle_blue_loop_bc_plotting(args, combined_detail_data_for_plotting, blue_l
         args (argparse.Namespace): The command-line arguments object, containing flags like
                                    `generate_blue_loop_plots_with_bc` and `force_reanalysis`.
         combined_detail_data_for_plotting (pd.DataFrame): Detailed MESA run data, potentially combined from multiple runs.
-                                                           This might be empty initially if not reanalyzed.
+                                                            This might be empty initially if not reanalyzed.
         blue_loop_plots_bc_sub_dir (str): The directory where blue loop BC plots will be saved.
         detail_files_output_dir (str): The directory where individual detail data files are stored,
-                                       used if data needs to be loaded from disk.
+                                        used if data needs to be loaded from disk.
     """
-    if not args.generate_blue_loop_plots_with_bc:
+    # FIX 4: Access generate_blue_loop_plots_with_bc from plotting_settings
+    if not args.plotting_settings.generate_blue_loop_plots_with_bc:
         logging.debug("Blue loop specific plots with BCs not requested. Skipping.")
         return
 
     logging.info("Attempting to generate blue loop specific plots with BCs...")
     try:
-        if combined_detail_data_for_plotting.empty and not args.force_reanalysis:
+        # FIX 5: Access force_reanalysis from general_settings
+        if combined_detail_data_for_plotting.empty and not args.general_settings.force_reanalysis:
             logging.info(f"Detail data not in memory; attempting to load from {detail_files_output_dir} for plotting...")
             combined_detail_data_for_plotting = load_and_group_data(detail_files_output_dir)
 
@@ -129,9 +135,12 @@ def handle_hr_diagram_generation(args, plots_sub_dir, full_history_data_for_plot
                                                history DataFrames for each MESA run.
         drop_zams (bool): Flag indicating whether to drop the pre-MS (ZAMS) phase.
                           This parameter is passed from cli.py.
-                                               
+                                                                
     """
-    if not args.generate_hr_diagrams:
+    # FIX 6: Access generate_hr_diagrams from plotting_settings
+    # Note: cli.py passes a boolean for drop_zams, so args.plotting_settings.generate_hr_diagrams
+    # will be 'true', 'false', or 'drop_zams'. The check here needs to handle that.
+    if not args.plotting_settings.generate_hr_diagrams or args.plotting_settings.generate_hr_diagrams.lower() == 'none':
         logging.debug("HR diagram generation not requested. Skipping.")
         return
 
@@ -141,7 +150,8 @@ def handle_hr_diagram_generation(args, plots_sub_dir, full_history_data_for_plot
             logging.warning("No full history data available for HR diagram generation. Skipping.")
             return
 
-        model_name = os.path.basename(args.input_dir) 
+        # FIX 7: Access input_dir from general_settings
+        model_name = os.path.basename(args.general_settings.input_dir)
 
         logT_blue_edge = [3.76, 3.83]
         logL_blue_edge = [4.5, 2.4]
@@ -163,4 +173,3 @@ def handle_hr_diagram_generation(args, plots_sub_dir, full_history_data_for_plot
         logging.info("HR diagrams generated successfully.")
     except Exception as e:
         logging.error(f"Error generating HR diagrams: {e}")
-
