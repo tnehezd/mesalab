@@ -178,7 +178,7 @@ def run_gyre_workflow(
     
     # *** Módosítás itt: A gyre_session_output_dir beállítása ***
     # Eltávolítjuk a duplázást. A GYRE outputok közvetlenül ide kerülnek.
-    gyre_session_output_dir = os.path.join(global_output_base_dir, 'gyre_output')
+    gyre_session_output_dir = os.path.join(global_output_base_dir)
     os.makedirs(gyre_session_output_dir, exist_ok=True)
     gyre_logger.info(f"**GYRE specific outputs will be saved in: '{os.path.abspath(gyre_session_output_dir)}'**")
 
