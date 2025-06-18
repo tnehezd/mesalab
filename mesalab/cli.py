@@ -30,7 +30,12 @@ logger = logging.getLogger(__name__) # Logger for cli.py itself
 # provide warnings instead of crashing immediately.
 try:
     from mesalab.analyzis import mesa_analyzer
-    from mesalab.plotting import plot_hr_diagrams, plot_heatmaps, plot_blue_loop_summary
+    from mesalab.plotting.all_hrd_plotter import generate_all_hr_diagrams as plot_hr_diagrams
+    from mesalab.plotting.heatmap_generator import generate_heatmaps_and_time_diff_csv as plot_heatmaps
+    # The blue loop summary plot is handled by the blue_loop_cmd_plotter, but its handler is in mesa_plotter (plot_handlers.py)
+    # So we import the handler function directly.
+    from mesalab.plotting.plot_handlers import handle_blue_loop_bc_plotting as plot_blue_loop_summary # Renamed mesa_plotter.py to plot_handlers.py in my mind
+
     from mesalab.gyretools import gyre_modules
     logger.debug("Core MESA/GYRE modules imported successfully.")
 except ImportError as e:
