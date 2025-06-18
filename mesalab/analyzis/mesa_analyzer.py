@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__) # Get a logger for this module
 # In a real setup, your main script would import and pass these, or they exist.
 
 try:
-    from mesalab.analyzis import blue_loop_analyzer # e.g., mesalab/analysis/blue_loop_analyzer.py
+    from mesalab.bluelooptools import blue_loop_analyzer
 except ImportError:
     logger.warning("mesalab.analysis.blue_loop_analyzer not found. Using a dummy placeholder.")
     class DummyBlueLoopAnalyzer:
