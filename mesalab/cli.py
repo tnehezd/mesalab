@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__) # Logger for cli.py itself
 # "DummyModule" placeholders to allow the script to run partially and
 # provide warnings instead of crashing immediately.
 try:
-    from mesalab.mesatools import mesa_analyzer
+    from mesalab.analyzis import mesa_analyzer
     from mesalab.plotting import plot_hr_diagrams, plot_heatmaps, plot_blue_loop_summary
     from mesalab.gyretools import gyre_modules
     logger.debug("Core MESA/GYRE modules imported successfully.")
