@@ -3,7 +3,6 @@ import sys
 import logging
 import pandas as pd
 import numpy as np
-# import matplotlib.pyplot as plt # Commented out as per your request
 from tqdm import tqdm
 from datetime import datetime
 
@@ -41,7 +40,9 @@ def run_analysis_workflow(config):
 
     output_base_dir = config.output_dir
     analysis_results_dir = os.path.join(output_base_dir, 'analysis_results')
+    detail_files_output_dir = os.path.join(output_base_dir, 'detail_files') # Define detail files output dir here
     os.makedirs(analysis_results_dir, exist_ok=True)
+    os.makedirs(detail_files_output_dir, exist_ok=True) # Ensure detail_files directory exists
 
     summary_file_path = os.path.join(analysis_results_dir, 'mesa_grid_analysis_summary.csv')
     cross_grid_file_path = os.path.join(analysis_results_dir, 'mesa_grid_cross.csv')
@@ -81,19 +82,80 @@ def run_analysis_workflow(config):
     logger.info(f"Analysis started. Reanalysis needed: {reanalysis_needed}")
 
     summary_df_raw = pd.DataFrame()
+    # Initialize the dictionary for Z-grouped detailed DataFrames
+    # This needs to be available whether reanalysis is performed or not,
+    # as the plotting might try to access it if detail files are already present.
+    # However, for saving, it will only be populated during reanalysis.
+    grouped_detailed_dfs_for_saving = {} 
+
     if reanalysis_needed:
         mesa_dirs_to_analyze = scan_mesa_runs(config.input_dir, config.inlist_name)
         if not mesa_dirs_to_analyze:
             logger.error("No valid MESA runs found to analyze. Exiting analysis.")
             return
 
-        summary_data = perform_mesa_analysis(mesa_dirs_to_analyze, config)
+        # Pass detail_files_output_dir and the new dictionary to the analysis function
+        summary_data, grouped_detailed_dfs_for_saving = perform_mesa_analysis(mesa_dirs_to_analyze, config, detail_files_output_dir)
+        
         summary_df_raw = pd.DataFrame(summary_data)
+        
+        # --- Save Summary CSV ---
         summary_df_raw.to_csv(summary_file_path, index=False)
         logger.info(f"Summary results saved to {summary_file_path}")
-    else:
+
+        # --- Save Cross-Grid CSV (Heatmap data) ---
+        if config.generate_heatmaps: # Only generate if heatmaps are requested
+            if 'crossing_count' in summary_df_raw.columns:
+                # Filter for runs that actually have blue loops if analyze_blue_loop is True
+                if config.analyze_blue_loop:
+                    cross_grid_data = summary_df_raw[summary_df_raw['crossing_count'] > 0]
+                else:
+                    cross_grid_data = summary_df_raw # Use all data if no blue loop filtering
+                
+                if not cross_grid_data.empty:
+                    cross_grid_df = cross_grid_data.pivot_table(
+                        index='initial_Z', columns='initial_mass', values='crossing_count'
+                    )
+                    # Ensure all unique Zs and masses are present in the index/columns for consistency
+                    unique_zs = sorted(summary_df_raw['initial_Z'].unique())
+                    unique_masses = sorted(summary_df_raw['initial_mass'].unique())
+                    
+                    cross_grid_df = cross_grid_df.reindex(index=unique_zs, columns=unique_masses)
+                    cross_grid_df.to_csv(cross_grid_file_path, na_rep='NaN')
+                    logger.info(f"Cross-grid summary saved to {cross_grid_file_path}")
+                else:
+                    logger.warning("No data with blue loops to build cross-grid matrix.")
+            else:
+                logger.warning("Cannot generate cross-grid: 'crossing_count' column not found in summary data. Make sure blue loop analysis was performed.")
+
+        # --- Save Z-grouped Detail CSVs to disk ---
+        if config.analyze_blue_loop and config.blue_loop_output_type == 'all':
+            # Define columns for detailed CSVs (all columns from blue_loop_detail_df)
+            # No concise_detail_columns_for_saving needed here, as 'all' implies all columns.
+            for z_val, dfs_list in grouped_detailed_dfs_for_saving.items():
+                if dfs_list:
+                    try:
+                        combined_df_bl = pd.concat(dfs_list, ignore_index=True)
+                        # Explicitly sort by initial_mass and star_age
+                        combined_df_bl = combined_df_bl.sort_values(by=['initial_mass', 'star_age']).reset_index(drop=True)
+                        
+                        detail_filename = os.path.join(detail_files_output_dir, f"detail_z{z_val:.4f}.csv")
+                        combined_df_bl.to_csv(detail_filename, index=False, na_rep='NaN')
+                        logger.info(f"Written concatenated detail CSV for Z={z_val} to {detail_filename}")
+                    except Exception as e:
+                        logger.error(f"Error writing detail CSV for Z={z_val}: {e}")
+                else:
+                    logger.info(f"No detailed data to write for Z={z_val}.")
+        elif config.analyze_blue_loop and config.blue_loop_output_type == 'summary':
+            logger.info("Blue loop output type is 'summary'. Detailed blue loop CSVs will not be saved.")
+        else:
+            logger.info("Blue loop analysis is not enabled. Detailed blue loop CSVs will not be saved.")
+            
+    else: # If reanalysis is NOT needed
         logger.info("Reanalysis not needed. Loading existing summary data.")
         summary_df_raw = pd.read_csv(summary_file_path)
+        # Note: If reanalysis is skipped, Z-grouped detail files are NOT regenerated by this module.
+        # They are assumed to exist from a previous run if needed for plotting.
 
     if summary_df_raw.empty:
         logger.error("MESA analysis failed or returned no data. Cannot proceed with plots or GYRE workflow.")
@@ -106,36 +168,41 @@ def run_analysis_workflow(config):
 
     # Example of how plotting would be called if uncommented
     # if config.generate_heatmaps:
-    #     if 'crossing_count' in summary_df_raw.columns: # Adjusted column name from 'blue_loop_crossing_count'
-    #         cross_grid_df = summary_df_raw.pivot_table(
-    #             index='initial_mass', columns='initial_Z', values='crossing_count' # Adjusted column name
-    #         )
-    #         cross_grid_df.to_csv(cross_grid_file_path)
-    #         logger.info(f"Cross-grid summary saved to {cross_grid_file_path}")
-    #         # plotter.generate_heatmap(cross_grid_df, analysis_results_dir)
-    #     else:
-    #         logger.warning("Cannot generate heatmaps: 'crossing_count' column not found in summary data. Make sure blue loop analysis was performed.")
-
+    #    # plotter.generate_heatmap(cross_grid_df, analysis_results_dir)
+    #    pass
+    #
     # if config.generate_hr_diagrams != 'none':
-    #     # plotter.generate_hr_diagrams(config.input_dir,
-    #     #                              config.output_dir,
-    #     #                              summary_df_raw,
-    #     #                              config.generate_hr_diagrams,
-    #     #                              config.generate_blue_loop_plots_with_bc)
-    #     pass # Placeholder if plotting is commented out
+    #    # plotter.generate_hr_diagrams(config.input_dir,
+    #    #                             config.output_dir,
+    #    #                             summary_df_raw,
+    #    #                             config.generate_hr_diagrams,
+    #    #                             config.generate_blue_loop_plots_with_bc)
+    #    pass # Placeholder if plotting is commented out
 
     # Prepare data for GYRE input (if enabled)
     # This block processes data for GYRE regardless of whether gyre_modules is imported,
     # but the actual GYRE run `gyre_modules.run_gyre_workflow` remains commented out.
-    gyre_input_df = summary_df_raw[['initial_mass', 'initial_Z', 'run_dir_path', 'first_model_number', 'last_model_number']].copy()
-    gyre_input_df.rename(columns={'run_dir_path': 'mesa_run_directory'}, inplace=True)
+    
+    # Filter summary_df_raw to include only successful runs for GYRE input
+    # Assuming 'mesa_status' indicates success ('OK').
+    gyre_input_base_df = summary_df_raw[summary_df_raw['mesa_status'] == 'OK'].copy()
 
-    # Ensure model numbers are integers for GYRE, handling NaNs
-    gyre_input_df['first_model_number'] = gyre_input_df['first_model_number'].fillna(-1).astype(int)
-    gyre_input_df['last_model_number'] = gyre_input_df['last_model_number'].fillna(-1).astype(int)
+    if not gyre_input_base_df.empty:
+        gyre_input_df = gyre_input_base_df[['initial_mass', 'initial_Z', 'run_dir_path', 'first_model_number', 'last_model_number']].copy()
+        gyre_input_df.rename(columns={'run_dir_path': 'mesa_run_directory'}, inplace=True)
 
-    gyre_input_df.to_csv(gyre_input_csv_path, index=False)
-    logger.info(f"GYRE input CSV generated: {gyre_input_csv_path}")
+        # Ensure model numbers are integers for GYRE, handling NaNs
+        gyre_input_df['first_model_number'] = gyre_input_df['first_model_number'].fillna(-1).astype(int)
+        gyre_input_df['last_model_number'] = gyre_input_df['last_model_number'].fillna(-1).astype(int)
+        
+        # Ensure 'initial_Z' is formatted as string for consistency with GYRE expectations
+        gyre_input_df['initial_Z'] = gyre_input_df['initial_Z'].apply(lambda x: f"{x:.4f}")
+
+        gyre_input_df.to_csv(gyre_input_csv_path, index=False)
+        logger.info(f"GYRE input CSV generated: {gyre_input_csv_path}")
+    else:
+        logger.info("No successful MESA runs found to generate GYRE input CSV.")
+
 
     # if config.run_gyre_workflow:
     #     logger.info("Starting GYRE workflow (if gyre_modules is imported and uncommented)...")
@@ -152,26 +219,31 @@ def run_analysis_workflow(config):
     logger.info("MESA Grid Analysis finished.")
 
 
-def perform_mesa_analysis(mesa_dirs_to_analyze, config):
+def perform_mesa_analysis(mesa_dirs_to_analyze, config, detail_files_output_dir):
     """
     Performs the core MESA run analysis for each specified MESA run,
     extracting history data and optionally blue loop information.
+    Collects detailed blue loop DataFrames grouped by Z for later saving.
 
     Args:
         mesa_dirs_to_analyze (list): A list of dictionaries, each containing
                                       'run_dir_path', 'history_file_path',
                                       'mass', 'z' for a MESA run.
         config (argparse.Namespace): The configuration object.
+        detail_files_output_dir (str): Path to the directory for detailed blue loop CSVs.
 
     Returns:
-        list: A list of dictionaries, where each dictionary summarizes the
-              analysis results for a single MESA run.
+        tuple: A tuple containing:
+            - list: A list of dictionaries, where each dictionary summarizes the
+                    analysis results for a single MESA run.
+            - dict: A dictionary where keys are metallicities (Z) and values are
+                    lists of blue loop detail DataFrames (pd.DataFrame) for that Z.
+                    This is used for saving Z-grouped detail CSVs after the loop.
     """
     analysis_summary_data = []
-
-    detail_files_output_dir = os.path.join(config.output_dir, 'detail_files')
-    if config.analyze_blue_loop:
-        os.makedirs(detail_files_output_dir, exist_ok=True)
+    # Dictionary to collect detailed blue loop DataFrames, grouped by Z
+    # E.g., {Z_value: [df_for_mass1, df_for_mass2], ...}
+    grouped_detailed_dfs = {} 
 
     for run_info in tqdm(mesa_dirs_to_analyze, desc="Performing MESA Run Analysis"):
         run_path = run_info['run_dir_path']
@@ -218,21 +290,18 @@ def perform_mesa_analysis(mesa_dirs_to_analyze, config):
                 # Retrieve the detail DataFrame from the analysis_output dictionary
                 df_loop_details = analysis_output.get('blue_loop_detail_df', pd.DataFrame())
 
-                # Save detailed blue loop data if output type is 'all' and the detail DF is not empty
-                if config.blue_loop_output_type == 'all' and not df_loop_details.empty:
-                    z_formatted = f"{current_z:.4f}"
-                    detail_output_path = os.path.join(detail_files_output_dir, f"detail_M{current_mass:.1f}_Z{z_formatted}.csv") # More specific filename
-
-                    # Append if file exists, create new if not
-                    # Use header=False when appending to avoid duplicating header row
-                    if os.path.exists(detail_output_path):
-                        df_loop_details.to_csv(detail_output_path, mode='a', header=False, index=False)
-                    else:
-                        df_loop_details.to_csv(detail_output_path, index=False)
-                    logger.debug(f"Saved blue loop details for M={current_mass}, Z={current_z} to {detail_output_path}")
-                elif config.blue_loop_output_type == 'all' and df_loop_details.empty:
-                    logger.info(f"No detailed blue loop data to save for M={current_mass}, Z={current_z} (DataFrame was empty).")
-
+                # Collect detailed blue loop data grouped by Z
+                if not df_loop_details.empty:
+                    # Add initial_mass and initial_Z to the detail DataFrame before storing
+                    df_loop_details['initial_mass'] = current_mass
+                    df_loop_details['initial_Z'] = current_z
+                    
+                    if current_z not in grouped_detailed_dfs:
+                        grouped_detailed_dfs[current_z] = []
+                    grouped_detailed_dfs[current_z].append(df_loop_details)
+                    logger.debug(f"Collected blue loop details for M={current_mass}, Z={current_z} for Z-grouped saving.")
+                else:
+                    logger.info(f"No detailed blue loop data to collect for M={current_mass}, Z={current_z} (DataFrame was empty).")
 
             except Exception as e:
                 logger.error(f"Error during blue loop analysis for M={current_mass}, Z={current_z}: {e}")
@@ -240,8 +309,8 @@ def perform_mesa_analysis(mesa_dirs_to_analyze, config):
                 # Ensure all blue loop related keys are set to NaN if analysis fails.
                 # These keys must match exactly what analyze_blue_loop returns (or aims to return as NaN).
                 for key in ['crossing_count', 'blue_loop_duration_yr', 'max_log_L',
-                            'max_log_Teff', 'max_log_R', 'first_model_number',
-                            'last_model_number', 'first_age_yr', 'last_age_yr',
+                            'max_log_Teff', 'max_log_R', # 'first_model_number', 'last_model_number' are already handled
+                            'first_age_yr', 'last_age_yr',
                             'blue_loop_start_age', 'blue_loop_end_age',
                             'instability_start_age', 'instability_end_age',
                             'calculated_blue_loop_duration', 'calculated_instability_duration']:
@@ -254,12 +323,12 @@ def perform_mesa_analysis(mesa_dirs_to_analyze, config):
                              'instability_start_age', 'instability_end_age']:
                     analysis_result_summary['state_times'][skey] = np.nan
 
-        else:
+        else: # if config.analyze_blue_loop is False
             logger.info(f"Skipping blue loop analysis for M={current_mass}, Z={current_z} as analyze_blue_loop is False.")
             # Ensure blue loop related keys are set to NaN if analysis is skipped (for consistency in summary DF)
             for key in ['crossing_count', 'blue_loop_duration_yr', 'max_log_L',
-                        'max_log_Teff', 'max_log_R', 'first_model_number',
-                        'last_model_number', 'first_age_yr', 'last_age_yr',
+                        'max_log_Teff', 'max_log_R', # 'first_model_number', 'last_model_number' are already handled
+                        'first_age_yr', 'last_age_yr',
                         'blue_loop_start_age', 'blue_loop_end_age',
                         'instability_start_age', 'instability_end_age',
                         'calculated_blue_loop_duration', 'calculated_instability_duration']:
@@ -274,4 +343,4 @@ def perform_mesa_analysis(mesa_dirs_to_analyze, config):
 
         analysis_summary_data.append(analysis_result_summary)
 
-    return analysis_summary_data
+    return analysis_summary_data, grouped_detailed_dfs
