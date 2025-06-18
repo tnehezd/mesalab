@@ -3,7 +3,8 @@ import sys
 import logging
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt # Still needed if plotter uses it directly
+# import matplotlib.pyplot as plt # Commented out as per your request
+
 from tqdm import tqdm
 from datetime import datetime
 
@@ -17,15 +18,12 @@ from mesalab.analyzis.data_reader import (
     get_data_from_history_file
 )
 
-# --- ACTUAL MODULE IMPORTS ---
-# These imports assume the following structure within your 'mesalab' package:
-# mesalab/bluelooptools/blue_loop_analyzer.py
-# mesalab/plotting/plotter.py
-# mesalab/gyre/gyre_modules.py
-# And that each of these subdirectories contains an __init__.py file.
-from mesalab.bluelooptools import blue_loop_analyzer
-from mesalab.plotting import plotter
-from mesalab.gyre import gyre_modules
+# --- ACTUAL MODULE IMPORTS (Relative Imports) ---
+# Assuming mesa_analyzer.py is in 'mesalab/analyzis/',
+# these imports navigate up one level to 'mesalab/' then down to the specific package.
+from ..bluelooptools import blue_loop_analyzer
+# from ..plotting import plotter # Commented out to avoid plotting dependency errors
+# from ..gyre import gyre_modules # Commented out to avoid GYRE dependency errors
 # --- END ACTUAL MODULE IMPORTS ---
 
 
@@ -100,29 +98,32 @@ def run_analysis_workflow(config):
         logger.error("MESA analysis failed or returned no data. Cannot proceed with plots or GYRE workflow.")
         return
 
-    # --- Plotting and GYRE Workflow based on config and analysis results ---
-    if config.generate_heatmaps:
-        if 'blue_loop_crossing_count' in summary_df_raw.columns:
-            # Create a pivot table for heatmap generation
-            cross_grid_df = summary_df_raw.pivot_table(
-                index='initial_mass', columns='initial_Z', values='blue_loop_crossing_count'
-            )
-            cross_grid_df.to_csv(cross_grid_file_path)
-            logger.info(f"Cross-grid summary saved to {cross_grid_file_path}")
-            # Call the actual plotter module's heatmap function
-            plotter.generate_heatmap(cross_grid_df, analysis_results_dir)
-        else:
-            logger.warning("Cannot generate heatmaps: 'blue_loop_crossing_count' column not found in summary data.")
+    # --- Plotting and GYRE Workflow (Commented Out) ---
+    # The following blocks are commented out as requested to avoid dependencies.
+    # If you later wish to enable plotting or GYRE, uncomment these lines
+    # and ensure the corresponding 'mesalab/plotting' and 'mesalab/gyre'
+    # directories (with __init__.py and module files) exist.
 
-    if config.generate_hr_diagrams != 'none':
-        # Call the actual plotter module's HR diagram function
-        plotter.generate_hr_diagrams(config.input_dir,
-                                     config.output_dir,
-                                     summary_df_raw,
-                                     config.generate_hr_diagrams,
-                                     config.generate_blue_loop_plots_with_bc)
+    # if config.generate_heatmaps:
+    #     if 'blue_loop_crossing_count' in summary_df_raw.columns:
+    #         cross_grid_df = summary_df_raw.pivot_table(
+    #             index='initial_mass', columns='initial_Z', values='blue_loop_crossing_count'
+    #         )
+    #         cross_grid_df.to_csv(cross_grid_file_path)
+    #         logger.info(f"Cross-grid summary saved to {cross_grid_file_path}")
+    #         plotter.generate_heatmap(cross_grid_df, analysis_results_dir)
+    #     else:
+    #         logger.warning("Cannot generate heatmaps: 'blue_loop_crossing_count' column not found in summary data.")
 
-    # Prepare data for GYRE input (if enabled)
+    # if config.generate_hr_diagrams != 'none':
+    #     plotter.generate_hr_diagrams(config.input_dir,
+    #                                  config.output_dir,
+    #                                  summary_df_raw,
+    #                                  config.generate_hr_diagrams,
+    #                                  config.generate_blue_loop_plots_with_bc)
+
+    # Prepare data for GYRE input (if enabled) - GYRE related code remains
+    # but the actual GYRE run block is commented out if its module is not imported.
     gyre_input_df = summary_df_raw[['initial_mass', 'initial_Z', 'run_dir_path', 'first_model_number', 'last_model_number']].copy()
     gyre_input_df.rename(columns={'run_dir_path': 'mesa_run_directory'}, inplace=True)
 
@@ -133,17 +134,16 @@ def run_analysis_workflow(config):
     gyre_input_df.to_csv(gyre_input_csv_path, index=False)
     logger.info(f"GYRE input CSV generated: {gyre_input_csv_path}")
 
-    if config.run_gyre_workflow:
-        logger.info("Starting GYRE workflow...")
-        try:
-            # Call the actual gyre_modules' run_gyre_workflow function
-            gyre_modules.run_gyre_workflow(
-                gyre_input_csv_path,
-                config.gyre_config_path,
-                os.path.join(output_base_dir, 'gyre_results')
-            )
-        except Exception as e:
-            logger.error(f"GYRE workflow failed: {e}")
+    # if config.run_gyre_workflow:
+    #     logger.info("Starting GYRE workflow...")
+    #     try:
+    #         gyre_modules.run_gyre_workflow(
+    #             gyre_input_csv_path,
+    #             config.gyre_config_path,
+    #             os.path.join(output_base_dir, 'gyre_results')
+    #         )
+    #     except Exception as e:
+    #         logger.error(f"GYRE workflow failed: {e}")
 
     logger.info("MESA Grid Analysis finished.")
 
@@ -203,13 +203,12 @@ def perform_mesa_analysis(mesa_dirs_to_analyze, config):
         if config.analyze_blue_loop:
             logger.debug(f"Analyzing blue loop for M={current_mass}, Z={current_z}")
             try:
-                # IMPORTANT: Calling analyze_blue_loop with 3 arguments as defined in blue_loop_analyzer.py
+                # Calling analyze_blue_loop with 3 arguments as defined in blue_loop_analyzer.py
                 loop_summary, df_loop_details = blue_loop_analyzer.analyze_blue_loop(df_full_history, current_mass, current_z)
                 analysis_result_summary.update(loop_summary)
 
                 # Save detailed blue loop data if output type is 'all'
                 if config.blue_loop_output_type == 'all':
-                    # Removed .replace('.', 'p') as requested
                     z_formatted = f"{current_z:.4f}"
                     detail_output_path = os.path.join(detail_files_output_dir, f"detail_z{z_formatted}.csv")
                     
