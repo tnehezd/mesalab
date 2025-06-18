@@ -25,7 +25,14 @@ logging.getLogger('matplotlib').setLevel(logging.WARNING)
 logger = logging.getLogger(__name__) # Logger for cli.py itself
 
 # --- Module Imports with Fallback (Corrected paths based on your files) ---
+
+# Flag to track if GYRE modules were successfully imported
+_GYRE_MODULES_LOADED = False
+
 try:
+    # Add a print statement IMMEDIATELY before the import to trace execution
+    print("DEBUG: Attempting to import core mesalab modules...", file=sys.stderr)
+    
     # Correct import for mesa_analyzer (which is perform_mesa_analysis from mesa_analyzer.py)
     from mesalab.analyzis.mesa_analyzer import perform_mesa_analysis as mesa_analyzer
 
@@ -35,29 +42,56 @@ try:
     from mesalab.plotting.mesa_plotter import handle_hr_diagram_generation
     from mesalab.plotting.mesa_plotter import handle_blue_loop_bc_plotting
 
-    # Assuming this import is correctly set up now. If there's an ImportError here,
-    # the exc_info=True will help pinpoint it.
+    # Attempt to import GYRE modules. This is the critical line we are debugging.
     from mesalab.gyretools import gyre_modules
+    _GYRE_MODULES_LOADED = True # Set flag to True if import is successful
+    print("DEBUG: Successfully imported all core mesalab modules, including GYRE.", file=sys.stderr)
+
 except ImportError as e:
-    # MODIFICATION HERE: added 'exc_info=True' to log the full traceback
-    logger.error(f"Failed to import core MESA/GYRE modules. Some functionalities might be unavailable: {e}", exc_info=True)
-    logger.warning("If you encounter 'module not found' errors later, ensure your PYTHONPATH is configured correctly (e.g., by running 'pip install -e .' in your project root) or dependencies are installed.")
-    
-    # Define dummy modules to prevent NameError later if imports fail
-    class DummyModule:
-        def __getattr__(self, name):
-            def dummy_func(*args, **kwargs):
-                logger.warning(f"Function '{name}' from a missing module was called. Skipping operation.")
-                return None # Return None or appropriate dummy value
-            return dummy_func
-            
-    # Assign dummy objects if actual imports failed to prevent NameError later
-    mesa_analyzer = DummyModule()
-    handle_heatmap_generation = DummyModule()
-    handle_hr_diagram_generation = DummyModule()
-    handle_blue_loop_bc_plotting = DummyModule()
+    # This block is specifically designed to catch ImportError and provide full traceback
+    logger.error(f"Failed to import core MESA/GYRE modules due to ImportError: {e}", exc_info=True)
+    print(f"FATAL ERROR: Failed to import critical mesalab/GYRE modules at startup. Please check installation and dependencies.", file=sys.stderr)
+    print(f"Error details: {e}", file=sys.stderr)
+    print("Full traceback (printed to stderr):", file=sys.stderr)
+    import traceback
+    traceback.print_exc(file=sys.stderr) # Print full traceback to stderr
+    sys.exit(1) # Exit the program immediately
+
+except Exception as e:
+    # This catches any other unexpected exceptions during the initial imports
+    logger.critical(f"CRITICAL UNEXPECTED ERROR during initial module imports: {e}", exc_info=True)
+    print(f"FATAL ERROR: An unexpected critical error occurred during initial module imports: {e}", file=sys.stderr)
+    print("Full traceback (printed to stderr):", file=sys.stderr)
+    import traceback
+    traceback.print_exc(file=sys.stderr)
+    sys.exit(1)
+
+
+# Define DummyModule *outside* the try-except block, so it's always available
+class DummyModule:
+    def __getattr__(self, name):
+        def dummy_func(*args, **kwargs):
+            logger.warning(f"Function '{name}' from a missing/unavailable module was called. Skipping operation.")
+            return None # Return None or appropriate dummy value
+        return dummy_func
+        
+# Assign dummy objects IF GYRE modules failed to load
+if not _GYRE_MODULES_LOADED:
+    # Only assign dummies if the import in the try block failed
     gyre_modules = DummyModule()
-    logger.warning("Using dummy modules for missing MESA/GYRE components.")
+    logger.warning("GYRE modules could not be loaded. GYRE workflow will be skipped.")
+else:
+    # If successful, no need to assign dummy; gyre_modules is already the real module
+    pass
+
+# These other assignments should happen regardless, as they are not conditionally loaded here
+# (assuming mesa_analyzer, handle_heatmap_generation etc. are always loaded successfully or handled elsewhere)
+# If they are also part of the try-except above, they don't need dummy assignment here.
+# For simplicity, if they were *also* problematic, the main try-except would catch it.
+# If they are not conditionally loaded, ensure their import is covered by the main try-except.
+# For clarity, I'm removing redundant dummy assignments that would only trigger if they *also* failed
+# if mesa_analyzer was not defined, it would be caught by the main try-except and sys.exit(1)
+# Same for handle_heatmap_generation, etc.
 
 
 # --- Main Application Logic ---
@@ -81,10 +115,9 @@ def main():
     logger.info(f"Final resolved configuration being used by cli.py: {config}")
 
     # --- Output Directory Setup ---
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    # Access output_dir from general_settings
+    # No timestamped subfolder in output_base_dir as per your request
     output_base_dir = os.path.abspath(config.general_settings.output_dir)
-    session_output_dir = os.path.join(output_base_dir) # No timestamped subfolder here
+    session_output_dir = output_base_dir 
     analysis_results_sub_dir = os.path.join(session_output_dir, 'analysis_results')
     detail_files_output_dir = os.path.join(session_output_dir, 'detail_files')
     plots_output_dir = os.path.join(session_output_dir, 'plots')
@@ -158,41 +191,42 @@ def main():
 
     # --- GYRE Workflow ---
     # Access run_gyre_workflow from gyre_workflow settings
-    # The 'isinstance' check verifies if gyre_modules was successfully imported or is a DummyModule
-    if config.gyre_workflow.run_gyre_workflow and not isinstance(gyre_modules, type(sys.modules.get('mesalab.gyretools.gyre_modules', object()))):
-        logger.info("\n--- Starting GYRE Workflow ---")
-        # Access gyre_config_path from gyre_workflow settings
-        gyre_config_full_path = os.path.abspath(config.gyre_workflow.gyre_config_path)
-        
-        # Validate GYRE config file path
-        if not os.path.exists(gyre_config_full_path):
-            logger.error(f"GYRE configuration file not found at '{gyre_config_full_path}'. Skipping GYRE workflow.")
-        # Validate filtered profiles CSV (required if blue loop analysis is enabled)
-        # Access analyze_blue_loop from blue_loop_analysis
-        # Access filtered_profiles_csv_name from gyre_workflow
-        elif config.blue_loop_analysis.analyze_blue_loop and \
-              (not gyre_input_csv_path or not os.path.exists(gyre_input_csv_path)):
-            logger.warning(f"GYRE workflow enabled, but the filtered profiles CSV ('{config.gyre_workflow.filtered_profiles_csv_name}') "
-                            f"was not generated or not found at '{gyre_input_csv_path}'. "
-                            "This is required for GYRE to run on filtered profiles. Skipping GYRE workflow.")
+    # Use the _GYRE_MODULES_LOADED flag to determine if actual modules are available
+    if config.gyre_workflow.run_gyre_workflow:
+        if _GYRE_MODULES_LOADED: # Check the global flag set by the import attempt
+            logger.info("\n--- Starting GYRE Workflow ---")
+            # Access gyre_config_path from gyre_workflow settings
+            gyre_config_full_path = os.path.abspath(config.gyre_workflow.gyre_config_path)
+            
+            # Validate GYRE config file path
+            if not os.path.exists(gyre_config_full_path):
+                logger.error(f"GYRE configuration file not found at '{gyre_config_full_path}'. Skipping GYRE workflow.")
+            # Validate filtered profiles CSV (required if blue loop analysis is enabled)
+            # Access analyze_blue_loop from blue_loop_analysis
+            # Access filtered_profiles_csv_name from gyre_workflow
+            elif config.blue_loop_analysis.analyze_blue_loop and \
+                  (not gyre_input_csv_path or not os.path.exists(gyre_input_csv_path)):
+                logger.warning(f"GYRE workflow enabled, but the filtered profiles CSV ('{config.gyre_workflow.filtered_profiles_csv_name}') "
+                                f"was not generated or not found at '{gyre_input_csv_path}'. "
+                                "This is required for GYRE to run on filtered profiles. Skipping GYRE workflow.")
+            else:
+                logger.info(f"Using GYRE specific settings from: '{gyre_config_full_path}'")
+                try:
+                    gyre_modules.run_gyre_workflow(
+                        gyre_config_path=gyre_config_full_path,
+                        filtered_profiles_csv_path=gyre_input_csv_path, # Path to the CSV generated by mesa_analyzer
+                        # Access input_dir from general_settings
+                        global_mesa_base_dir=os.path.abspath(config.general_settings.input_dir), 
+                        global_output_base_dir=gyre_output_dir,
+                        # Access debug from general_settings
+                        debug_mode=config.general_settings.debug
+                    )
+                    logger.info("GYRE workflow completed successfully.")
+                except Exception as e:
+                    logger.critical(f"Critical error during GYRE workflow: {e}", exc_info=True)
         else:
-            logger.info(f"Using GYRE specific settings from: '{gyre_config_full_path}'")
-            try:
-                gyre_modules.run_gyre_workflow(
-                    gyre_config_path=gyre_config_full_path,
-                    filtered_profiles_csv_path=gyre_input_csv_path, # Path to the CSV generated by mesa_analyzer
-                    # Access input_dir from general_settings
-                    global_mesa_base_dir=os.path.abspath(config.general_settings.input_dir), 
-                    global_output_base_dir=gyre_output_dir,
-                    # Access debug from general_settings
-                    debug_mode=config.general_settings.debug
-                )
-                logger.info("GYRE workflow completed successfully.")
-            except Exception as e:
-                logger.critical(f"Critical error during GYRE workflow: {e}", exc_info=True)
-    # This block is for when run_gyre_workflow is True, but gyre_modules import failed earlier
-    elif config.gyre_workflow.run_gyre_workflow:
-        logger.warning("GYRE workflow is enabled, but GYRE modules were not fully available (ImportError detected earlier). Skipping GYRE workflow.")
+            # This block is for when run_gyre_workflow is True, but gyre_modules import failed earlier
+            logger.warning("GYRE workflow is enabled in configuration, but GYRE modules failed to load. Skipping GYRE workflow.")
     else:
         logger.info("GYRE workflow is disabled in configuration (run_gyre_workflow=False).")
 
