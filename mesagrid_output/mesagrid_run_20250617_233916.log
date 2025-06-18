@@ -1,0 +1,11 @@
+2025-06-17 23:39:16,185 - INFO - Loaded configuration from: mysett.yaml
+2025-06-17 23:39:16,185 - INFO - Parsed arguments (main): Namespace(config='mysett.yaml')
+2025-06-17 23:39:16,185 - INFO - Logging set up. Log file: ./mesagrid_output/mesagrid_run_20250617_233916.log
+2025-06-17 23:39:16,185 - INFO - MESA Grid Analysis started. Input directory: ./MESA_runs, Output directory: ./mesagrid_output
+2025-06-17 23:39:16,185 - INFO - Created/ensured directory: ./mesagrid_output/analysis_results
+2025-06-17 23:39:16,186 - INFO - Analysis started. Reanalysis needed: True
+2025-06-17 23:39:16,186 - INFO - Starting full analysis of MESA runs...
+2025-06-17 23:39:16,186 - INFO - Scanning './MESA_runs' for MESA run directories...
+2025-06-17 23:39:16,186 - INFO - Finished scanning. Found 0 valid MESA runs.
+2025-06-17 23:39:16,186 - WARNING - No valid MESA runs found to analyze. Exiting analysis.
+2025-06-17 23:39:16,186 - ERROR - MESA analysis failed or returned no data. Cannot proceed with plots or GYRE workflow.

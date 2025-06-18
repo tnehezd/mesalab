@@ -11,11 +11,11 @@ from tqdm import tqdm
 import re # Often useful for parsing run names, keeping it in case you add such logic.
 
 # --- Import core logic module for MESA analysis ---
-from mesalab.analysis import mesa_analyzer
+from .analyzis import mesa_analyzer
 
 # --- Import GYRE specific module ---
 # This import assumes gyre_modules.py is in mesalab/gyretools/
-from mesalab.gyretools import gyre_modules
+from .gyretools import gyre_modules
 
 # --- MIST Bolometric Correction Grid related imports (as seen in your logs) ---
 # It's generally better to place this where it's used (e.g., in plotter.py)
