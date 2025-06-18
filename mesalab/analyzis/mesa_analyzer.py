@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__) # Get a logger for this module
 # In a real setup, your main script would import and pass these, or they exist.
 
 try:
-    from mesalab.analysis import blue_loop_analyzer # e.g., mesalab/analysis/blue_loop_analyzer.py
+    from mesalab.analyzis import blue_loop_analyzer # e.g., mesalab/analysis/blue_loop_analyzer.py
 except ImportError:
     logger.warning("mesalab.analysis.blue_loop_analyzer not found. Using a dummy placeholder.")
     class DummyBlueLoopAnalyzer:
@@ -215,7 +215,7 @@ def perform_mesa_analysis(mesa_dirs_to_analyze, config):
                 analysis_result_summary.update(loop_summary)
 
                 if config.blue_loop_output_type == 'all':
-                    z_formatted = f"{current_z:.4f}".replace('.', 'p')
+                    z_formatted = f"{current_z:.4f}"
                     detail_output_path = os.path.join(detail_files_output_dir, f"detail_z{z_formatted}.csv")
                     if os.path.exists(detail_output_path):
                         df_loop_details.to_csv(detail_output_path, mode='a', header=False, index=False)
