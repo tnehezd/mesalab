@@ -82,8 +82,8 @@ def main():
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     # Access output_dir from general_settings
     output_base_dir = os.path.abspath(config.general_settings.output_dir)
-    session_output_dir = os.path.join(output_base_dir, f"mesa_analysis_{timestamp}")
-    analysis_results_sub_dir = os.path.join(session_output_dir, 'analysis_results')
+#    session_output_dir = os.path.join(output_base_dir, f"mesa_analysis_{timestamp}")
+    analysis_results_sub_dir = os.path.join(output_base_dir, 'analysis_results')
     detail_files_output_dir = os.path.join(session_output_dir, 'detail_files')
     plots_output_dir = os.path.join(session_output_dir, 'plots')
     gyre_output_dir = os.path.join(session_output_dir, 'gyre_output') # GYRE specific output dir
