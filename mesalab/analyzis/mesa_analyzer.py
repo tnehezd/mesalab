@@ -1,5 +1,3 @@
-# mesalab/mesa_analyzer.py (Module Version)
-
 import os
 import sys
 import logging
@@ -9,65 +7,36 @@ import matplotlib.pyplot as plt # Still needed if plotter uses it directly
 from tqdm import tqdm
 from datetime import datetime
 
-# Import data_reader functions directly
+# Initialize logging for this module
+logger = logging.getLogger(__name__)
+
+# Import data_reader functions directly from the 'analyzis' package
 from mesalab.analyzis.data_reader import (
     extract_params_from_inlist,
     scan_mesa_runs,
     get_data_from_history_file
 )
 
-# Placeholder imports for other modules.
-# These will be imported or their functions embedded/mocked by your main script.
-# For now, I'll keep the try-except blocks with Dummy classes for self-containment
-# if you don't have these files yet, but ideally, your main script sets them up.
-
-logger = logging.getLogger(__name__) # Get a logger for this module
-
-
-# --- Dummy Modules (Replace with your actual implementations) ---
-# These are here so the code runs without errors if your other modules are missing.
-# In a real setup, your main script would import and pass these, or they exist.
-
-try:
-    from mesalab.bluelooptools import blue_loop_analyzer
-except ImportError:
-    logger.warning("mesalab.analysis.blue_loop_analyzer not found. Using a dummy placeholder.")
-    class DummyBlueLoopAnalyzer:
-        def analyze_blue_loop(self, df_history, mass, z, config):
-            logger.warning("DUMMY blue_loop_analyzer.analyze_blue_loop called.")
-            return { 'blue_loop_crossing_count': 0, 'blue_loop_duration_yr': np.nan,
-                     'blue_loop_start_age_yr': np.nan, 'blue_loop_end_age_yr': np.nan,
-                     'min_log_Teff_bl': np.nan, 'max_log_Teff_bl': np.nan,
-                     'min_log_L_bl': np.nan, 'max_log_L_bl': np.nan }, pd.DataFrame()
-    blue_loop_analyzer = DummyBlueLoopAnalyzer()
-
-try:
-    from mesalab.plotting import plotter # e.g., mesalab/plotting/plotter.py
-except ImportError:
-    logger.warning("mesalab.plotting.plotter not found. Using a dummy placeholder.")
-    class DummyPlotter:
-        def generate_heatmap(self, df, output_dir):
-            logger.warning("DUMMY plotter.generate_heatmap called.")
-        def generate_hr_diagrams(self, input_dir, output_dir, summary_df, hr_option, bc_flag):
-            logger.warning("DUMMY plotter.generate_hr_diagrams called.")
-    plotter = DummyPlotter()
-
-try:
-    from mesalab.gyre import gyre_modules # e.g., mesalab/gyre/gyre_modules.py
-except ImportError:
-    logger.warning("mesalab.gyre.gyre_modules not found. Using a dummy placeholder.")
-    class DummyGyreModules:
-        def run_gyre_workflow(self, gyre_input_csv_path, gyre_config_path, gyre_output_dir):
-            logger.warning("DUMMY gyre_modules.run_gyre_workflow called.")
-            logger.info(f"DUMMY: Would run GYRE with input: {gyre_input_csv_path}, config: {gyre_config_path}, output to: {gyre_output_dir}")
-    gyre_modules = DummyGyreModules()
-# --- End Dummy Modules ---
+# --- ACTUAL MODULE IMPORTS ---
+# These imports assume the following structure within your 'mesalab' package:
+# mesalab/bluelooptools/blue_loop_analyzer.py
+# mesalab/plotting/plotter.py
+# mesalab/gyre/gyre_modules.py
+# And that each of these subdirectories contains an __init__.py file.
+from mesalab.bluelooptools import blue_loop_analyzer
+from mesalab.plotting import plotter
+from mesalab.gyre import gyre_modules
+# --- END ACTUAL MODULE IMPORTS ---
 
 
 def run_analysis_workflow(config):
     """
     Main entry point for the MESA analysis workflow when called as a module.
     Takes a parsed config object (Namespace) as input.
+
+    Args:
+        config (argparse.Namespace): A configuration object containing paths,
+                                     flags for analysis steps, etc.
     """
     logger.info(f"MESA Grid Analysis started. Input directory: {config.input_dir}, Output directory: {config.output_dir}")
     logger.debug(f"Full config object for analysis: {config}")
@@ -88,12 +57,15 @@ def run_analysis_workflow(config):
             mesa_dirs_from_config = scan_mesa_runs(config.input_dir, config.inlist_name)
             config_run_paths = {d['run_dir_path'] for d in mesa_dirs_from_config}
 
+            # Check if all runs in config are present in the existing summary
             if not config_run_paths.issubset(set(summary_df_raw['run_dir_path'].values)):
                 logger.info("Not all MESA run directories from config found in existing summary file. Reanalysis will be performed.")
                 reanalysis_needed = True
+            # Check if blue loop analysis is enabled and results are missing from summary
             elif config.analyze_blue_loop and 'blue_loop_duration_yr' not in summary_df_raw.columns:
                 logger.info("Blue loop analysis enabled but required columns not found in existing summary. Reanalysis will be performed.")
                 reanalysis_needed = True
+            # Check for GYRE related columns (first/last model_number)
             elif 'first_model_number' not in summary_df_raw.columns or summary_df_raw['first_model_number'].isnull().any():
                 logger.info("GYRE model number range columns missing or incomplete in existing summary. Reanalysis will be performed.")
                 reanalysis_needed = True
@@ -128,27 +100,33 @@ def run_analysis_workflow(config):
         logger.error("MESA analysis failed or returned no data. Cannot proceed with plots or GYRE workflow.")
         return
 
+    # --- Plotting and GYRE Workflow based on config and analysis results ---
     if config.generate_heatmaps:
         if 'blue_loop_crossing_count' in summary_df_raw.columns:
+            # Create a pivot table for heatmap generation
             cross_grid_df = summary_df_raw.pivot_table(
                 index='initial_mass', columns='initial_Z', values='blue_loop_crossing_count'
             )
             cross_grid_df.to_csv(cross_grid_file_path)
             logger.info(f"Cross-grid summary saved to {cross_grid_file_path}")
+            # Call the actual plotter module's heatmap function
             plotter.generate_heatmap(cross_grid_df, analysis_results_dir)
         else:
             logger.warning("Cannot generate heatmaps: 'blue_loop_crossing_count' column not found in summary data.")
 
     if config.generate_hr_diagrams != 'none':
+        # Call the actual plotter module's HR diagram function
         plotter.generate_hr_diagrams(config.input_dir,
-                                    config.output_dir,
-                                    summary_df_raw,
-                                    config.generate_hr_diagrams,
-                                    config.generate_blue_loop_plots_with_bc)
+                                     config.output_dir,
+                                     summary_df_raw,
+                                     config.generate_hr_diagrams,
+                                     config.generate_blue_loop_plots_with_bc)
 
+    # Prepare data for GYRE input (if enabled)
     gyre_input_df = summary_df_raw[['initial_mass', 'initial_Z', 'run_dir_path', 'first_model_number', 'last_model_number']].copy()
     gyre_input_df.rename(columns={'run_dir_path': 'mesa_run_directory'}, inplace=True)
 
+    # Ensure model numbers are integers for GYRE, handling NaNs
     gyre_input_df['first_model_number'] = gyre_input_df['first_model_number'].fillna(-1).astype(int)
     gyre_input_df['last_model_number'] = gyre_input_df['last_model_number'].fillna(-1).astype(int)
 
@@ -158,6 +136,7 @@ def run_analysis_workflow(config):
     if config.run_gyre_workflow:
         logger.info("Starting GYRE workflow...")
         try:
+            # Call the actual gyre_modules' run_gyre_workflow function
             gyre_modules.run_gyre_workflow(
                 gyre_input_csv_path,
                 config.gyre_config_path,
@@ -168,10 +147,21 @@ def run_analysis_workflow(config):
 
     logger.info("MESA Grid Analysis finished.")
 
+
 def perform_mesa_analysis(mesa_dirs_to_analyze, config):
     """
-    (This function was part of the main workflow, kept separate for clarity)
-    Performs the core MESA run analysis, extracting data and optionally blue loop info.
+    Performs the core MESA run analysis for each specified MESA run,
+    extracting history data and optionally blue loop information.
+
+    Args:
+        mesa_dirs_to_analyze (list): A list of dictionaries, each containing
+                                      'run_dir_path', 'history_file_path',
+                                      'mass', 'z' for a MESA run.
+        config (argparse.Namespace): The configuration object.
+
+    Returns:
+        list: A list of dictionaries, where each dictionary summarizes the
+              analysis results for a single MESA run.
     """
     analysis_summary_data = []
 
@@ -200,6 +190,7 @@ def perform_mesa_analysis(mesa_dirs_to_analyze, config):
             analysis_summary_data.append(analysis_result_summary)
             continue
 
+        # Extract first and last model numbers for GYRE
         if not df_full_history.empty and 'model_number' in df_full_history.columns:
             analysis_result_summary['first_model_number'] = df_full_history['model_number'].min()
             analysis_result_summary['last_model_number'] = df_full_history['model_number'].max()
@@ -208,15 +199,21 @@ def perform_mesa_analysis(mesa_dirs_to_analyze, config):
             analysis_result_summary['first_model_number'] = np.nan
             analysis_result_summary['last_model_number'] = np.nan
 
+        # Perform blue loop analysis if enabled
         if config.analyze_blue_loop:
             logger.debug(f"Analyzing blue loop for M={current_mass}, Z={current_z}")
             try:
-                loop_summary, df_loop_details = blue_loop_analyzer.analyze_blue_loop(df_full_history, current_mass, current_z, config)
+                # IMPORTANT: Calling analyze_blue_loop with 3 arguments as defined in blue_loop_analyzer.py
+                loop_summary, df_loop_details = blue_loop_analyzer.analyze_blue_loop(df_full_history, current_mass, current_z)
                 analysis_result_summary.update(loop_summary)
 
+                # Save detailed blue loop data if output type is 'all'
                 if config.blue_loop_output_type == 'all':
+                    # Removed .replace('.', 'p') as requested
                     z_formatted = f"{current_z:.4f}"
                     detail_output_path = os.path.join(detail_files_output_dir, f"detail_z{z_formatted}.csv")
+                    
+                    # Append if file exists, create new if not
                     if os.path.exists(detail_output_path):
                         df_loop_details.to_csv(detail_output_path, mode='a', header=False, index=False)
                     else:
@@ -226,13 +223,15 @@ def perform_mesa_analysis(mesa_dirs_to_analyze, config):
             except Exception as e:
                 logger.error(f"Error during blue loop analysis for M={current_mass}, Z={current_z}: {e}")
                 analysis_result_summary['mesa_status'] = 'BLUE_LOOP_ANALYSIS_FAILED'
+                # Ensure all blue loop related keys are set to NaN if analysis fails
                 for key in ['blue_loop_crossing_count', 'blue_loop_duration_yr',
                              'blue_loop_start_age_yr', 'blue_loop_end_age_yr',
                              'min_log_Teff_bl', 'max_log_Teff_bl',
-                             'min_log_L_bl', 'max_log_L_bl']:
+                             'min_log_L_bl', 'max_log_L_bl']: # Ensure these match keys in loop_summary
                     analysis_result_summary[key] = np.nan
         else:
             logger.info(f"Skipping blue loop analysis for M={current_mass}, Z={current_z} as analyze_blue_loop is False.")
+            # Ensure blue loop related keys are set to NaN if analysis is skipped
             for key in ['blue_loop_crossing_count', 'blue_loop_duration_yr',
                          'blue_loop_start_age_yr', 'blue_loop_end_age_yr',
                          'min_log_Teff_bl', 'max_log_Teff_bl',
@@ -242,5 +241,3 @@ def perform_mesa_analysis(mesa_dirs_to_analyze, config):
         analysis_summary_data.append(analysis_result_summary)
 
     return analysis_summary_data
-
-# Removed if __name__ == "__main__" block
