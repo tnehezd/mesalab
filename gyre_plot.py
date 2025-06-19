@@ -316,7 +316,7 @@ def plot_gyre_hrd(df_modes_filtered):
         plt.title(f'Hertzsprung-Russell Diagram - Unstable GYRE Modes (Total Unstable: {len(df_unstable_modes)})')
         plt.gca().invert_xaxis()
         plt.grid(True, linestyle='--', alpha=0.6)
-        plt.legend(title=r'$\mathrm{Im}(\freq)$', bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.legend(title=r'$\mathrm{Im}(freq)$', bbox_to_anchor=(1.05, 1), loc='upper left')
         plt.tight_layout()
 
         plot_filename_imag = os.path.join(plot_output_dir, "hrd_gyre_modes_by_freq_imag.png")
