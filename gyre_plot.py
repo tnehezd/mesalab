@@ -180,8 +180,8 @@ def collect_gyre_mesa_data():
                         'log_Teff': mesa_row['log_Teff'].iloc[0],
                         'star_mass_mesa': mesa_row['star_mass'].iloc[0], # Mass from MESA history
                         # GYRE mode properties (now checking for n_p, n_g, eta)
-                        'freq_real': mode_row_gyre['omega'].real if 'omega' in mode_row_gyre.dtype.names else np.nan,
-                        'freq_imag': mode_row_gyre['omega'].imag if 'omega' in mode_row_gyre.dtype.names else np.nan,
+                        'freq_real': mode_row_gyre['freq'].real if 'freq' in mode_row_gyre.dtype.names else np.nan,
+                        'freq_imag': mode_row_gyre['freq'].imag if 'freq' in mode_row_gyre.dtype.names else np.nan,
                         'l': mode_row_gyre['l'] if 'l' in mode_row_gyre.dtype.names else np.nan,
                         'n_pg': mode_row_gyre['n_pg'] if 'n_pg' in mode_row_gyre.dtype.names else np.nan,
                         'n_p': mode_row_gyre['n_p'] if 'n_p' in mode_row_gyre.dtype.names else np.nan, # Added n_p (still read if available)
@@ -316,12 +316,12 @@ def plot_gyre_hrd(df_modes_filtered):
         plt.title(f'Hertzsprung-Russell Diagram - Unstable GYRE Modes (Total Unstable: {len(df_unstable_modes)})')
         plt.gca().invert_xaxis()
         plt.grid(True, linestyle='--', alpha=0.6)
-        plt.legend(title=r'$\mathrm{Im}(\omega)$', bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.legend(title=r'$\mathrm{Im}(\freq)$', bbox_to_anchor=(1.05, 1), loc='upper left')
         plt.tight_layout()
 
         plot_filename_imag = os.path.join(plot_output_dir, "hrd_gyre_modes_by_freq_imag.png")
         plt.savefig(plot_filename_imag, dpi=300)
-        print(f"HRD plot (by Im(omega)) saved to: {plot_filename_imag}") 
+        print(f"HRD plot (by Im(freq)) saved to: {plot_filename_imag}") 
     else:
         print("No unstable modes found for plotting.")
 
