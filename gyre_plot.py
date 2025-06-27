@@ -7,7 +7,7 @@ import seaborn as sns
 import numpy as np
 import pygyre
 from scipy.signal import find_peaks
-from scipy.integrate import trapezoid # Changed from trapz
+from scipy.integrate import trapezoid
 
 # Import multiprocessing
 from multiprocessing import Pool, cpu_count
@@ -22,6 +22,7 @@ project_base_dir = "/home/tnd/mesagrid/mesa_blue_loop"
 gyre_results_base_dir = os.path.join(project_base_dir, "output_mid", "gyre_output")
 
 # This is the base directory where your MESA run LOGS folders are located.
+# PLEASE DOUBLE-CHECK THIS PATH TO ENSURE IT'S CORRECT FOR YOUR SETUP!
 mesa_logs_base_dir = "/home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid_less"
 
 # Name of the output CSV file (will contain all collected data).
@@ -50,65 +51,117 @@ def parse_mesa_run_name(run_name):
 # --- Data Collection Function ---
 def collect_gyre_mesa_data():
     all_gyre_modes = []
-    
+
     print("Starting data collection from GYRE and MESA results...")
 
+    # --- MODIFIED: calculate_integrated_work_in_zones function ---
     def calculate_integrated_work_in_zones(x, dW_dx, gamma_1):
+        """
+        Calculates the integrated work (dW/dx) in the He II and H/He I ionization zones.
+        Identifies zones based on Gamma_1 dips, prioritizing the outermost two significant dips.
+        Returns a tuple: (integrated_work_HeII, integrated_work_HHeI)
+        """
         integrated_work_HeII = np.nan
         integrated_work_HHeI = np.nan
 
-        if len(gamma_1) < 5 or np.all(np.isnan(gamma_1)) or np.all(np.isnan(dW_dx)):
+        # Basic checks for valid input data
+        if len(gamma_1) < 10 or np.all(np.isnan(gamma_1)) or np.all(np.isnan(dW_dx)):
             return integrated_work_HeII, integrated_work_HHeI
 
-        gamma_1_smoothed = pd.Series(gamma_1).rolling(window=5, center=True, min_periods=1).mean().values
+        # Ensure x and dW_dx are Series for consistent indexing with .iloc
+        x_series = pd.Series(x)
+        dW_dx_series = pd.Series(dW_dx)
 
-        peaks, properties = find_peaks(-gamma_1_smoothed, height=-np.inf, distance=len(gamma_1_smoothed) // 15, prominence=0.01)
+        # 1. Smooth Gamma_1 to reduce noise and highlight major dips
+        # Adjust window size if needed (e.g., 5 to 9 depending on profile smoothness)
+        gamma_1_smoothed = pd.Series(gamma_1).rolling(window=7, center=True, min_periods=1).mean().values
 
-        dip_x_coords = sorted([(x.iloc[p], p) for p in peaks if p < len(x)]) 
+        # 2. Find peaks in the negative smoothed Gamma_1 (which correspond to dips)
+        # prominence: Controls the "depth" of the dip to be considered significant.
+        #             Adjust this value (e.g., 0.05, 0.1, 0.02) based on your models.
+        # distance: Minimum horizontal distance (in data points) between detected dips.
+        #           Adjust this to avoid detecting too many closely spaced noise dips.
+        peaks, properties = find_peaks(-gamma_1_smoothed, prominence=0.05, distance=len(gamma_1_smoothed) // 10)
+
+        # 3. Collect significant dips' x-coordinates and original indices, then sort by x-coordinate in descending order
+        # This means the outermost dip (largest x) comes first.
+        significant_dips_info = sorted(
+            [(x_series.iloc[p], p, properties['prominences'][i]) for i, p in enumerate(peaks)],
+            key=lambda item: item[0], # Sort by x-coordinate
+            reverse=True              # Descending order (outermost first)
+        )
+
+        # Initialize dip locations
+        he_i_h_dip_x = np.nan
+        he_i_h_dip_idx = -1
+        he_ii_dip_x = np.nan
+        he_ii_dip_idx = -1
+
+        # 4. Identify the two outermost (largest x) significant dips
+        # Assume the outermost is H/He I and the next is He II
+        if len(significant_dips_info) >= 1:
+            he_i_h_dip_x, he_i_h_dip_idx, _ = significant_dips_info[0]
+
+        if len(significant_dips_info) >= 2:
+            he_ii_dip_x, he_ii_dip_idx, _ = significant_dips_info[1]
         
-        delta_x_zone = 0.03
+        # Heuristic for cases where only one significant dip is found
+        # If there's only one dip and it's sufficiently deep (e.g., x < 0.5),
+        # it's more likely to be the He II zone.
+        elif len(significant_dips_info) == 1:
+            # You might need to adjust the x-threshold (e.g., 0.5) based on your stellar models
+            # to differentiate between a lone H/He I or a lone He II.
+            # A common approach is to expect He II closer to the core.
+            if he_i_h_dip_x < 0.5: # If the single dip is relatively deep in the star
+                he_ii_dip_x = he_i_h_dip_x
+                he_ii_dip_idx = he_i_h_dip_idx
+                he_i_h_dip_x = np.nan # No clear H/He I if only one deep dip
+            # Else, if the single dip is at x >= 0.5, it's likely H/He I, and He II is not found (remains nan)
 
-        if len(dip_x_coords) >= 1:
-            heii_dip_x, heii_dip_idx = dip_x_coords[0]
-            x_start_heii = max(0, heii_dip_x - delta_x_zone)
-            x_end_heii = min(1, heii_dip_x + delta_x_zone)
-            heii_indices = (x >= x_start_heii) & (x <= x_end_heii)
-            
+
+        # Integration window size around the dip
+        delta_x_zone = 0.03 # +/- 0.03 in fractional radius around the dip
+
+        # Integrate work in He II zone
+        if not np.isnan(he_ii_dip_x):
+            x_start_heii = max(0, he_ii_dip_x - delta_x_zone)
+            x_end_heii = min(1, he_ii_dip_x + delta_x_zone)
+            heii_indices = (x_series >= x_start_heii) & (x_series <= x_end_heii)
             if np.any(heii_indices):
-                integrated_work_HeII = trapezoid(dW_dx[heii_indices], x[heii_indices]) # Changed to trapezoid
+                integrated_work_HeII = trapezoid(dW_dx_series[heii_indices], x_series[heii_indices])
 
-        if len(dip_x_coords) >= 2:
-            hhei_dip_x, hhei_dip_idx = dip_x_coords[1] 
-            x_start_hhei = max(0, hhei_dip_x - delta_x_zone)
-            x_end_hhei = min(1, hhei_dip_x + delta_x_zone)
-            hhei_indices = (x >= x_start_hhei) & (x <= x_end_hhei)
-            
+        # Integrate work in H/He I zone
+        if not np.isnan(he_i_h_dip_x):
+            x_start_hhei = max(0, he_i_h_dip_x - delta_x_zone)
+            x_end_hhei = min(1, he_i_h_dip_x + delta_x_zone)
+            hhei_indices = (x_series >= x_start_hhei) & (x_series <= x_end_hhei)
             if np.any(hhei_indices):
-                integrated_work_HHeI = trapezoid(dW_dx[hhei_indices], x[hhei_indices]) # Changed to trapezoid
+                integrated_work_HHeI = trapezoid(dW_dx_series[hhei_indices], x_series[hhei_indices])
         
         return integrated_work_HeII, integrated_work_HHeI
+    # --- END MODIFIED function ---
 
 
-    run_directories = [d for d in os.listdir(gyre_results_base_dir) 
+    run_directories = [d for d in os.listdir(gyre_results_base_dir)
                        if os.path.isdir(os.path.join(gyre_results_base_dir, d)) and d.startswith("run")]
 
     for run_dir_name in tqdm(run_directories, desc="Processing MESA runs"):
         current_gyre_run_path = os.path.join(gyre_results_base_dir, run_dir_name)
-        
+
         mass, z = parse_mesa_run_name(run_dir_name)
         if pd.isna(mass) or pd.isna(z):
             tqdm.write(f"Warning: Could not parse mass or Z from directory name: {run_dir_name}. Skipping this run.")
             continue
 
         corresponding_mesa_logs_path = os.path.join(mesa_logs_base_dir, run_dir_name, "LOGS")
-        
+
         profiles_index_path = os.path.join(corresponding_mesa_logs_path, "profiles.index")
         profile_to_model = {}
 
         if os.path.exists(profiles_index_path):
             try:
                 with open(profiles_index_path, 'r') as f:
-                    lines = f.readlines()[1:] 
+                    lines = f.readlines()[1:]
                     for line in lines:
                         parts = line.strip().split()
                         if len(parts) == 3:
@@ -128,14 +181,14 @@ def collect_gyre_mesa_data():
             try:
                 with open(history_file_path, 'r') as f:
                     lines = f.readlines()
-                header_line = lines[5].strip().split() 
-                
-                mesa_history_df = pd.read_csv(history_file_path, 
-                                               skiprows=6, 
-                                               sep=r'\s+', 
-                                               names=header_line, 
+                header_line = lines[5].strip().split()
+
+                mesa_history_df = pd.read_csv(history_file_path,
+                                               skiprows=6,
+                                               sep=r'\s+',
+                                               names=header_line,
                                                engine='python')
-                
+
                 required_history_cols = ['model_number', 'log_L', 'log_Teff', 'star_mass']
                 if not all(col in mesa_history_df.columns for col in required_history_cols):
                     tqdm.write(f"Warning: Missing required columns in history.data for {run_dir_name}. Available: {mesa_history_df.columns.tolist()}. Skipping this run.")
@@ -148,7 +201,7 @@ def collect_gyre_mesa_data():
             tqdm.write(f"Error: MESA history.data not found for {run_dir_name} at {history_file_path}. Skipping this run.")
             continue
 
-        profile_folders = [d for d in os.listdir(current_gyre_run_path) 
+        profile_folders = [d for d in os.listdir(current_gyre_run_path)
                            if os.path.isdir(os.path.join(current_gyre_run_path, d)) and d.startswith("profile")]
 
         if not profile_folders:
@@ -172,29 +225,29 @@ def collect_gyre_mesa_data():
             if pd.isna(model_num):
                 tqdm.write(f"   ⚠️ No valid model number mapped for profile {profile_value} in {run_dir_name}. Skipping modes from this profile.")
                 continue
-            
+
             mesa_row = mesa_history_df[mesa_history_df['model_number'] == model_num]
             if mesa_row.empty:
                 tqdm.write(f"   Warning: No MESA history entry found for model {model_num} in {run_dir_name}. Skipping modes from this profile.")
                 continue
-            
+
             try:
                 gyre_table = pygyre.read_output(summary_h5_path)
-                
+
                 if len(gyre_table) == 0:
                     continue
 
                 for mode_idx in range(len(gyre_table)):
                     mode_row_gyre = gyre_table[mode_idx]
-                    
+
                     mode_l = int(mode_row_gyre['l']) if 'l' in mode_row_gyre.dtype.names and not np.isnan(mode_row_gyre['l']) else None
                     mode_npg = int(mode_row_gyre['n_pg']) if 'n_pg' in mode_row_gyre.dtype.names and not np.isnan(mode_row_gyre['n_pg']) else None
 
                     detail_file_name = None
                     if mode_l is not None and mode_npg is not None:
                         n_str = f"+{mode_npg}" if mode_npg >= 0 else str(mode_npg)
-                        detail_file_name = f"detail.l{mode_l}.n{n_str}.TXT" 
-                    
+                        detail_file_name = f"detail.l{mode_l}.n{n_str}.TXT"
+
                     full_detail_file_path = os.path.join(current_profile_path, detail_file_name) if detail_file_name else None
 
                     integrated_work_HeII = np.nan
@@ -204,15 +257,15 @@ def collect_gyre_mesa_data():
                         try:
                             gyre_detail_data_df = pd.read_csv(
                                 full_detail_file_path,
-                                skiprows=6,         
-                                sep=r'\s+',         
-                                names=detail_columns, 
-                                engine='python'     
+                                skiprows=6,
+                                sep=r'\s+',
+                                names=detail_columns,
+                                engine='python'
                             )
                             if all(col in gyre_detail_data_df.columns for col in ['x', 'dW_dx', 'Gamma_1']):
                                 integrated_work_HeII, integrated_work_HHeI = calculate_integrated_work_in_zones(
-                                    gyre_detail_data_df['x'], 
-                                    gyre_detail_data_df['dW_dx'], 
+                                    gyre_detail_data_df['x'],
+                                    gyre_detail_data_df['dW_dx'],
                                     gyre_detail_data_df['Gamma_1']
                                 )
                             else:
@@ -224,17 +277,17 @@ def collect_gyre_mesa_data():
                         'mass': mass,
                         'Z': z,
                         'model_number': model_num,
-                        'profile_number': profile_value, 
+                        'profile_number': profile_value,
                         'log_L': mesa_row['log_L'].iloc[0],
                         'log_Teff': mesa_row['log_Teff'].iloc[0],
-                        'star_mass_mesa': mesa_row['star_mass'].iloc[0], 
+                        'star_mass_mesa': mesa_row['star_mass'].iloc[0],
                         'freq_real': mode_row_gyre['freq'].real if 'freq' in mode_row_gyre.dtype.names else np.nan,
                         'freq_imag': mode_row_gyre['freq'].imag if 'freq' in mode_row_gyre.dtype.names else np.nan,
-                        'l': mode_l, 
-                        'n_pg': mode_npg, 
+                        'l': mode_l,
+                        'n_pg': mode_npg,
                         'eta': mode_row_gyre['eta'] if 'eta' in mode_row_gyre.dtype.names else np.nan,
-                        'detail_file_path': full_detail_file_path, 
-                        'profile_folder_path': current_profile_path, 
+                        'detail_file_path': full_detail_file_path,
+                        'profile_folder_path': current_profile_path,
                         'center_h1': mesa_row['center_h1'].iloc[0] if 'center_h1' in mesa_row.columns else np.nan,
                         'star_age': mesa_row['star_age'].iloc[0] if 'star_age' in mesa_row.columns else np.nan,
                         'log_g': mesa_row['log_g'].iloc[0] if 'log_g' in mesa_row.columns else np.nan,
@@ -246,11 +299,11 @@ def collect_gyre_mesa_data():
             except Exception as e:
                 tqdm.write(f"Error reading {summary_h5_path} with pygyre: {e}. Skipping this profile's GYRE modes.")
                 continue
-    
+
     if all_gyre_modes:
         final_df = pd.DataFrame(all_gyre_modes)
         final_df_sorted = final_df.sort_values(by=['mass', 'Z', 'model_number', 'l', 'n_pg'])
-        
+
         output_csv_path = os.path.join(project_base_dir, output_csv_filename)
         final_df_sorted.to_csv(output_csv_path, index=False)
         print(f"\nSuccessfully collected all data: {output_csv_path}")
@@ -271,7 +324,7 @@ def plot_gyre_hrd(df_modes_filtered):
 
     if not df_npg_filtered.empty:
         unique_npg_values = sorted(df_npg_filtered['n_pg'].dropna().astype(int).unique())
-        
+
         sns.scatterplot(data=df_npg_filtered,
                         x='log_Teff',
                         y='log_L',
@@ -287,10 +340,10 @@ def plot_gyre_hrd(df_modes_filtered):
         plt.title(f'HRD - GYRE Modes by $|n_{{pg}}|$ (up to 20) ({len(df_npg_filtered)} Modes)')
         plt.gca().invert_xaxis()
         plt.grid(True, linestyle='--', alpha=0.6)
-        
+
         if len(unique_npg_values) < 30:
             plt.legend(title=r'$n_{pg}$ Mode Number', bbox_to_anchor=(1.05, 1), loc='upper left',
-                                labels=[str(int(val)) for val in unique_npg_values])
+                                 labels=[str(int(val)) for val in unique_npg_values])
         else:
             plt.legend(title=r'$n_{pg}$ Mode Number', bbox_to_anchor=(1.05, 1), loc='upper left')
 
@@ -353,7 +406,7 @@ def plot_gyre_hrd(df_modes_filtered):
 
         plot_filename_imag = os.path.join(plot_output_dir, "hrd_gyre_modes_by_freq_imag.png")
         plt.savefig(plot_filename_imag, dpi=300)
-        print(f"HRD plot (by Im(freq)) saved to: {plot_filename_imag}")    
+        print(f"HRD plot (by Im(freq)) saved to: {plot_filename_imag}")
     else:
         print("No unstable modes found for plotting.")
 
@@ -384,10 +437,10 @@ def _plot_single_radial_profile(mode_data):
     try:
         gyre_detail_data_df = pd.read_csv(
             detail_file_path,
-            skiprows=6,         
-            sep=r'\s+',         
+            skiprows=6,
+            sep=r'\s+',
             names=detail_columns, # Ensure detail_columns is accessible or passed if needed
-            engine='python'     
+            engine='python'
         )
 
         x = gyre_detail_data_df['x']
@@ -401,14 +454,53 @@ def _plot_single_radial_profile(mode_data):
         xi_r_abs = np.sqrt(xi_r_real**2 + xi_r_imag**2)
         log10_xi_r_abs = np.log10(xi_r_abs + 1e-30)
 
+        # --- MODIFIED: Ionization zone plotting logic in _plot_single_radial_profile ---
         gamma_1_min_indices = []
         if len(gamma_1) > 2 and not np.all(np.isnan(gamma_1)):
-            gamma_1_smoothed = pd.Series(gamma_1).rolling(window=5, center=True, min_periods=1).mean().values
-            peaks, _ = find_peaks(-gamma_1_smoothed, height=-np.inf, distance=len(gamma_1)//15, prominence=0.01)
-            if len(peaks) > 0:
-                gamma_1_min_indices = sorted(peaks, key=lambda idx: x.iloc[idx])
-                if len(gamma_1_min_indices) > 2:
-                     gamma_1_min_indices = gamma_1_min_indices[:2] 
+            # Smooth Gamma_1 for finding dips, using the same window as in calculate_integrated_work_in_zones
+            gamma_1_smoothed_for_plot = pd.Series(gamma_1).rolling(window=7, center=True, min_periods=1).mean().values
+            
+            # Find peaks in the negative smoothed Gamma_1 (dips), using the same prominence and distance
+            peaks_for_plot, properties_for_plot = find_peaks(
+                -gamma_1_smoothed_for_plot, 
+                prominence=0.05, # Ensure this matches the value in calculate_integrated_work_in_zones
+                distance=len(gamma_1_smoothed_for_plot) // 10 # Ensure this matches
+            )
+            
+            # Sort detected dips by their x-coordinate in descending order (outermost first)
+            if len(peaks_for_plot) > 0:
+                # Need to use x_series for correct iloc indexing if x is not a simple numpy array
+                x_series_for_plot = pd.Series(x)
+                
+                significant_dips_plot_info = sorted(
+                    [(x_series_for_plot.iloc[p], p) for p in peaks_for_plot],
+                    key=lambda item: item[0], # Sort by x-coordinate
+                    reverse=True # Descending order
+                )
+                
+                # Take up to the two most prominent/outermost dips for plotting
+                # This logic should generally mirror the zone identification in calculate_integrated_work_in_zones
+                # If you want to plot ALL found dips, you can just use `[p for _,p in significant_dips_plot_info]`
+                # For consistency with work integral, we'll aim for the main two.
+                
+                if len(significant_dips_plot_info) >= 1:
+                    gamma_1_min_indices.append(significant_dips_plot_info[0][1]) # Add index of outermost dip
+                if len(significant_dips_plot_info) >= 2:
+                    gamma_1_min_indices.append(significant_dips_plot_info[1][1]) # Add index of second outermost dip
+                
+                # If only one dip and it's deep (similar to the heuristic in work func)
+                if len(significant_dips_plot_info) == 1 and significant_dips_plot_info[0][0] < 0.5:
+                    # If we only have one dip and it's deep, make sure it's plotted.
+                    # It's already in gamma_1_min_indices, so no extra action needed here for plotting.
+                    pass
+                elif len(significant_dips_plot_info) == 1 and significant_dips_plot_info[0][0] >= 0.5:
+                    # If it's a single, outer dip, we just plot that one. It's already in gamma_1_min_indices.
+                    pass
+
+                # Sort the indices for plotting if needed (not strictly necessary but good practice)
+                gamma_1_min_indices = sorted(list(set(gamma_1_min_indices))) # Remove duplicates and sort
+
+        # --- END MODIFIED plotting logic ---
 
         fig, axs = plt.subplots(5, 1, figsize=(10, 15), sharex=True)
         fig.suptitle(f'Radial Profiles - M {mass:.1f} Z {Z:.4f} | Model {model_number} | l={l}, n_pg={n_pg} | $\eta$={eta:.2e}', fontsize=12)
@@ -417,12 +509,12 @@ def _plot_single_radial_profile(mode_data):
         axs[0].set_ylabel(r'$\log_{10}(|\xi_r|)$')
         axs[0].set_title('Absolute Radial Displacement (log scale)')
         axs[0].grid(True, linestyle=':', alpha=0.7)
-        
+
         axs[2].plot(x, gamma_1, label=r'$\Gamma_1$', color='green')
         axs[2].set_ylabel(r'$\Gamma_1$')
         axs[2].set_title('Adiabatic Exponent ($\Gamma_1$)')
         axs[2].grid(True, linestyle=':', alpha=0.7)
-        
+
         axs[3].plot(x, kap_t, label=r'$\kappa_T$', color='blue')
         axs[3].set_ylabel(r'$\kappa_T$')
         axs[3].set_title(r'Opacity Derivative ($\kappa_T$)')
@@ -432,15 +524,15 @@ def _plot_single_radial_profile(mode_data):
             for min_idx in gamma_1_min_indices:
                 ax = axs[ax_idx]
                 if min_idx < len(x):
+                    # Only add label for the first vertical line to avoid duplicates in legend
                     if ax_idx == 0 and gamma_1_min_indices.index(min_idx) == 0:
                         ax.axvline(x.iloc[min_idx], color='r', linestyle='--', label='Ionization Zone')
                     else:
                         ax.axvline(x.iloc[min_idx], color='r', linestyle='--')
-        
+
         if gamma_1_min_indices:
-            axs[0].legend()
-        else:
-            axs[0].legend(loc='best')
+            axs[0].legend(loc='best') # Ensure legend appears if ionization zones are marked
+        # No need for else: axs[0].legend(loc='best') as it's implied by default behavior if no line is added to legend
 
         axs[1].plot(x, dw_dx, label=r'$\mathrm{d}W/\mathrm{d}x$', color='orange')
         axs[1].set_ylabel(r'$\mathrm{d}W/\mathrm{d}x$')
@@ -451,7 +543,7 @@ def _plot_single_radial_profile(mode_data):
         ax_temp.plot(x, temp, label='Temperature (K)', color='purple', linestyle=':', alpha=0.6)
         ax_temp.set_ylabel('Temperature (K)', color='purple')
         ax_temp.tick_params(axis='y', labelcolor='purple')
-        
+
         axs[4].plot(x, temp, label='Temperature (K)', color='purple')
         axs[4].set_xlabel('Fractional Radius ($x = r/R$)', fontsize=10)
         axs[4].set_ylabel('Temperature (K)')
@@ -460,8 +552,8 @@ def _plot_single_radial_profile(mode_data):
         axs[4].grid(True, linestyle=':', alpha=0.7)
 
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-        
-        os.makedirs(profile_folder_path, exist_ok=True) 
+
+        os.makedirs(profile_folder_path, exist_ok=True)
 
         plot_filename = os.path.join(profile_folder_path, f"radial_profile_l{l}_npg{n_pg}_M{model_number}.png")
         plt.savefig(plot_filename, dpi=300)
@@ -517,8 +609,8 @@ if __name__ == '__main__':
     # 2. Generate HRD plots from the collected data
     if not df_gyre_modes.empty:
         plot_gyre_hrd(df_gyre_modes.copy())
-        
+
         # 3. Generate Radial Profile plots for unstable modes
-        plot_radial_profiles(df_gyre_modes.copy(), max_npg_to_plot=np.inf) 
+        plot_radial_profiles(df_gyre_modes.copy(), max_npg_to_plot=np.inf)
     else:
         print("No GYRE modes available to generate plots.")
