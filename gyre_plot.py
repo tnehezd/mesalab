@@ -112,7 +112,7 @@ def collect_gyre_mesa_data():
             heii_indices = (x >= x_start_heii) & (x <= x_end_heii)
             
             if np.any(heii_indices):
-                integrated_work_HeII = trapz(dW_dx[heii_indices], x[heii_indices])
+                integrated_work_HeII = trapezoid(dW_dx[heii_indices], x[heii_indices])
 
         # The shallower (larger x) dip is usually H/He I
         if len(dip_x_coords) >= 2:
@@ -126,7 +126,7 @@ def collect_gyre_mesa_data():
             hhei_indices = (x >= x_start_hhei) & (x <= x_end_hhei)
             
             if np.any(hhei_indices):
-                integrated_work_HHeI = trapz(dW_dx[hhei_indices], x[hhei_indices])
+                integrated_work_HHeI = trapezoid(dW_dx[hhei_indices], x[hhei_indices])
         
         return integrated_work_HeII, integrated_work_HHeI
 
