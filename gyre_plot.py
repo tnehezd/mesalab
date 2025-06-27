@@ -5,14 +5,19 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
-import pygyre # Still needed for reading summary.h5 files
+import pygyre
+from scipy.signal import find_peaks
+from scipy.integrate import trapz
+
+# Import multiprocessing
+from multiprocessing import Pool, cpu_count
 
 # --- Configuration ---
 # IMPORTANT: Adjust these paths to precisely match your system's setup.
 
 # Base directory of your 'mesa_blue_loop' project.
 # This is where your 'gyre_plot.py' script is, and where 'mesalab_results' is located.
-project_base_dir = "/home/tnd/mesagrid/mesa_blue_loop"
+project_base_dir = "/home/tnehezd/workdir/mesa_blue_loop"
 
 # This is the base directory where your GYRE output 'run_...' folders are located.
 # Each 'run_...' folder is expected to contain 'profileXXXXX' subfolders,
@@ -21,7 +26,7 @@ gyre_results_base_dir = os.path.join(project_base_dir, "output_mid", "gyre_outpu
 
 # This is the base directory where your MESA run LOGS folders are located.
 # Each 'run_...' folder here should contain a 'LOGS' subfolder with 'history.data' and 'profiles.index'.
-mesa_logs_base_dir = "/home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid"
+mesa_logs_base_dir = "/home/tnehezd/workdir/mesa-r23.05.1/STRANGE/nad_convos_mid"
 
 # Name of the output CSV file (will contain all collected data).
 output_csv_filename = "gyre_modes_with_mesa_params.csv"
@@ -58,10 +63,73 @@ def collect_gyre_mesa_data():
     Collects GYRE mode data and corresponding MESA stellar parameters.
     It iterates through GYRE output directories, reads summary.h5 files,
     and links them to MESA history.data using profiles.index.
+    Crucially, it now also calculates and stores integrated work in ionization zones.
     """
     all_gyre_modes = []
     
     print("Starting data collection from GYRE and MESA results...")
+
+    # --- Nested helper function to calculate integrated work ---
+    def calculate_integrated_work_in_zones(x, dW_dx, gamma_1):
+        """
+        Calculates the integrated work (dW/dx) in the He II and H/He I ionization zones.
+        Attempts to identify zones based on Gamma_1 dips.
+        Returns a tuple: (integrated_work_HeII, integrated_work_HHeI)
+        """
+        integrated_work_HeII = np.nan
+        integrated_work_HHeI = np.nan
+
+        if len(gamma_1) < 5 or np.all(np.isnan(gamma_1)) or np.all(np.isnan(dW_dx)):
+            return integrated_work_HeII, integrated_work_HHeI
+
+        # Smooth Gamma_1 for better peak detection (adjust window size if needed)
+        gamma_1_smoothed = pd.Series(gamma_1).rolling(window=5, center=True, min_periods=1).mean().values
+
+        # Find dips in Gamma_1 (peaks in -Gamma_1_smoothed)
+        # height: minimum prominence for a peak to be considered (can be fine-tuned)
+        # distance: minimum distance between peaks (can be fine-tuned, relative to profile length)
+        # prominence=0.01 is a starting point, adjust if needed
+        peaks, properties = find_peaks(-gamma_1_smoothed, height=-np.inf, distance=len(gamma_1_smoothed) // 15, prominence=0.01)
+
+        # Sort dips by radial coordinate (x)
+        # Ensure index is valid for x.iloc[]
+        dip_x_coords = sorted([(x.iloc[p], p) for p in peaks if p < len(x)]) 
+        
+        # Define search window for integration around the dip: +/- delta_x
+        # These values might need tuning based on your models!
+        delta_x_zone = 0.03 # +/- 0.03 in fractional radius around the dip for integration
+
+        # Identify and integrate for up to two main zones (He II and H/He I)
+        # The deepest (smallest x) dip is usually He II
+        if len(dip_x_coords) >= 1:
+            heii_dip_x, heii_dip_idx = dip_x_coords[0]
+            
+            # Define integration range for He II
+            x_start_heii = max(0, heii_dip_x - delta_x_zone)
+            x_end_heii = min(1, heii_dip_x + delta_x_zone)
+            
+            # Find indices within this range
+            heii_indices = (x >= x_start_heii) & (x <= x_end_heii)
+            
+            if np.any(heii_indices):
+                integrated_work_HeII = trapz(dW_dx[heii_indices], x[heii_indices])
+
+        # The shallower (larger x) dip is usually H/He I
+        if len(dip_x_coords) >= 2:
+            hhei_dip_x, hhei_dip_idx = dip_x_coords[1] 
+
+            # Define integration range for H/He I
+            x_start_hhei = max(0, hhei_dip_x - delta_x_zone)
+            x_end_hhei = min(1, hhei_dip_x + delta_x_zone)
+
+            # Find indices within this range
+            hhei_indices = (x >= x_start_hhei) & (x <= x_end_hhei)
+            
+            if np.any(hhei_indices):
+                integrated_work_HHeI = trapz(dW_dx[hhei_indices], x[hhei_indices])
+        
+        return integrated_work_HeII, integrated_work_HHeI
+
 
     # Get a list of all 'run_...' directories in the GYRE results base directory
     run_directories = [d for d in os.listdir(gyre_results_base_dir) 
@@ -179,39 +247,65 @@ def collect_gyre_mesa_data():
                     mode_row_gyre = gyre_table[mode_idx]
                     
                     # Construct the detail file path for this specific mode
-                    # Check if 'l' and 'n_pg' exist and are valid for constructing the filename
                     mode_l = int(mode_row_gyre['l']) if 'l' in mode_row_gyre.dtype.names and not np.isnan(mode_row_gyre['l']) else None
                     mode_npg = int(mode_row_gyre['n_pg']) if 'n_pg' in mode_row_gyre.dtype.names and not np.isnan(mode_row_gyre['n_pg']) else None
 
                     detail_file_name = None
                     if mode_l is not None and mode_npg is not None:
                         n_str = f"+{mode_npg}" if mode_npg >= 0 else str(mode_npg)
-                        # Ensure we are looking for .TXT files as per your confirmation
                         detail_file_name = f"detail.l{mode_l}.n{n_str}.TXT" 
                     
                     full_detail_file_path = os.path.join(current_profile_path, detail_file_name) if detail_file_name else None
+
+                    # --- New: Calculate integrated work if detail file exists ---
+                    integrated_work_HeII = np.nan
+                    integrated_work_HHeI = np.nan
+
+                    if full_detail_file_path and os.path.exists(full_detail_file_path):
+                        try:
+                            gyre_detail_data_df = pd.read_csv(
+                                full_detail_file_path,
+                                skiprows=6,         
+                                sep=r'\s+',         
+                                names=detail_columns, 
+                                engine='python'     
+                            )
+                            # Ensure essential columns for calculation exist
+                            if all(col in gyre_detail_data_df.columns for col in ['x', 'dW_dx', 'Gamma_1']):
+                                integrated_work_HeII, integrated_work_HHeI = calculate_integrated_work_in_zones(
+                                    gyre_detail_data_df['x'], 
+                                    gyre_detail_data_df['dW_dx'], 
+                                    gyre_detail_data_df['Gamma_1']
+                                )
+                            else:
+                                tqdm.write(f"      Missing essential columns (x, dW_dx, Gamma_1) in detail file {detail_file_name}. Cannot calculate integrated work.")
+                        except Exception as detail_e:
+                            tqdm.write(f"      Error reading detail file {detail_file_name} for integrated work calculation: {detail_e}")
 
                     new_row = {
                         'mass': mass,
                         'Z': z,
                         'model_number': model_num,
-                        'profile_number': profile_value, # Store the profile number too
+                        'profile_number': profile_value, 
                         'log_L': mesa_row['log_L'].iloc[0],
                         'log_Teff': mesa_row['log_Teff'].iloc[0],
-                        'star_mass_mesa': mesa_row['star_mass'].iloc[0], # Mass from MESA history
+                        'star_mass_mesa': mesa_row['star_mass'].iloc[0], 
                         # GYRE mode properties
                         'freq_real': mode_row_gyre['freq'].real if 'freq' in mode_row_gyre.dtype.names else np.nan,
                         'freq_imag': mode_row_gyre['freq'].imag if 'freq' in mode_row_gyre.dtype.names else np.nan,
-                        'l': mode_l, # Store as int if valid, else None
-                        'n_pg': mode_npg, # Store as int if valid, else None
+                        'l': mode_l, 
+                        'n_pg': mode_npg, 
                         'eta': mode_row_gyre['eta'] if 'eta' in mode_row_gyre.dtype.names else np.nan,
                         # Path to the detail file for this specific mode
                         'detail_file_path': full_detail_file_path, 
-                        'profile_folder_path': current_profile_path, # <<< ÚJ: A profile mappa teljes elérési útja
+                        'profile_folder_path': current_profile_path, 
                         # Add other history columns you might want, e.g., 'center_h1', 'star_age', 'log_g'
                         'center_h1': mesa_row['center_h1'].iloc[0] if 'center_h1' in mesa_row.columns else np.nan,
                         'star_age': mesa_row['star_age'].iloc[0] if 'star_age' in mesa_row.columns else np.nan,
-                        'log_g': mesa_row['log_g'].iloc[0] if 'log_g' in mesa_row.columns else np.nan
+                        'log_g': mesa_row['log_g'].iloc[0] if 'log_g' in mesa_row.columns else np.nan,
+                        # --- New: Integrated Work Columns ---
+                        'integrated_work_HeII_zone': integrated_work_HeII,
+                        'integrated_work_HHeI_zone': integrated_work_HHeI
                     }
                     all_gyre_modes.append(new_row)
 
@@ -237,7 +331,7 @@ def collect_gyre_mesa_data():
 # --- HRD Plotting Function (No change here, as it saves to a central plot_output_dir) ---
 def plot_gyre_hrd(df_modes_filtered):
     """
-    Generates Hertzsprung-Russell Diagram (HRD) plots of GYRE modes.
+    Generates Hertzsprun-Russell Diagram (HRD) plots of GYRE modes.
     Plots colored by 'n_pg' (mode order, filtered to abs(n_pg) <= 20) and 'eta'.
     """
     if df_modes_filtered.empty:
@@ -348,168 +442,172 @@ def plot_gyre_hrd(df_modes_filtered):
     plt.show() # Display the plots (this will pause execution until plots are closed)
 
 
-# --- Radial Profile Plotting Function ---
-def plot_radial_profiles(df_modes_all, max_npg_to_plot=20): # <<< Változott a paraméter
+# --- Worker function for parallel plotting ---
+def _plot_single_radial_profile(mode_row_tuple):
     """
-    Generates radial profile plots for selected unstable modes.
-    Plots log10(|xi_r|), dW/dx, Gamma_1, kap_T, and T vs. fractional radius (x).
+    Worker function to plot a single radial profile.
+    This function is designed to be called by a multiprocessing Pool.
+    It takes a tuple (index, mode_row) where mode_row is a namedtuple from df.itertuples().
+    """
+    # Unpack the tuple
+    _, mode_row = mode_row_tuple
+
+    detail_file_path = mode_row.detail_file_path
+    profile_output_path = mode_row.profile_folder_path 
+
+    if not detail_file_path or not os.path.exists(detail_file_path):
+        # We can't use tqdm.write directly from worker processes, print instead
+        print(f"   Skipping radial plot for mode l={mode_row.l}, n_pg={mode_row.n_pg} (Model {mode_row.model_number}): Detail file not found at {detail_file_path}")
+        return
+
+    try:
+        # Read the detail .TXT file using pandas.read_csv
+        gyre_detail_data_df = pd.read_csv(
+            detail_file_path,
+            skiprows=6,         
+            sep=r'\s+',         
+            names=detail_columns, 
+            engine='python'     
+        )
+
+        # Extract relevant columns from the DataFrame
+        x = gyre_detail_data_df['x']
+        xi_r_real = gyre_detail_data_df['Re(xi_r)']
+        xi_r_imag = gyre_detail_data_df['Im(xi_r)']
+        dw_dx = gyre_detail_data_df['dW_dx']
+        gamma_1 = gyre_detail_data_df['Gamma_1']
+        kap_t = gyre_detail_data_df['kap_T']
+        temp = gyre_detail_data_df['T'] # Temperature for context
+
+        # Calculate absolute value of xi_r
+        xi_r_abs = np.sqrt(xi_r_real**2 + xi_r_imag**2)
+        # Avoid log10(0) if xi_r_abs is very small
+        log10_xi_r_abs = np.log10(xi_r_abs + 1e-30) # Add small epsilon to avoid log(0)
+
+        # --- Gamma_1 dipek azonosítása és piros vonalak berajzolása ---
+        gamma_1_min_indices = []
+        if len(gamma_1) > 2 and not np.all(np.isnan(gamma_1)):
+            gamma_1_smoothed = pd.Series(gamma_1).rolling(window=5, center=True, min_periods=1).mean().values
+            peaks, _ = find_peaks(-gamma_1_smoothed, height=-np.inf, distance=len(gamma_1)//15, prominence=0.01)
+            if len(peaks) > 0:
+                gamma_1_min_indices = sorted(peaks, key=lambda idx: x.iloc[idx])
+                if len(gamma_1_min_indices) > 2:
+                     gamma_1_min_indices = gamma_1_min_indices[:2] 
+
+        # --- Plotok elkészítése ---
+        fig, axs = plt.subplots(5, 1, figsize=(10, 15), sharex=True)
+        fig.suptitle(f'Radial Profiles - M {mode_row.mass:.1f} Z {mode_row.Z:.4f} | Model {mode_row.model_number} | l={mode_row.l}, n_pg={mode_row.n_pg} | $\eta$={mode_row.eta:.2e}', fontsize=12)
+
+        # Plot log10(|xi_r|)
+        axs[0].plot(x, log10_xi_r_abs, label=r'$\log_{10}(|\xi_r|)$')
+        axs[0].set_ylabel(r'$\log_{10}(|\xi_r|)$')
+        axs[0].set_title('Absolute Radial Displacement (log scale)')
+        axs[0].grid(True, linestyle=':', alpha=0.7)
+        
+        # Plot Gamma_1
+        axs[2].plot(x, gamma_1, label=r'$\Gamma_1$', color='green')
+        axs[2].set_ylabel(r'$\Gamma_1$')
+        axs[2].set_title('Adiabatic Exponent ($\Gamma_1$)')
+        axs[2].grid(True, linestyle=':', alpha=0.7)
+        
+        # Plot kap_T
+        axs[3].plot(x, kap_t, label=r'$\kappa_T$', color='blue')
+        axs[3].set_ylabel(r'$\kappa_T$')
+        axs[3].set_title(r'Opacity Derivative ($\kappa_T$)')
+        axs[3].grid(True, linestyle=':', alpha=0.7)
+
+        # --- Piros vonalak berajzolása az összes releváns subplotra ---
+        for ax_idx in range(5):
+            for min_idx in gamma_1_min_indices:
+                ax = axs[ax_idx]
+                if min_idx < len(x):
+                    if ax_idx == 0 and gamma_1_min_indices.index(min_idx) == 0:
+                        ax.axvline(x.iloc[min_idx], color='r', linestyle='--', label='Ionization Zone')
+                    else:
+                        ax.axvline(x.iloc[min_idx], color='r', linestyle='--')
+        
+        # Legendák hozzáadása az első plotra, ha vannak dipek
+        if gamma_1_min_indices:
+            axs[0].legend()
+        else:
+            axs[0].legend(loc='best')
+
+        # Plot dW/dx
+        axs[1].plot(x, dw_dx, label=r'$\mathrm{d}W/\mathrm{d}x$', color='orange')
+        axs[1].set_ylabel(r'$\mathrm{d}W/\mathrm{d}x$')
+        axs[1].set_title('Differential Work')
+        axs[1].grid(True, linestyle=':', alpha=0.7)
+
+        # Add Temperature for context on Gamma_1 plot
+        ax_temp = axs[2].twinx()
+        ax_temp.plot(x, temp, label='Temperature (K)', color='purple', linestyle=':', alpha=0.6)
+        ax_temp.set_ylabel('Temperature (K)', color='purple')
+        ax_temp.tick_params(axis='y', labelcolor='purple')
+        
+        # Plot temperature
+        axs[4].plot(x, temp, label='Temperature (K)', color='purple')
+        axs[4].set_xlabel('Fractional Radius ($x = r/R$)', fontsize=10)
+        axs[4].set_ylabel('Temperature (K)')
+        axs[4].set_title('Temperature Profile')
+        axs[4].set_yscale('log')
+        axs[4].grid(True, linestyle=':', alpha=0.7)
+
+
+        plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+        
+        # Save the plot to the specific profile folder
+        os.makedirs(profile_output_path, exist_ok=True) 
+
+        plot_filename = os.path.join(profile_output_path, f"radial_profile_l{mode_row.l}_npg{mode_row.n_pg}_M{mode_row.model_number}.png")
+        plt.savefig(plot_filename, dpi=300)
+        plt.close(fig) # Close the figure to free up memory
+
+    except Exception as e:
+        print(f"   Error plotting radial profiles for mode l={mode_row.l}, n_pg={mode_row.n_pg} (Model {mode_row.model_number}) from {detail_file_path}: {e}")
+
+
+# --- Radial Profile Plotting Function (now using multiprocessing) ---
+def plot_radial_profiles(df_modes_all, max_npg_to_plot=np.inf):
+    """
+    Generates radial profile plots for selected unstable modes in parallel.
     Filters for unstable modes (eta > 0) and plots up to max_npg_to_plot.
     Each plot is saved to its corresponding GYRE profileXXXXX folder.
     """
-    # Szűrés csak az instabil módokra
+    # Filter for unstable modes
     df_unstable = df_modes_all[df_modes_all['eta'] > 0].copy()
 
     if df_unstable.empty:
         print("\nNo unstable modes found to generate radial profile plots.")
         return
 
-    # Szűrés a felhangszámra
-    df_to_plot = df_unstable[(df_unstable['n_pg'].notna()) & (np.abs(df_unstable['n_pg']) <= max_npg_to_plot)].copy()
+    # Filter by n_pg
+    if max_npg_to_plot != np.inf:
+        df_to_plot = df_unstable[(df_unstable['n_pg'].notna()) & (np.abs(df_unstable['n_pg']) <= max_npg_to_plot)].copy()
+    else:
+        df_to_plot = df_unstable.copy()
 
     if df_to_plot.empty:
-        print(f"\nNo unstable modes found with |n_pg| <= {max_npg_to_plot} to generate radial profile plots.")
+        print(f"\nNo unstable modes found to plot (possibly none within the |n_pg| filter if applied).")
         return
 
-    print(f"\nGenerating radial profile plots for all unstable modes with |n_pg| <= {max_npg_to_plot}...")
+    print(f"\nGenerating radial profile plots for unstable modes in parallel...")
     print(f"Total of {len(df_to_plot)} modes will be plotted.")
 
-    # Iterate through the filtered unstable modes
-    for i, mode_row in tqdm(enumerate(df_to_plot.itertuples()), total=len(df_to_plot), desc="Generating radial plots"):
-        detail_file_path = mode_row.detail_file_path
-        profile_output_path = mode_row.profile_folder_path # <<< ÚJ: A kimeneti mappa
+    # Determine the number of processes to use
+    num_processes = cpu_count() - 1 if cpu_count() > 1 else 1 # Use all but one core, or 1 if only one
+    print(f"Using {num_processes} processes for plotting.")
 
-        if not detail_file_path or not os.path.exists(detail_file_path):
-            tqdm.write(f"   Skipping radial plot for mode l={mode_row.l}, n_pg={mode_row.n_pg} (Model {mode_row.model_number}): Detail file not found at {detail_file_path}")
-            continue
-            
-        try:
-            # Read the detail .TXT file using pandas.read_csv
-            gyre_detail_data_df = pd.read_csv(
-                detail_file_path,
-                skiprows=6,         # Skip the first 6 lines based on your 'head' output
-                sep=r'\s+',         # One or more whitespace as separator
-                names=detail_columns, # Use the globally defined detail_columns list
-                engine='python'     # Use Python engine for robust parsing
-            )
-
-            # Extract relevant columns from the DataFrame
-            x = gyre_detail_data_df['x']
-            xi_r_real = gyre_detail_data_df['Re(xi_r)']
-            xi_r_imag = gyre_detail_data_df['Im(xi_r)']
-            dw_dx = gyre_detail_data_df['dW_dx']
-            gamma_1 = gyre_detail_data_df['Gamma_1']
-            kap_t = gyre_detail_data_df['kap_T']
-            temp = gyre_detail_data_df['T'] # Temperature for context
-
-            # Calculate absolute value of xi_r
-            xi_r_abs = np.sqrt(xi_r_real**2 + xi_r_imag**2)
-            # Avoid log10(0) if xi_r_abs is very small
-            log10_xi_r_abs = np.log10(xi_r_abs + 1e-30) # Add small epsilon to avoid log(0)
-
-            # --- Gamma_1 dipek azonosítása és piros vonalak berajzolása ---
-            # Ideális esetben itt kellene egy robusztusabb algoritmussal megtalálni a dipeket.
-            # Egy egyszerűsített megközelítés (vigyázat, nem mindig tökéletes!):
-            gamma_1_min_indices = []
-            if len(gamma_1) > 2 and not np.all(np.isnan(gamma_1)):
-                # Simítás a zaj csökkentésére (opcionális, de segíthet a minimumok detektálásában)
-                gamma_1_smoothed = pd.Series(gamma_1).rolling(window=5, center=True, min_periods=1).mean().values
-
-                # Lokális minimumok keresése
-                from scipy.signal import find_peaks
-                # Negatív értéken keresünk csúcsokat, mert a dip minimumot jelent
-                peaks, _ = find_peaks(-gamma_1_smoothed, height=-np.inf, distance=len(gamma_1)//10) # distance to avoid finding too many small dips
-
-                # Rendezés radiális frakció szerint, és csak a releváns dipek megtartása
-                # Itt lehet, hogy finomítani kell a feltételeket a konkrét adataidhoz
-                if len(peaks) > 0:
-                    gamma_1_min_indices = sorted(peaks, key=lambda idx: x.iloc[idx])
-                    
-                    # Lehet, hogy csak a 2 legnagyobb/legkifejezettebb dipet akarod, ha sok van
-                    # Például ha a dip mélységét is figyelembe akarod venni
-                    if len(gamma_1_min_indices) > 2:
-                        # Ha több mint 2 dipet találunk, vegyük a két legmarkánsabbat
-                        # Ehhez bonyolultabb logika kellene, ami a dip mélységét is méri
-                        # Most egyszerűen csak az első kettőt (vagy annyit, amennyit talál) veszi
-                        gamma_1_min_indices = gamma_1_min_indices[:2]
-            
-            # --- Plotok elkészítése ---
-            fig, axs = plt.subplots(5, 1, figsize=(10, 15), sharex=True)
-            fig.suptitle(f'Radial Profiles - M {mode_row.mass:.1f} Z {mode_row.Z:.4f} | Model {mode_row.model_number} | l={mode_row.l}, n_pg={mode_row.n_pg} | $\eta$={mode_row.eta:.2e}', fontsize=12)
-
-            # Plot log10(|xi_r|)
-            axs[0].plot(x, log10_xi_r_abs, label=r'$\log_{10}(|\xi_r|)$')
-            axs[0].set_ylabel(r'$\log_{10}(|\xi_r|)$')
-            axs[0].set_title('Absolute Radial Displacement (log scale)')
-            axs[0].grid(True, linestyle=':', alpha=0.7)
-            
-            # Plot Gamma_1
-            axs[2].plot(x, gamma_1, label=r'$\Gamma_1$', color='green')
-            axs[2].set_ylabel(r'$\Gamma_1$')
-            axs[2].set_title('Adiabatic Exponent ($\Gamma_1$)')
-            axs[2].grid(True, linestyle=':', alpha=0.7)
-            
-            # Plot kap_T
-            axs[3].plot(x, kap_t, label=r'$\kappa_T$', color='blue')
-            axs[3].set_ylabel(r'$\kappa_T$')
-            axs[3].set_title(r'Opacity Derivative ($\kappa_T$)')
-            axs[3].grid(True, linestyle=':', alpha=0.7)
-
-            # --- Piros vonalak berajzolása az összes releváns subplotra ---
-            for ax_idx in range(5):
-                for min_idx in gamma_1_min_indices:
-                    ax = axs[ax_idx]
-                    if min_idx < len(x): # Ellenőrzés, hogy az index érvényes-e
-                        if ax_idx == 0: # Csak az első ploton legyen legenda
-                            ax.axvline(x.iloc[min_idx], color='r', linestyle='--', label=f'Ioniz. Zone {len(gamma_1_min_indices) - gamma_1_min_indices.index(min_idx)}')
-                        else:
-                            ax.axvline(x.iloc[min_idx], color='r', linestyle='--')
-            
-            # Legendák hozzáadása az első plotra, ha vannak dipek
-            if gamma_1_min_indices:
-                axs[0].legend()
-            else:
-                axs[0].legend(loc='best') # Alapértelmezett, ha nincs dip jelölve
-
-            # Plot dW/dx
-            axs[1].plot(x, dw_dx, label=r'$\mathrm{d}W/\mathrm{d}x$', color='orange')
-            axs[1].set_ylabel(r'$\mathrm{d}W/\mathrm{d}x$')
-            axs[1].set_title('Differential Work')
-            axs[1].grid(True, linestyle=':', alpha=0.7)
-
-            # Add Temperature for context on Gamma_1 plot
-            ax_temp = axs[2].twinx()
-            ax_temp.plot(x, temp, label='Temperature (K)', color='purple', linestyle=':', alpha=0.6)
-            ax_temp.set_ylabel('Temperature (K)', color='purple')
-            ax_temp.tick_params(axis='y', labelcolor='purple')
-            
-            # Plot temperature
-            axs[4].plot(x, temp, label='Temperature (K)', color='purple')
-            axs[4].set_xlabel('Fractional Radius ($x = r/R$)', fontsize=10)
-            axs[4].set_ylabel('Temperature (K)')
-            axs[4].set_title('Temperature Profile')
-            axs[4].set_yscale('log') # Log scale for temperature is usually better
-            axs[4].grid(True, linestyle=':', alpha=0.7)
-
-
-            plt.tight_layout(rect=[0, 0.03, 1, 0.95]) # Adjust layout to make room for suptitle
-            
-            # Save the plot to the specific profile folder
-            # Ensure the output directory exists
-            os.makedirs(profile_output_path, exist_ok=True) # <<< ÚJ: Mappa létrehozása, ha nem létezik
-
-            plot_filename = os.path.join(profile_output_path, f"radial_profile_l{mode_row.l}_npg{mode_row.n_pg}_M{mode_row.model_number}.png")
-            plt.savefig(plot_filename, dpi=300)
-            plt.close(fig) # Close the figure to free up memory
-
-            # tqdm.write helyett sima print, mert a tqdm már fut
-            # print(f"   Radial profile plot for l={mode_row.l}, n_pg={mode_row.n_pg} (Model {mode_row.model_number}) saved to: {plot_filename}")
-
-        except Exception as e:
-            tqdm.write(f"   Error plotting radial profiles for mode l={mode_row.l}, n_pg={mode_row.n_pg} (Model {mode_row.model_number}) from {detail_file_path}: {e}")
-            continue
+    # Create a Pool of worker processes
+    # The 'with' statement ensures the pool is properly closed
+    with Pool(processes=num_processes) as pool:
+        # Use imap_unordered for a tqdm progress bar with multiprocessing
+        # itertuples() is efficient for iterating over DataFrame rows
+        # The map function sends each row as a tuple to the worker function
+        for _ in tqdm(pool.imap_unordered(_plot_single_radial_profile, df_to_plot.itertuples()), total=len(df_to_plot), desc="Generating radial plots"):
+            pass # The worker function handles the plotting and saving
 
     print("\nFinished generating radial profile plots.")
-    # plt.show() # Remove if you don't want pop-up plots
+
 
 # --- Main execution logic ---
 if __name__ == '__main__':
@@ -521,11 +619,10 @@ if __name__ == '__main__':
         plot_gyre_hrd(df_gyre_modes.copy())
         
         # 3. Generate Radial Profile plots for unstable modes
-        # max_npg_to_plot: Az n_pg érték abszolút maximuma, amit ábrázolni szeretnél.
-        # Ha mindent szeretnél, állítsd egy nagyon nagy számra, pl. 1000 vagy None, 
-        # de légy óvatos a futási idővel és a fájlmennyiséggel!
-        # Ha csak a magasabb felhangokat, akkor érdemes egy min_npg_to_plot-ot is bevezetni.
-        # Javasolt érték a te céljaidhoz, pl. 20 (vagy több, ha vannak magasabb instabilak is)
-        plot_radial_profiles(df_gyre_modes.copy(), max_npg_to_plot=20) 
+        # max_npg_to_plot=np.inf beállítással minden instabil módushoz generál plotot.
+        # Ha csak kevesebbet szeretnél, írj be egy számot, pl. 20-at.
+        # A copy() fontos, mert a multiprocessing néha problémázik a DataFrame-ekkel
+        # ha nem expliciten másoljuk őket a processzek között.
+        plot_radial_profiles(df_gyre_modes.copy(), max_npg_to_plot=np.inf) 
     else:
         print("No GYRE modes available to generate plots.")
