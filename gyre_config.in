@@ -31,7 +31,7 @@
   gyre_inlist_template = 'gyre.in' ! The name of the base GYRE inlist template file (assumed in the same directory).
   mesa_profile_pattern = 'LOGS/profile*.data.GYRE' ! Pattern to find MESA profile files in the MESA LOGS directory.
 !  mesa_profile_base_dir = '/home/tnd/mesagrid/mesa_blue_loop/mesalab/gyretools/mesalab_results' ! Relative or absolute path to the MESA LOGS directory (where profiles are).
-  mesa_profile_base_dir = '/home/tnehezd/workdir/mesagrid/mesa_blue_loop/mesalab/gyretools/mesalab_results' ! Relative or absolute path to the MESA LOGS directory (where profiles are).
+  mesa_profile_base_dir = '/home/tnehezd/workdir/mesa_blue_loop/mesalab/gyretools/mesalab_results' ! Relative or absolute path to the MESA LOGS directory (where profiles are).
 
   ! Profile selection mode
   ! 'ALL_PROFILES': Process all profile*.data.GYRE files found in mesa_profile_base_dir.
@@ -42,7 +42,7 @@
   ! This path is relative to the 'output_base_dir' 
   ! (e.g., './mesalab_results/analysis_results/sorted_mass_Z_min_max.csv')
 !  filtered_profiles_csv = '/home/tnd/mesagrid/mesa_blue_loop/output/analysis_results/sorted_mass_Z_min_max.csv' ! <--- ADD THIS LINE!
-  filtered_profiles_csv = '/home/tnehezd/workdir/mesagrid/mesa_blue_loop/output/analysis_results/sorted_mass_Z_min_max.csv' ! <--- ADD THIS LINE!
+  filtered_profiles_csv = '/home/tnehezd/workdir/mesa_blue_loop/output/analysis_results/sorted_mass_Z_min_max.csv' ! <--- ADD THIS LINE!
 /
 
 &analyze_options
