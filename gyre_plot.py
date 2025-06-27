@@ -17,7 +17,7 @@ project_base_dir = "/home/tnd/mesagrid/mesa_blue_loop"
 # This is the base directory where your GYRE output 'run_...' folders are located.
 # Each 'run_...' folder is expected to contain 'profileXXXXX' subfolders,
 # and inside those 'profileXXXXX' folders, you'll find 'summary.h5'.
-gyre_results_base_dir = os.path.join(project_base_dir, "output", "gyre_output")
+gyre_results_base_dir = os.path.join(project_base_dir, "output_mid", "gyre_output")
 
 # This is the base directory where your MESA run LOGS folders are located.
 # Each 'run_...' folder here should contain a 'LOGS' subfolder with 'history.data' and 'profiles.index'.
@@ -27,7 +27,7 @@ mesa_logs_base_dir = "/home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid"
 output_csv_filename = "gyre_modes_with_mesa_params.csv"
 
 # Output directory for plots (within project_base_dir, will be created if it doesn't exist).
-plot_output_dir = os.path.join(project_base_dir, "output", "plots")
+plot_output_dir = os.path.join(project_base_dir, "output_mid", "plots")
 
 # Ensure the plot output directory exists
 os.makedirs(plot_output_dir, exist_ok=True)
