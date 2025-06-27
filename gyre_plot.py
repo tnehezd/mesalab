@@ -12,7 +12,7 @@ import pygyre # Still needed for reading summary.h5 files
 
 # Base directory of your 'mesa_blue_loop' project.
 # This is where your 'gyre_plot.py' script is, and where 'mesalab_results' is located.
-project_base_dir = "/home/tnehezd/workdir/mesa_blue_loop"
+project_base_dir = "/home/tnd/mesagrid/mesa_blue_loop"
 
 # This is the base directory where your GYRE output 'run_...' folders are located.
 # Each 'run_...' folder is expected to contain 'profileXXXXX' subfolders,
@@ -21,7 +21,7 @@ gyre_results_base_dir = os.path.join(project_base_dir, "output_mid", "gyre_outpu
 
 # This is the base directory where your MESA run LOGS folders are located.
 # Each 'run_...' folder here should contain a 'LOGS' subfolder with 'history.data' and 'profiles.index'.
-mesa_logs_base_dir = "/home/tnehezd/workdir/mesa-r23.05.1/STRANGE/nad_convos_mid"
+mesa_logs_base_dir = "/home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid"
 
 # Name of the output CSV file (will contain all collected data).
 output_csv_filename = "gyre_modes_with_mesa_params.csv"
