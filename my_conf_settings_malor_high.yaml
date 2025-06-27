@@ -3,8 +3,8 @@
 
 # --- General Settings ---
 general_settings:
-  input_dir: /home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid # Directory containing MESA run subdirectories
-  output_dir: /home/tnd/mesagrid/mesa_blue_loop/output_mid      # Output base directory for analysis results
+  input_dir: /home/tnd/mesa-r23.05.1/STRANGE/nad_convos_high      # Directory containing MESA run subdirectories
+  output_dir: /home/tnd/mesagrid/mesa_blue_loop/output_high      # Output base directory for analysis results
   inlist_name: "inlist_project"                                         # Inlist filename to identify runs
   force_reanalysis: True                                                # Set to True to force reanalysis, False to use existing summary files if complete
   debug: True                                                           # Set to True for more verbose logging

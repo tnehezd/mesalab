@@ -25,7 +25,7 @@ env/
 # My additional ignored files
 
 my_organized_output/
-output/
+#output/
 output_nadconv/
 output_nadconv_high/
 zenodo_output/
