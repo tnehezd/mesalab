@@ -430,7 +430,6 @@ def _plot_single_radial_profile(mode_data):
     n_pg = mode_data['n_pg']
     eta = mode_data['eta']
     detail_file_path = mode_data['detail_file_path']
-    # profile_folder_path = mode_data['profile_folder_path'] # Ezt már nem használjuk a mentési útvonalhoz
 
     if not detail_file_path or not os.path.exists(detail_file_path):
         print(f"   Skipping radial plot for mode l={l}, n_pg={n_pg} (Model {model_number}): Detail file not found at {detail_file_path}")
@@ -441,7 +440,7 @@ def _plot_single_radial_profile(mode_data):
             detail_file_path,
             skiprows=6,
             sep=r'\s+',
-            names=detail_columns, # Ensure detail_columns is accessible or passed if needed
+            names=detail_columns,
             engine='python'
         )
 
@@ -454,7 +453,7 @@ def _plot_single_radial_profile(mode_data):
         temp = gyre_detail_data_df['T']
 
         xi_r_abs = np.sqrt(xi_r_real**2 + xi_r_imag**2)
-        log10_xi_r_abs = np.log10(xi_r_abs + 1e-30)
+        log10_xi_r_abs = np.log10(xi_r_abs + 1e-30) # Add a small epsilon to avoid log(0)
 
         # Ionization zone plotting logic
         gamma_1_min_indices = []
@@ -470,7 +469,6 @@ def _plot_single_radial_profile(mode_data):
             )
             
             # Sort detected dips by their x-coordinate in descending order (outermost first)
-            # This is consistent with how calculate_integrated_work_in_zones identifies zones.
             x_series_for_plot = pd.Series(x) # Ensure x is a Series for .iloc
             significant_dips_plot_info = sorted(
                 [(x_series_for_plot.iloc[p], p, properties_for_plot['prominences'][i]) for i, p in enumerate(peaks_for_plot)],
@@ -489,67 +487,90 @@ def _plot_single_radial_profile(mode_data):
             # Sort the indices for consistent plotting order, if necessary (optional)
             gamma_1_min_indices = sorted(list(set(gamma_1_min_indices))) # Remove duplicates and sort
 
-        fig, axs = plt.subplots(5, 1, figsize=(10, 15), sharex=True)
+        # --- Plotting - Now with 6 panels ---
+        fig, axs = plt.subplots(6, 1, figsize=(10, 18), sharex=True) # Increased to 6 panels
         fig.suptitle(f'Radial Profiles - M {mass:.1f} Z {Z:.4f} | Model {model_number} | l={l}, n_pg={n_pg} | $\eta$={eta:.2e}', fontsize=12)
 
-        axs[0].plot(x, log10_xi_r_abs, label=r'$\log_{10}(|\xi_r|)$')
+        # Panel 0: Absolute Radial Displacement (log scale)
+        axs[0].plot(x, log10_xi_r_abs, label=r'$\log_{10}(|\xi_r|)$', color='blue')
         axs[0].set_ylabel(r'$\log_{10}(|\xi_r|)$')
-        axs[0].set_title('Absolute Radial Displacement (log scale)')
+        axs[0].set_title('Absolute Radial Displacement (Log Scale)')
         axs[0].grid(True, linestyle=':', alpha=0.7)
+        axs[0].set_ylim(-15, log10_xi_r_abs.max() * 1.1) # Set a lower limit for better visualization of small values
 
-        axs[2].plot(x, gamma_1, label=r'$\Gamma_1$', color='green')
-        axs[2].set_ylabel(r'$\Gamma_1$')
-        axs[2].set_title('Adiabatic Exponent ($\Gamma_1$)')
+        # Panel 1: Absolute Radial Displacement (linear scale)
+        axs[1].plot(x, xi_r_abs, label=r'$|\xi_r|$', color='cyan')
+        axs[1].set_ylabel(r'$|\xi_r|$')
+        axs[1].set_title('Absolute Radial Displacement (Linear Scale)')
+        axs[1].grid(True, linestyle=':', alpha=0.7)
+        axs[1].set_yscale('linear') # Explicitly set to linear scale
+        # Adjust y-limit for linear scale: focus on the surface, or allow for very small values
+        # If you want to see any internal oscillations, setting y_ylim to a very small positive number
+        # might reveal them, but it can make the plot look flat if values are truly near zero.
+        # A common approach is to limit the y-axis to a small fraction of the maximum.
+        axs[1].set_ylim(0, xi_r_abs.max() * 1.1) 
+
+
+        # Panel 2: Differential Work
+        axs[2].plot(x, dw_dx, label=r'$\mathrm{d}W/\mathrm{d}x$', color='orange')
+        axs[2].set_ylabel(r'$\mathrm{d}W/\mathrm{d}x$')
+        axs[2].set_title('Differential Work')
         axs[2].grid(True, linestyle=':', alpha=0.7)
 
-        axs[3].plot(x, kap_t, label=r'$\kappa_T$', color='blue')
-        axs[3].set_ylabel(r'$\kappa_T$')
-        axs[3].set_title(r'Opacity Derivative ($\kappa_T$)')
+        # Panel 3: Adiabatic Exponent (Gamma_1) + Temperature
+        axs[3].plot(x, gamma_1, label=r'$\Gamma_1$', color='green')
+        axs[3].set_ylabel(r'$\Gamma_1$')
+        axs[3].set_title('Adiabatic Exponent ($\Gamma_1$)')
         axs[3].grid(True, linestyle=':', alpha=0.7)
+        ax_temp = axs[3].twinx() # Twin axes for temperature
+        ax_temp.plot(x, temp, label='Temperature (K)', color='purple', linestyle=':', alpha=0.6)
+        ax_temp.set_ylabel('Temperature (K)', color='purple')
+        ax_temp.tick_params(axis='y', labelcolor='purple')
+        ax_temp.set_yscale('log') # Temperature is usually plotted on log scale
 
-        for ax_idx in range(5):
+        # Panel 4: Opacity Derivative (kappa_T)
+        axs[4].plot(x, kap_t, label=r'$\kappa_T$', color='darkblue')
+        axs[4].set_ylabel(r'$\kappa_T$')
+        axs[4].set_title(r'Opacity Derivative ($\kappa_T$)')
+        axs[4].grid(True, linestyle=':', alpha=0.7)
+
+        # Panel 5: Temperature Profile (bottom panel, full view)
+        axs[5].plot(x, temp, label='Temperature (K)', color='purple')
+        axs[5].set_xlabel('Fractional Radius ($x = r/R$)', fontsize=10)
+        axs[5].set_ylabel('Temperature (K)')
+        axs[5].set_title('Temperature Profile')
+        axs[5].set_yscale('log')
+        axs[5].grid(True, linestyle=':', alpha=0.7)
+
+
+        # Add vertical lines for ionization zones on ALL relevant plots
+        for ax_idx in range(len(axs)): # Iterate through all 6 subplots
             for min_idx in gamma_1_min_indices:
                 ax = axs[ax_idx]
                 if min_idx < len(x):
                     # Only add label for the first vertical line to avoid duplicates in legend
+                    # And only for the first subplot to keep legend simple
                     if ax_idx == 0 and gamma_1_min_indices.index(min_idx) == 0:
                         ax.axvline(x.iloc[min_idx], color='r', linestyle='--', label='Ionization Zone')
                     else:
                         ax.axvline(x.iloc[min_idx], color='r', linestyle='--')
 
+        # Ensure legend appears if ionization zones are marked
         if gamma_1_min_indices:
-            axs[0].legend(loc='best') # Ensure legend appears if ionization zones are marked
+            axs[0].legend(loc='best')
+            # axs[1].legend(loc='best') # Optionally add legend to linear scale plot if needed
 
-        axs[1].plot(x, dw_dx, label=r'$\mathrm{d}W/\mathrm{d}x$', color='orange')
-        axs[1].set_ylabel(r'$\mathrm{d}W/\mathrm{d}x$')
-        axs[1].set_title('Differential Work')
-        axs[1].grid(True, linestyle=':', alpha=0.7)
 
-        ax_temp = axs[2].twinx()
-        ax_temp.plot(x, temp, label='Temperature (K)', color='purple', linestyle=':', alpha=0.6)
-        ax_temp.set_ylabel('Temperature (K)', color='purple')
-        ax_temp.tick_params(axis='y', labelcolor='purple')
+        plt.tight_layout(rect=[0, 0.03, 1, 0.97]) # Adjust rect to make space for suptitle
 
-        axs[4].plot(x, temp, label='Temperature (K)', color='purple')
-        axs[4].set_xlabel('Fractional Radius ($x = r/R$)', fontsize=10)
-        axs[4].set_ylabel('Temperature (K)')
-        axs[4].set_title('Temperature Profile')
-        axs[4].set_yscale('log')
-        axs[4].grid(True, linestyle=':', alpha=0.7)
-
-        plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-
-        # ÚJ MENTÉSI ÚTVONAL ÉS FÁJLNÉV FORMÁTUM
-        # Létrehozza a gyre_profiles mappát, ha még nem létezik
+        # Save plot
         os.makedirs(gyre_profiles_plot_dir, exist_ok=True) 
-        
-        # A fájlnév tartalmazza a tömeget és a Z-t
         plot_filename = os.path.join(
             gyre_profiles_plot_dir, 
             f"M{mass:.1f}_Z{Z:.4f}_l{l}_npg{n_pg}_model{model_number}.png"
         )
         plt.savefig(plot_filename, dpi=300)
-        plt.close(fig)
+        plt.close(fig) # Close the figure to free memory
 
     except Exception as e:
         print(f"   Error plotting radial profiles for mode l={l}, n_pg={n_pg} (Model {model_number}) from {detail_file_path}: {e}")
@@ -579,7 +600,6 @@ def plot_radial_profiles(df_modes_all, max_npg_to_plot=np.inf):
     print(f"Using {num_processes} processes for plotting.")
 
     # Convert DataFrame rows to a list of dictionaries for pickling
-    # Fontos: a 'profile_folder_path' már nem szükséges, de a 'mass' és 'Z' igen!
     modes_to_process = df_to_plot[[
         'mass', 'Z', 'model_number', 'l', 'n_pg', 'eta',
         'detail_file_path'
@@ -603,6 +623,8 @@ if __name__ == '__main__':
         plot_gyre_hrd(df_gyre_modes.copy())
 
         # 3. Generate Radial Profile plots for unstable modes
-        plot_radial_profiles(df_gyre_modes.copy(), max_npg_to_plot=np.inf)
+        # max_npg_to_plot=5 # Pl. csak az alacsonyabb rendű instabil módusokat plotolja
+        plot_radial_profiles(df_gyre_modes.copy(), max_npg_to_plot=np.inf) # Vagy hagyjuk np.inf-en az összeset
+
     else:
         print("No GYRE modes available to generate plots.")
