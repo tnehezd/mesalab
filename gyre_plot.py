@@ -29,10 +29,13 @@ mesa_logs_base_dir = "/home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid_less"
 output_csv_filename = "gyre_modes_with_mesa_params.csv"
 
 # Output directory for plots (within project_base_dir, will be created if it doesn't exist).
+# Módosítva, hogy a 'gyre_profiles' alkönyvtárat is tartalmazza
 plot_output_dir = os.path.join(project_base_dir, "output_mid", "plots")
+gyre_profiles_plot_dir = os.path.join(plot_output_dir, "gyre_profiles") # Új mappa a radiális profiloknak
 
-# Ensure the HRD plot output directory exists
+# Ensure the plot output directories exist
 os.makedirs(plot_output_dir, exist_ok=True)
+os.makedirs(gyre_profiles_plot_dir, exist_ok=True) # Új mappa létrehozása
 
 # --- Global definition for detail file columns (for .TXT files) ---
 detail_columns = [
@@ -54,7 +57,7 @@ def collect_gyre_mesa_data():
 
     print("Starting data collection from GYRE and MESA results...")
 
-    # --- MODIFIED: calculate_integrated_work_in_zones function ---
+    # --- calculate_integrated_work_in_zones function (No change here) ---
     def calculate_integrated_work_in_zones(x, dW_dx, gamma_1):
         """
         Calculates the integrated work (dW/dx) in the He II and H/He I ionization zones.
@@ -139,7 +142,7 @@ def collect_gyre_mesa_data():
                 integrated_work_HHeI = trapezoid(dW_dx_series[hhei_indices], x_series[hhei_indices])
         
         return integrated_work_HeII, integrated_work_HHeI
-    # --- END MODIFIED function ---
+    # --- END calculate_integrated_work_in_zones function ---
 
 
     run_directories = [d for d in os.listdir(gyre_results_base_dir)
@@ -287,7 +290,7 @@ def collect_gyre_mesa_data():
                         'n_pg': mode_npg,
                         'eta': mode_row_gyre['eta'] if 'eta' in mode_row_gyre.dtype.names else np.nan,
                         'detail_file_path': full_detail_file_path,
-                        'profile_folder_path': current_profile_path,
+                        'profile_folder_path': current_profile_path, # Ezt a sort majd nem fogjuk használni a plot mentéséhez
                         'center_h1': mesa_row['center_h1'].iloc[0] if 'center_h1' in mesa_row.columns else np.nan,
                         'star_age': mesa_row['star_age'].iloc[0] if 'star_age' in mesa_row.columns else np.nan,
                         'log_g': mesa_row['log_g'].iloc[0] if 'log_g' in mesa_row.columns else np.nan,
@@ -320,7 +323,7 @@ def plot_gyre_hrd(df_modes_filtered):
         return
 
     plt.figure(figsize=(10, 8))
-    df_npg_filtered = df_modes_filtered[(df_modes_filtered['n_pg'].notna()) & (np.abs(df_modes_filtered['n_pg']) <= 20)].copy()
+    df_npg_filtered = df_modes_filtered[(df_modes_filtered['n_pg'].notna()) & (np.abs(df_npg_filtered['n_pg']) <= 20)].copy()
 
     if not df_npg_filtered.empty:
         unique_npg_values = sorted(df_npg_filtered['n_pg'].dropna().astype(int).unique())
@@ -428,7 +431,7 @@ def _plot_single_radial_profile(mode_data):
     n_pg = mode_data['n_pg']
     eta = mode_data['eta']
     detail_file_path = mode_data['detail_file_path']
-    profile_folder_path = mode_data['profile_folder_path']
+    # profile_folder_path = mode_data['profile_folder_path'] # Ezt már nem használjuk a mentési útvonalhoz
 
     if not detail_file_path or not os.path.exists(detail_file_path):
         print(f"   Skipping radial plot for mode l={l}, n_pg={n_pg} (Model {model_number}): Detail file not found at {detail_file_path}")
@@ -454,7 +457,7 @@ def _plot_single_radial_profile(mode_data):
         xi_r_abs = np.sqrt(xi_r_real**2 + xi_r_imag**2)
         log10_xi_r_abs = np.log10(xi_r_abs + 1e-30)
 
-        # --- MODIFIED: Ionization zone plotting logic in _plot_single_radial_profile ---
+        # Ionization zone plotting logic
         gamma_1_min_indices = []
         if len(gamma_1) > 2 and not np.all(np.isnan(gamma_1)):
             # Smooth Gamma_1 for finding dips, using the same window as in calculate_integrated_work_in_zones
@@ -484,15 +487,8 @@ def _plot_single_radial_profile(mode_data):
                 # Second outermost (He II)
                 gamma_1_min_indices.append(significant_dips_plot_info[1][1])
             
-            # If only one dip is found, and it's the only one, we can assume it's relevant and plot it.
-            # The logic for determining if it's HeII or H/HeI is for work integration,
-            # for plotting we just mark what's detected.
-            # No additional conditional append needed here, as it's already added if it exists.
-
             # Sort the indices for consistent plotting order, if necessary (optional)
             gamma_1_min_indices = sorted(list(set(gamma_1_min_indices))) # Remove duplicates and sort
-
-        # --- END MODIFIED plotting logic ---
 
         fig, axs = plt.subplots(5, 1, figsize=(10, 15), sharex=True)
         fig.suptitle(f'Radial Profiles - M {mass:.1f} Z {Z:.4f} | Model {model_number} | l={l}, n_pg={n_pg} | $\eta$={eta:.2e}', fontsize=12)
@@ -524,7 +520,6 @@ def _plot_single_radial_profile(mode_data):
 
         if gamma_1_min_indices:
             axs[0].legend(loc='best') # Ensure legend appears if ionization zones are marked
-        # No need for else: axs[0].legend(loc='best') as it's implied by default behavior if no line is added to legend
 
         axs[1].plot(x, dw_dx, label=r'$\mathrm{d}W/\mathrm{d}x$', color='orange')
         axs[1].set_ylabel(r'$\mathrm{d}W/\mathrm{d}x$')
@@ -545,9 +540,15 @@ def _plot_single_radial_profile(mode_data):
 
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 
-        os.makedirs(profile_folder_path, exist_ok=True)
-
-        plot_filename = os.path.join(profile_folder_path, f"radial_profile_l{l}_npg{n_pg}_M{model_number}.png")
+        # ÚJ MENTÉSI ÚTVONAL ÉS FÁJLNÉV FORMÁTUM
+        # Létrehozza a gyre_profiles mappát, ha még nem létezik
+        os.makedirs(gyre_profiles_plot_dir, exist_ok=True) 
+        
+        # A fájlnév tartalmazza a tömeget és a Z-t
+        plot_filename = os.path.join(
+            gyre_profiles_plot_dir, 
+            f"M{mass:.1f}_Z{Z:.4f}_l{l}_npg{n_pg}_model{model_number}.png"
+        )
         plt.savefig(plot_filename, dpi=300)
         plt.close(fig)
 
@@ -579,10 +580,10 @@ def plot_radial_profiles(df_modes_all, max_npg_to_plot=np.inf):
     print(f"Using {num_processes} processes for plotting.")
 
     # Convert DataFrame rows to a list of dictionaries for pickling
-    # Only include the columns needed by _plot_single_radial_profile
+    # Fontos: a 'profile_folder_path' már nem szükséges, de a 'mass' és 'Z' igen!
     modes_to_process = df_to_plot[[
         'mass', 'Z', 'model_number', 'l', 'n_pg', 'eta',
-        'detail_file_path', 'profile_folder_path'
+        'detail_file_path'
     ]].to_dict(orient='records')
 
 
