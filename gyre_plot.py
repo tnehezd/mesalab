@@ -323,8 +323,7 @@ def plot_gyre_hrd(df_modes_filtered):
         return
 
     plt.figure(figsize=(10, 8))
-    df_npg_filtered = df_modes_filtered[(df_modes_filtered['n_pg'].notna()) & (np.abs(df_npg_filtered['n_pg']) <= 20)].copy()
-
+    df_npg_filtered = df_modes_filtered[(df_modes_filtered['n_pg'].notna()) & (np.abs(df_modes_filtered['n_pg']) <= 20)].copy()
     if not df_npg_filtered.empty:
         unique_npg_values = sorted(df_npg_filtered['n_pg'].dropna().astype(int).unique())
 
