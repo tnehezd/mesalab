@@ -23,7 +23,7 @@ gyre_results_base_dir = os.path.join(project_base_dir, "output_mid", "gyre_outpu
 
 # This is the base directory where your MESA run LOGS folders are located.
 # PLEASE DOUBLE-CHECK THIS PATH TO ENSURE IT'S CORRECT FOR YOUR SETUP!
-mesa_logs_base_dir = "/home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid_less"
+mesa_logs_base_dir = "/home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid"
 
 # Name of the output CSV file (will contain all collected data).
 output_csv_filename = "gyre_modes_with_mesa_params.csv"
