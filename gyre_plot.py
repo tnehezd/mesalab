@@ -468,37 +468,29 @@ def _plot_single_radial_profile(mode_data):
             )
             
             # Sort detected dips by their x-coordinate in descending order (outermost first)
-            if len(peaks_for_plot) > 0:
-                # Need to use x_series for correct iloc indexing if x is not a simple numpy array
-                x_series_for_plot = pd.Series(x)
-                
-                significant_dips_plot_info = sorted(
-                    [(x_series_for_plot.iloc[p], p) for p in peaks_for_plot],
-                    key=lambda item: item[0], # Sort by x-coordinate
-                    reverse=True # Descending order
-                )
-                
-                # Take up to the two most prominent/outermost dips for plotting
-                # This logic should generally mirror the zone identification in calculate_integrated_work_in_zones
-                # If you want to plot ALL found dips, you can just use `[p for _,p in significant_dips_plot_info]`
-                # For consistency with work integral, we'll aim for the main two.
-                
-                if len(significant_dips_plot_info) >= 1:
-                    gamma_1_min_indices.append(significant_dips_plot_info[0][1]) # Add index of outermost dip
-                if len(significant_dips_plot_info) >= 2:
-                    gamma_1_min_indices.append(significant_dips_plot_info[1][1]) # Add index of second outermost dip
-                
-                # If only one dip and it's deep (similar to the heuristic in work func)
-                if len(significant_dips_plot_info) == 1 and significant_dips_plot_info[0][0] < 0.5:
-                    # If we only have one dip and it's deep, make sure it's plotted.
-                    # It's already in gamma_1_min_indices, so no extra action needed here for plotting.
-                    pass
-                elif len(significant_dips_plot_info) == 1 and significant_dips_plot_info[0][0] >= 0.5:
-                    # If it's a single, outer dip, we just plot that one. It's already in gamma_1_min_indices.
-                    pass
+            # This is consistent with how calculate_integrated_work_in_zones identifies zones.
+            x_series_for_plot = pd.Series(x) # Ensure x is a Series for .iloc
+            significant_dips_plot_info = sorted(
+                [(x_series_for_plot.iloc[p], p, properties_for_plot['prominences'][i]) for i, p in enumerate(peaks_for_plot)],
+                key=lambda item: item[0], # Sort by x-coordinate
+                reverse=True              # Descending order (outermost first)
+            )
+            
+            # Extract the indices of the two most prominent/outermost dips
+            if len(significant_dips_plot_info) >= 1:
+                # Outermost (H/He I)
+                gamma_1_min_indices.append(significant_dips_plot_info[0][1]) 
+            if len(significant_dips_plot_info) >= 2:
+                # Second outermost (He II)
+                gamma_1_min_indices.append(significant_dips_plot_info[1][1])
+            
+            # If only one dip is found, and it's the only one, we can assume it's relevant and plot it.
+            # The logic for determining if it's HeII or H/HeI is for work integration,
+            # for plotting we just mark what's detected.
+            # No additional conditional append needed here, as it's already added if it exists.
 
-                # Sort the indices for plotting if needed (not strictly necessary but good practice)
-                gamma_1_min_indices = sorted(list(set(gamma_1_min_indices))) # Remove duplicates and sort
+            # Sort the indices for consistent plotting order, if necessary (optional)
+            gamma_1_min_indices = sorted(list(set(gamma_1_min_indices))) # Remove duplicates and sort
 
         # --- END MODIFIED plotting logic ---
 
