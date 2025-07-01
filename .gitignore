@@ -46,3 +46,4 @@ mesalab_results/
 
 *.h5
 detail*.*
+plot_loop.py
