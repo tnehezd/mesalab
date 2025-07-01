@@ -19,17 +19,17 @@ from multiprocessing import Pool, cpu_count
 project_base_dir = "/home/tnd/mesagrid/mesa_blue_loop"
 
 # This is the base directory where your GYRE output 'run_...' folders are located.
-gyre_results_base_dir = os.path.join(project_base_dir, "output_mid", "gyre_output")
+gyre_results_base_dir = os.path.join(project_base_dir, "output_high", "gyre_output")
 
 # This is the base directory where your MESA run LOGS folders are located.
 # PLEASE DOUBLE-CHECK THIS PATH TO ENSURE IT'S CORRECT FOR YOUR SETUP!
-mesa_logs_base_dir = "/home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid"
+mesa_logs_base_dir = "/home/tnd/mesa-r23.05.1/STRANGE/nad_convos_high"
 
 # Name of the output CSV file (will contain all collected data).
 output_csv_filename = "gyre_modes_with_mesa_params.csv"
 
 # Output directory for plots (within project_base_dir, will be created if it doesn't exist).
-plot_output_dir = os.path.join(project_base_dir, "output_mid", "plots")
+plot_output_dir = os.path.join(project_base_dir, "output_high", "plots")
 gyre_profiles_plot_dir = os.path.join(plot_output_dir, "gyre_profiles") # New folder for radial profiles
 
 # Ensure the plot output directories exist
