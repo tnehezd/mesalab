@@ -29,13 +29,12 @@ mesa_logs_base_dir = "/home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid"
 output_csv_filename = "gyre_modes_with_mesa_params.csv"
 
 # Output directory for plots (within project_base_dir, will be created if it doesn't exist).
-# Módosítva, hogy a 'gyre_profiles' alkönyvtárat is tartalmazza
 plot_output_dir = os.path.join(project_base_dir, "output_mid", "plots")
-gyre_profiles_plot_dir = os.path.join(plot_output_dir, "gyre_profiles") # Új mappa a radiális profiloknak
+gyre_profiles_plot_dir = os.path.join(plot_output_dir, "gyre_profiles") # New folder for radial profiles
 
 # Ensure the plot output directories exist
 os.makedirs(plot_output_dir, exist_ok=True)
-os.makedirs(gyre_profiles_plot_dir, exist_ok=True) # Új mappa létrehozása
+os.makedirs(gyre_profiles_plot_dir, exist_ok=True) # Create new folder
 
 # --- Global definition for detail file columns (for .TXT files) ---
 detail_columns = [
@@ -107,19 +106,15 @@ def collect_gyre_mesa_data():
 
         if len(significant_dips_info) >= 2:
             he_ii_dip_x, he_ii_dip_idx, _ = significant_dips_info[1]
-        
+            
         # Heuristic for cases where only one significant dip is found
         # If there's only one dip and it's sufficiently deep (e.g., x < 0.5),
         # it's more likely to be the He II zone.
         elif len(significant_dips_info) == 1:
-            # You might need to adjust the x-threshold (e.g., 0.5) based on your stellar models
-            # to differentiate between a lone H/He I or a lone He II.
-            # A common approach is to expect He II closer to the core.
             if he_i_h_dip_x < 0.5: # If the single dip is relatively deep in the star
                 he_ii_dip_x = he_i_h_dip_x
                 he_ii_dip_idx = he_i_h_dip_idx
                 he_i_h_dip_x = np.nan # No clear H/He I if only one deep dip
-            # Else, if the single dip is at x >= 0.5, it's likely H/He I, and He II is not found (remains nan)
 
 
         # Integration window size around the dip
@@ -140,7 +135,7 @@ def collect_gyre_mesa_data():
             hhei_indices = (x_series >= x_start_hhei) & (x_series <= x_end_hhei)
             if np.any(hhei_indices):
                 integrated_work_HHeI = trapezoid(dW_dx_series[hhei_indices], x_series[hhei_indices])
-        
+            
         return integrated_work_HeII, integrated_work_HHeI
     # --- END calculate_integrated_work_in_zones function ---
 
@@ -171,10 +166,10 @@ def collect_gyre_mesa_data():
                             model_num, _, profile_num = map(int, parts)
                             profile_to_model[profile_num] = model_num
             except Exception as e:
-                tqdm.write(f"   Error reading profiles.index in {run_dir_name}: {e}. Skipping this run.")
+                tqdm.write(f"    Error reading profiles.index in {run_dir_name}: {e}. Skipping this run.")
                 continue
         else:
-            tqdm.write(f"   profiles.index not found for {run_dir_name} at {profiles_index_path}. Skipping this run.")
+            tqdm.write(f"    profiles.index not found for {run_dir_name} at {profiles_index_path}. Skipping this run.")
             continue
 
         history_file_path = os.path.join(corresponding_mesa_logs_path, "history.data")
@@ -208,7 +203,7 @@ def collect_gyre_mesa_data():
                            if os.path.isdir(os.path.join(current_gyre_run_path, d)) and d.startswith("profile")]
 
         if not profile_folders:
-            tqdm.write(f"   No 'profileXXXXX' folders found in {current_gyre_run_path}. Skipping this run.")
+            tqdm.write(f"    No 'profileXXXXX' folders found in {current_gyre_run_path}. Skipping this run.")
             continue
 
         for profile_folder_name in profile_folders:
@@ -217,7 +212,7 @@ def collect_gyre_mesa_data():
 
             profile_value_match = re.search(r'profile(\d+)', profile_folder_name)
             if not profile_value_match:
-                tqdm.write(f"   Warning: Could not extract profile number from folder name: {profile_folder_name}. Skipping this profile.")
+                tqdm.write(f"    Warning: Could not extract profile number from folder name: {profile_folder_name}. Skipping this profile.")
                 continue
             profile_value = int(profile_value_match.group(1))
 
@@ -226,12 +221,12 @@ def collect_gyre_mesa_data():
 
             model_num = profile_to_model.get(profile_value, np.nan)
             if pd.isna(model_num):
-                tqdm.write(f"   ⚠️ No valid model number mapped for profile {profile_value} in {run_dir_name}. Skipping modes from this profile.")
+                tqdm.write(f"    ⚠️ No valid model number mapped for profile {profile_value} in {run_dir_name}. Skipping modes from this profile.")
                 continue
 
             mesa_row = mesa_history_df[mesa_history_df['model_number'] == model_num]
             if mesa_row.empty:
-                tqdm.write(f"   Warning: No MESA history entry found for model {model_num} in {run_dir_name}. Skipping modes from this profile.")
+                tqdm.write(f"    Warning: No MESA history entry found for model {model_num} in {run_dir_name}. Skipping modes from this profile.")
                 continue
 
             try:
@@ -272,9 +267,9 @@ def collect_gyre_mesa_data():
                                     gyre_detail_data_df['Gamma_1']
                                 )
                             else:
-                                tqdm.write(f"      Missing essential columns (x, dW_dx, Gamma_1) in detail file {detail_file_name}. Cannot calculate integrated work.")
+                                tqdm.write(f"        Missing essential columns (x, dW_dx, Gamma_1) in detail file {detail_file_name}. Cannot calculate integrated work.")
                         except Exception as detail_e:
-                            tqdm.write(f"      Error reading detail file {detail_file_name} for integrated work calculation: {detail_e}")
+                            tqdm.write(f"        Error reading detail file {detail_file_name} for integrated work calculation: {detail_e}")
 
                     new_row = {
                         'mass': mass,
@@ -290,7 +285,7 @@ def collect_gyre_mesa_data():
                         'n_pg': mode_npg,
                         'eta': mode_row_gyre['eta'] if 'eta' in mode_row_gyre.dtype.names else np.nan,
                         'detail_file_path': full_detail_file_path,
-                        'profile_folder_path': current_profile_path, # Ezt a sort majd nem fogjuk használni a plot mentéséhez
+                        'profile_folder_path': current_profile_path,
                         'center_h1': mesa_row['center_h1'].iloc[0] if 'center_h1' in mesa_row.columns else np.nan,
                         'star_age': mesa_row['star_age'].iloc[0] if 'star_age' in mesa_row.columns else np.nan,
                         'log_g': mesa_row['log_g'].iloc[0] if 'log_g' in mesa_row.columns else np.nan,
@@ -316,12 +311,23 @@ def collect_gyre_mesa_data():
         print("\nNo GYRE modes were found or processed after iterating through all runs.")
         return pd.DataFrame()
 
-# --- HRD Plotting Function (No change here, as it saves to a central plot_output_dir) ---
-def plot_gyre_hrd(df_modes_filtered):
+# --- HRD Plotting Function (MODIFIED to highlight specific models) ---
+def plot_gyre_hrd(df_modes_filtered, specific_models_dfs=None):
+    """
+    Plots HRD diagrams for GYRE modes.
+    
+    Args:
+        df_modes_filtered (pd.DataFrame): DataFrame containing all filtered GYRE modes.
+        specific_models_dfs (dict, optional): A dictionary where keys are model names (str)
+                                            and values are DataFrames containing modes
+                                            for those specific models to be highlighted.
+                                            Defaults to None.
+    """
     if df_modes_filtered.empty:
         print("No data available for plotting after filtering or collection.")
         return
 
+    # HRD by n_pg (p-mode/g-mode classification)
     plt.figure(figsize=(10, 8))
     df_npg_filtered = df_modes_filtered[(df_modes_filtered['n_pg'].notna()) & (np.abs(df_modes_filtered['n_pg']) <= 20)].copy()
     if not df_npg_filtered.empty:
@@ -337,17 +343,62 @@ def plot_gyre_hrd(df_modes_filtered):
                         edgecolor='w',
                         linewidth=0.5)
 
+        # Highlight specific models
+        if specific_models_dfs:
+            for model_name, model_df in specific_models_dfs.items():
+                if not model_df.empty:
+                    # Plot all modes from the specific model, but consider coloring
+                    # only if there's enough variation, otherwise use a single color
+                    # For simplicity, let's plot all specific modes as 'X'
+                    plt.scatter(model_df['log_Teff'],
+                                model_df['log_L'],
+                                color='red', # Choose a distinct color
+                                marker='X',  # Distinct marker
+                                s=150,       # Larger size
+                                edgecolor='black',
+                                linewidth=1.5,
+                                label=f'{model_name} Modes')
+
         plt.xlabel(r'$\log T_{\mathrm{eff}}$')
         plt.ylabel(r'$\log (L/L_{\odot})$')
         plt.title(f'HRD - GYRE Modes by $|n_{{pg}}|$ (up to 20) ({len(df_npg_filtered)} Modes)')
         plt.gca().invert_xaxis()
         plt.grid(True, linestyle='--', alpha=0.6)
 
+        # Combine legends
+        handles, labels = plt.gca().get_legend_handles_labels()
         if len(unique_npg_values) < 30:
-            plt.legend(title=r'$n_{pg}$ Mode Number', bbox_to_anchor=(1.05, 1), loc='upper left',
-                                 labels=[str(int(val)) for val in unique_npg_values])
-        else:
-            plt.legend(title=r'$n_{pg}$ Mode Number', bbox_to_anchor=(1.05, 1), loc='upper left')
+            npg_labels = [str(int(val)) for val in unique_npg_values]
+            # Ensure the order of original npg labels matches handles
+            # This is a bit tricky with sns.scatterplot, simpler is to just add it as a separate legend
+            # For now, let's simplify and rely on sns default legend, and add specific models on top.
+            # If explicit npg legend order is critical, more complex legend handling is needed.
+            
+            # Reconstruct legend to include specific models (if any) and n_pg
+            # Find handles and labels for original plot
+            original_handles = []
+            original_labels = []
+            
+            # Extract only n_pg related labels and handles from the ones generated by sns.scatterplot
+            if specific_models_dfs: # If specific models are plotted, their labels are added by `plt.scatter`
+                # Separate handles for n_pg and specific models
+                npg_handles_labels = {}
+                specific_handles_labels = {}
+                for h, l in zip(handles, labels):
+                    if l.startswith('8M, 10000L, Teff=6700K') or l.startswith('M=6Msun, L=3000Lsun') or l.startswith('M=4Msun, L=860Lsun'):
+                        specific_handles_labels[l] = h
+                    else:
+                        npg_handles_labels[l] = h
+                
+                # Combine them, keeping specific models at the end
+                final_handles = list(npg_handles_labels.values()) + list(specific_handles_labels.values())
+                final_labels = list(npg_handles_labels.keys()) + list(specific_handles_labels.keys())
+                plt.legend(final_handles, final_labels, title=r'$n_{pg}$ Mode Number / Specific Models', bbox_to_anchor=(1.05, 1), loc='upper left')
+
+            else: # If no specific models, use default n_pg legend
+                 plt.legend(title=r'$n_{pg}$ Mode Number', bbox_to_anchor=(1.05, 1), loc='upper left',
+                            labels=[str(int(val)) for val in unique_npg_values] if len(unique_npg_values) < 30 else None)
+
 
         plt.tight_layout()
         plot_filename_npg = os.path.join(plot_output_dir, "hrd_gyre_modes_by_npg_filtered.png")
@@ -356,6 +407,7 @@ def plot_gyre_hrd(df_modes_filtered):
     else:
         print("No modes found for plotting HRD by n_pg (after |n_pg| <= 20 filter).")
 
+    # HRD by eta (all modes)
     df_eta_filtered = df_modes_filtered[df_modes_filtered['eta'].notna()].copy()
 
     if not df_eta_filtered.empty:
@@ -370,12 +422,70 @@ def plot_gyre_hrd(df_modes_filtered):
                         edgecolor='w',
                         linewidth=0.5)
 
+        # Highlight specific models
+        if specific_models_dfs:
+            for model_name, model_df in specific_models_dfs.items():
+                if not model_df.empty:
+                    plt.scatter(model_df['log_Teff'],
+                                model_df['log_L'],
+                                color='lime', # Another distinct color
+                                marker='X',
+                                s=150,
+                                edgecolor='black',
+                                linewidth=1.5,
+                                label=f'{model_name} Modes')
+
         plt.xlabel(r'$\log T_{\mathrm{eff}}$')
         plt.ylabel(r'$\log (L/L_{\odot})$')
         plt.title(f'HRD - GYRE Modes by $\eta$ (Total Modes: {len(df_eta_filtered)})')
         plt.gca().invert_xaxis()
         plt.grid(True, linestyle='--', alpha=0.6)
-        plt.legend(title=r'$\eta$', bbox_to_anchor=(1.05, 1), loc='upper left')
+        
+        # Combine legends for eta plot
+        handles, labels = plt.gca().get_legend_handles_labels()
+        # Filter out the 'eta' label if it's the default generated one by seaborn
+        eta_legend_handle = None
+        specific_model_handles = {}
+        for h, l in zip(handles, labels):
+            if l.startswith('8M, 10000L, Teff=6700K') or l.startswith('M=6Msun, L=3000Lsun') or l.startswith('M=4Msun, L=860Lsun'):
+                specific_model_handles[l] = h
+            elif l == 'eta' and specific_models_dfs: # If specific models are present, use custom legend for eta
+                eta_legend_handle = h
+            else: # For the case where specific_models_dfs is None or empty, use original legend
+                pass # This branch needs to collect original handles/labels if no specific models.
+
+        if specific_models_dfs:
+            # Recreate the main eta legend and add specific models
+            # This requires carefully creating a new Colorbar for eta if you want to reuse the default sns one
+            # A simpler way is to get the colormap from the previous sns.scatterplot and draw a new colorbar
+            
+            # The current approach with `plt.legend` on specific_models_dfs will add an *additional* legend.
+            # To have a single combined legend, more work is needed.
+            # For now, let's keep the two legends, one for eta and one for specific models.
+            # Or, for simplicity and clearer highlighting, we can just overlay the specific models.
+            
+            # Let's simplify: if specific models are present, add a separate legend for them.
+            # The default `hue='eta'` will create its own colorbar/legend automatically.
+            # We explicitly add a legend for the scatter plot of specific models.
+            if specific_model_handles:
+                # Get the current legend handles/labels
+                current_handles, current_labels = plt.gca().get_legend_handles_labels()
+                # Filter out specific model labels from the default list if they were added automatically by sns for some reason
+                # and only keep the ones from our explicit plt.scatter calls
+                final_handles = [h for h, l in zip(current_handles, current_labels) if not (l.startswith('8M, 10000L, Teff=6700K') or l.startswith('M=6Msun, L=3000Lsun') or l.startswith('M=4Msun, L=860Lsun'))]
+                final_labels = [l for h, l in zip(current_handles, current_labels) if not (l.startswith('8M, 10000L, Teff=6700K') or l.startswith('M=6Msun, L=3000Lsun') or l.startswith('M=4Msun, L=860Lsun'))]
+
+                # Add specific model handles and labels
+                for label, handle in specific_model_handles.items():
+                    final_handles.append(handle)
+                    final_labels.append(label)
+                
+                plt.legend(final_handles, final_labels, title=r'$\eta$ / Specific Models', bbox_to_anchor=(1.05, 1), loc='upper left')
+            else:
+                 plt.legend(title=r'$\eta$', bbox_to_anchor=(1.05, 1), loc='upper left')
+        else: # No specific models, just plot eta legend
+            plt.legend(title=r'$\eta$', bbox_to_anchor=(1.05, 1), loc='upper left')
+
         plt.tight_layout()
 
         plot_filename_eta = os.path.join(plot_output_dir, "hrd_gyre_modes_by_eta.png")
@@ -384,6 +494,7 @@ def plot_gyre_hrd(df_modes_filtered):
     else:
         print("No modes found for plotting HRD by eta.")
 
+    # HRD for UNSTABLE modes, colored by ETA (positive eta) - MODIFIED FOR SPECIFIC MODELS
     df_unstable_modes = df_modes_filtered[df_modes_filtered['freq_imag'] < 0].copy()
 
     if not df_unstable_modes.empty:
@@ -398,12 +509,60 @@ def plot_gyre_hrd(df_modes_filtered):
                         edgecolor='w',
                         linewidth=0.5)
 
+        # Highlight specific models
+        if specific_models_dfs:
+            for model_name, model_df in specific_models_dfs.items():
+                # Filter specific model's unstable modes to highlight them on this plot
+                unstable_specific_modes = model_df[model_df['freq_imag'] < 0]
+                if not unstable_specific_modes.empty:
+                    plt.scatter(unstable_specific_modes['log_Teff'],
+                                unstable_specific_modes['log_L'],
+                                color='lime', # Bright color to stand out
+                                marker='X',   # Distinct marker
+                                s=300,        # Larger size
+                                edgecolor='black',
+                                linewidth=2,
+                                label=f'{model_name} (Unstable)')
+        
         plt.xlabel(r'$\log T_{\mathrm{eff}}$')
         plt.ylabel(r'$\log (L/L_{\odot})$')
         plt.title(f'HRD - Unstable GYRE Modes (Total Unstable: {len(df_unstable_modes)})')
         plt.gca().invert_xaxis()
         plt.grid(True, linestyle='--', alpha=0.6)
-        plt.legend(title=r'$\mathrm{Im}(freq)$', bbox_to_anchor=(1.05, 1), loc='upper left')
+        
+        # Combine legends for freq_imag plot
+        handles, labels = plt.gca().get_legend_handles_labels()
+        freq_imag_legend_handle = None
+        specific_model_handles_unstable = {}
+
+        for h, l in zip(handles, labels):
+            if l.endswith('(Unstable)'): # Check for our specific model label
+                specific_model_handles_unstable[l] = h
+            elif l == 'freq_imag': # Check for the seaborn generated label
+                freq_imag_legend_handle = h
+
+        if specific_models_dfs:
+            # Create custom legend with both Im(freq) and specific models
+            # This is complex with a colorbar. A simpler approach for the purpose is to add a separate legend for specific models
+            # Or just add them to the main legend if their handles are simple.
+            # Let's use the simplest: let seaborn create its own colorbar legend, and we add an artists' legend for the specific points.
+            
+            # Get current handles and labels (this will include the seaborn colorbar proxy and our scatter points)
+            current_handles, current_labels = plt.gca().get_legend_handles_labels()
+            
+            # Filter specific model labels from the default list
+            final_handles = [h for h, l in zip(current_handles, current_labels) if not l.endswith('(Unstable)')]
+            final_labels = [l for h, l in zip(current_handles, current_labels) if not l.endswith('(Unstable)')]
+
+            # Add specific model handles and labels
+            for label, handle in specific_model_handles_unstable.items():
+                final_handles.append(handle)
+                final_labels.append(label)
+            
+            plt.legend(final_handles, final_labels, title=r'$\mathrm{Im}(freq)$ / Specific Unstable Models', bbox_to_anchor=(1.05, 1), loc='upper left')
+        else:
+            plt.legend(title=r'$\mathrm{Im}(freq)$', bbox_to_anchor=(1.05, 1), loc='upper left')
+        
         plt.tight_layout()
 
         plot_filename_imag = os.path.join(plot_output_dir, "hrd_gyre_modes_by_freq_imag.png")
@@ -432,7 +591,7 @@ def _plot_single_radial_profile(mode_data):
     detail_file_path = mode_data['detail_file_path']
 
     if not detail_file_path or not os.path.exists(detail_file_path):
-        print(f"   Skipping radial plot for mode l={l}, n_pg={n_pg} (Model {model_number}): Detail file not found at {detail_file_path}")
+        print(f"    Skipping radial plot for mode l={l}, n_pg={n_pg} (Model {model_number}): Detail file not found at {detail_file_path}")
         return
 
     try:
@@ -504,12 +663,7 @@ def _plot_single_radial_profile(mode_data):
         axs[1].set_title('Absolute Radial Displacement (Linear Scale)')
         axs[1].grid(True, linestyle=':', alpha=0.7)
         axs[1].set_yscale('linear') # Explicitly set to linear scale
-        # Adjust y-limit for linear scale: focus on the surface, or allow for very small values
-        # If you want to see any internal oscillations, setting y_ylim to a very small positive number
-        # might reveal them, but it can make the plot look flat if values are truly near zero.
-        # A common approach is to limit the y-axis to a small fraction of the maximum.
         axs[1].set_ylim(0, xi_r_abs.max() * 1.1) 
-
 
         # Panel 2: Differential Work
         axs[2].plot(x, dw_dx, label=r'$\mathrm{d}W/\mathrm{d}x$', color='orange')
@@ -542,14 +696,11 @@ def _plot_single_radial_profile(mode_data):
         axs[5].set_yscale('log')
         axs[5].grid(True, linestyle=':', alpha=0.7)
 
-
         # Add vertical lines for ionization zones on ALL relevant plots
         for ax_idx in range(len(axs)): # Iterate through all 6 subplots
             for min_idx in gamma_1_min_indices:
                 ax = axs[ax_idx]
                 if min_idx < len(x):
-                    # Only add label for the first vertical line to avoid duplicates in legend
-                    # And only for the first subplot to keep legend simple
                     if ax_idx == 0 and gamma_1_min_indices.index(min_idx) == 0:
                         ax.axvline(x.iloc[min_idx], color='r', linestyle='--', label='Ionization Zone')
                     else:
@@ -558,8 +709,6 @@ def _plot_single_radial_profile(mode_data):
         # Ensure legend appears if ionization zones are marked
         if gamma_1_min_indices:
             axs[0].legend(loc='best')
-            # axs[1].legend(loc='best') # Optionally add legend to linear scale plot if needed
-
 
         plt.tight_layout(rect=[0, 0.03, 1, 0.97]) # Adjust rect to make space for suptitle
 
@@ -573,8 +722,7 @@ def _plot_single_radial_profile(mode_data):
         plt.close(fig) # Close the figure to free memory
 
     except Exception as e:
-        print(f"   Error plotting radial profiles for mode l={l}, n_pg={n_pg} (Model {model_number}) from {detail_file_path}: {e}")
-
+        print(f"    Error plotting radial profiles for mode l={l}, n_pg={n_pg} (Model {model_number}) from {detail_file_path}: {e}")
 
 # --- Radial Profile Plotting Function (now using multiprocessing) ---
 def plot_radial_profiles(df_modes_all, max_npg_to_plot=np.inf):
@@ -618,13 +766,72 @@ if __name__ == '__main__':
     # 1. Collect data and save to CSV
     df_gyre_modes = collect_gyre_mesa_data()
 
-    # 2. Generate HRD plots from the collected data
     if not df_gyre_modes.empty:
-        plot_gyre_hrd(df_gyre_modes.copy())
+        # Define the specific models to filter and highlight
+        # Using tolerance for log_L and log_Teff due to float comparisons
+        log_L_tolerance = 0.02 # Example tolerance for log_L (approx +/- 4.6% in L)
+        log_Teff_tolerance = 0.005 # Example tolerance for log_Teff (approx +/- 1.1% in Teff)
+
+        specific_models_data = {}
+
+        # Model 1: 8Msun, L=10000Lsun, Teff=6700K
+        target_mass_1 = 8.0
+        target_log_L_1 = np.log10(10000)
+        target_log_Teff_1 = np.log10(6700)
+        
+        model_1_modes = df_gyre_modes[
+            (np.isclose(df_gyre_modes['mass'], target_mass_1, atol=0.1)) & # Mass might not be exact match
+            (np.isclose(df_gyre_modes['log_L'], target_log_L_1, atol=log_L_tolerance)) &
+            (np.isclose(df_gyre_modes['log_Teff'], target_log_Teff_1, atol=log_Teff_tolerance))
+        ].copy()
+        if not model_1_modes.empty:
+            specific_models_data['8M, 10000L, Teff=6700K'] = model_1_modes
+            print(f"\nFound {len(model_1_modes)} modes for 8M, 10000L, Teff=6700K model.")
+            print(model_1_modes[['mass', 'model_number', 'log_L', 'log_Teff', 'l', 'n_pg', 'eta']].head())
+        else:
+            print("\nNo modes found for 8M, 10000L, Teff=6700K model with given tolerance.")
+
+        # Model 2: M=6Msun, L=3000Lsun
+        target_mass_2 = 6.0
+        target_log_L_2 = np.log10(3000)
+        
+        # For this model, Teff is not specified, so we'll look for *any* Teff for 6M, 3000L.
+        # This will show a horizontal band on the HRD for all modes of such models.
+        model_2_modes = df_gyre_modes[
+            (np.isclose(df_gyre_modes['mass'], target_mass_2, atol=0.1)) &
+            (np.isclose(df_gyre_modes['log_L'], target_log_L_2, atol=log_L_tolerance))
+        ].copy()
+        if not model_2_modes.empty:
+            specific_models_data['M=6Msun, L=3000Lsun'] = model_2_modes
+            print(f"\nFound {len(model_2_modes)} modes for M=6Msun, L=3000Lsun model.")
+            print(model_2_modes[['mass', 'model_number', 'log_L', 'log_Teff', 'l', 'n_pg', 'eta']].head())
+        else:
+            print("\nNo modes found for M=6Msun, L=3000Lsun model with given tolerance.")
+
+        # Model 3: M=4Msun, L=860Lsun
+        target_mass_3 = 4.0
+        target_log_L_3 = np.log10(860)
+
+        # Similar to Model 2, Teff is not specified.
+        model_3_modes = df_gyre_modes[
+            (np.isclose(df_gyre_modes['mass'], target_mass_3, atol=0.1)) &
+            (np.isclose(df_gyre_modes['log_L'], target_log_L_3, atol=log_L_tolerance))
+        ].copy()
+        if not model_3_modes.empty:
+            specific_models_data['M=4Msun, L=860Lsun'] = model_3_modes
+            print(f"\nFound {len(model_3_modes)} modes for M=4Msun, L=860Lsun model.")
+            print(model_3_modes[['mass', 'model_number', 'log_L', 'log_Teff', 'l', 'n_pg', 'eta']].head())
+        else:
+            print("\nNo modes found for M=4Msun, L=860Lsun model with given tolerance.")
+
+
+        # 2. Generate HRD plots from the collected data, highlighting specific models
+        print("\nGenerating HRD plots (with specific models highlighted)...")
+        plot_gyre_hrd(df_gyre_modes.copy(), specific_models_dfs=specific_models_data)
 
         # 3. Generate Radial Profile plots for unstable modes
-        # max_npg_to_plot=5 # Pl. csak az alacsonyabb rendű instabil módusokat plotolja
-        plot_radial_profiles(df_gyre_modes.copy(), max_npg_to_plot=np.inf) # Vagy hagyjuk np.inf-en az összeset
+        print("\nGenerating Radial Profile plots for unstable modes...")
+        plot_radial_profiles(df_gyre_modes.copy(), max_npg_to_plot=np.inf) # Set to np.inf for all unstable modes
 
     else:
         print("No GYRE modes available to generate plots.")
