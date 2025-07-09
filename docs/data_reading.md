@@ -1,7 +1,9 @@
 # MESA Data Reading and Handling
 
-This module is responsible for scanning and reading MESA simulation runs, and
-preparing the data for further analysis.
+This module, located at `mesalab/data_reader.py`, is responsible for scanning, reading, and preparing MESA simulation run data for further analysis.
+
+---
+
 
 ## `extract_params_from_inlist(inlist_path)`
 
@@ -14,7 +16,7 @@ preparing the data for further analysis.
 * `tuple`: A tuple `(mass, z)` as floats. Returns `(None, None)` if parameters cannot be found or an error occurs during reading.
 
 *Details:*
-The function handles Fortran-style scientific notation (e.g., `1.0d-2` is converted to `1.0e-2`) to ensure correct float parsing. It gracefully handles missing parameters by logging warnings.
+The function handles Fortran-style scientific notation (e.g., `1.0d-2` is converted to `1.0e-2`) to ensure correct float parsing. It provides feedback on missing parameters.
 
 ## `scan_mesa_runs(input_dir, inlist_name)`
 
@@ -37,7 +39,7 @@ The function automatically filters out hidden directories (e.g., `.mesa_temp_cac
 *Example Usage:*
 ```python
 import os
-from mesalab.data_reader import scan_mesa_runs # Assuming its path
+from mesalab.data_reader import scan_mesa_runs
 
 # Example directory structure:
 # /path/to/my_mesa_sims/
@@ -56,3 +58,31 @@ inlist_filename = "inlist_project"
 found_runs = scan_mesa_runs(input_directory, inlist_filename)
 for run_info in found_runs:
     print(f"Found run: Mass={run_info['mass']}, Z={run_info['z']}, Path={run_info['run_dir_path']}")
+```
+
+## `get_data_from_history_file(history_file_path)`
+*Purpose:*  This function reads a MESA `history.data` file into a pandas DataFrame, preparing it for subsequent analysis.
+
+*Parameters:*
+* `history_file_path` (`str`): The absolute path to the MESA `history.data` file.
+
+*Returns:*
+* `pandas.DataFrame`: DataFrame containing the history data. Returns an empty DataFrame if the file is not found or an error occurs during processing.
+
+*Details*:
+The function uses `numpy.genfromtxt` for robust parsing, which handles MESA-specific file structures like comments, header rows, and automatic column name detection. It converts all columns to numeric types, setting unconvertible values (like texts, corrupted data) to `NaN`.
+
+*Example Usage*:
+```python
+import pandas as pd
+from mesalab.data_reader import get_data_from_history_file # Assuming its path
+
+history_file = "/path/to/my_mesa_sims/run_01/LOGS/history.data"
+df_history = get_data_from_history_file(history_file)
+
+if not df_history.empty:
+    print("Successfully loaded history data:")
+    print(df_history.head())
+else:
+    print(f"Failed to load history data from {history_file}")
+```
