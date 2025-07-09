@@ -44,4 +44,4 @@ mesalab_results/
 detail*.*
 
 docs/.DS_Store
-
+docs/_build/
