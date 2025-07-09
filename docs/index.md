@@ -4,11 +4,11 @@ This documentation provides an overview of the `mesalab` package, its functional
 
 ## Table of Contents
 
-```eval_rst
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
 
-   installation # docs/installation.md
-   first_run    # docs/first_run.md 
-   # Ide jöhetnek majd a későbbi oldalak, pl. usage, api, contributing
+```{toctree}
+:maxdepth: 2
+:caption: Contents:
+
+installation
+first_run
+# Ide jöhetnek majd a későbbi oldalak, pl. usage, api, contributing
