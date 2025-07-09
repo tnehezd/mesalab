@@ -10,6 +10,7 @@ This documentation provides an overview of the `mesalab` package, its functional
 
 installation
 first_run
+api_reference
 #more lists...
 ```
 
