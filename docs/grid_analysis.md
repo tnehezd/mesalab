@@ -6,33 +6,38 @@ This module, located at `mesalab/analysis/grid_analyzer.py`, provides functional
 ## `analyze_mesa_grid_directory(grid_root_path, mesa_output_subdir="LOGS", inlist_filename="inlist", inlist_alternatives=None)`
 Purpose: This function searches for MESA run directories within a specified grid root path, then extracts the initial mass and metallicity parameters from their `inlist` files. It's designed to automate the discovery of individual MESA simulations within a larger grid structure.
 
-* Parameters:*
+*Parameters:*
 
-grid_root_path (str): The absolute path to the root directory where your MESA grid runs are located. The function expects each direct subdirectory within this path to represent an individual MESA run.
+* `grid_root_path` (`str`): 
+The absolute path to the root directory where your MESA grid runs are located. The function expects each direct subdirectory within this path to represent an individual MESA run.
 
-mesa_output_subdir (str, optional): The name of the subdirectory within each MESA run where output files (like history.data) are found. Defaults to "LOGS".
+* `mesa_output_subdir` (`str`, `optional`): 
+The name of the subdirectory within each MESA run where output files (like `history.data`) are found. Defaults to `LOGS`.
 
-inlist_filename (str, optional): The primary filename for the MESA inlist file that the function will try to find in each run directory. Defaults to "inlist".
+* `inlist_filename` (`str`, `optional`): 
+The primary filename for the MESA inlist file that the function will try to find in each run directory. Defaults to `inlist`.
 
-inlist_alternatives (list, optional): A list of alternative inlist filenames to check if the inlist_filename is not found. Defaults to None (no alternatives).
+* `inlist_alternatives` (`list`, `optional`): 
+A list of alternative `inlist` filenames to check if the `inlist_filename` is not found. Defaults to None (no alternatives).
 
-Returns:
+*Returns:*
 
-list: A list of dictionaries. Each dictionary represents a discovered MESA run and contains:
+* `list`: A list of dictionaries. Each dictionary represents a discovered MESA run and contains:
 
-'path' (str): The absolute path to the MESA run directory.
+    * `'path'` (`str`): The absolute path to the MESA run directory.
 
-'mass' (float): The initial_mass extracted from the inlist file.
+    * `'mass'` (`float`): The `initial_mass` extracted from the `inlist` file.
 
-'z' (float): The initial_z (metallicity) extracted from the inlist file.
-Returns an empty list if no valid runs are found or if grid_root_path is not a valid directory.
+    * `'z'` (`float`): The `initial_z` (metallicity) extracted from the `inlist` file.
 
-Details:
-The function iterates through direct subdirectories of the grid_root_path. For each subdirectory, it verifies the presence of the mesa_output_subdir (e.g., LOGS) to confirm it's a potential MESA run. It then attempts to read the initial_mass and initial_z from the inlist file(s) using the get_mesa_params_from_inlist helper function. Directories where parameters cannot be successfully extracted are skipped, and a warning is logged.
+Returns an empty list if no valid runs are found or if `grid_root_path` is not a valid directory.
 
-Example Usage:
+*Details:*
+The function iterates through direct subdirectories of the `grid_root_path`. For each subdirectory, it verifies the presence of the `mesa_output_subdir` (e.g., `LOGS`) to confirm it's a potential MESA run. It then attempts to read the `initial_mass` and `initial_z` from the `inlist` file(s) using the `get_mesa_params_from_inlist` helper function. Directories where parameters cannot be successfully extracted are skipped, and a warning is logged.
+
+*Example Usage:*
 Let's assume you have a directory structure like this:
-
+```text
 /path/to/my_mesa_grids/
 ├── solar_mass_grid/
 │   ├── M1.0_Z0.014/
@@ -48,8 +53,9 @@ Let's assume you have a directory structure like this:
 │       └── LOGS/
 │           └── history.data
 └── another_grid/
-    ...
-Python
+```
+
+```Python
 import os
 import logging
 from mesalab.analysis.grid_analyzer import analyze_mesa_grid_directory
@@ -87,3 +93,5 @@ else:
 # import shutil
 # if os.path.exists(test_grid_path):
 #     shutil.rmtree(test_grid_path)
+
+```

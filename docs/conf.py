@@ -70,6 +70,12 @@ master_doc = 'index' # Így kell lennie!
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = 'sphinx_rtd_theme' # The popular Read the Docs theme
+html_theme_options = {
+    'collapse_navigation': False, # Ez a sor bontja ki mindig a menüt
+    'sticky_navigation': True,
+    'navigation_depth': 4, # Ez szabályozza, hány szint mélységig bontsa ki
+    'includehidden': True,
+}
 html_static_path = ['_static']
 
 # --- Autodoc settings --------------------------------------------------------
