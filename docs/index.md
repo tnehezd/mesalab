@@ -15,13 +15,16 @@ first_run
 
 ## About `mesalab`
 
-`mesalab` is a Python package designed for **processing and analyze of stellar evolution simulations performed with MESA** (Modules for Experiments in Stellar Astrophysics). It is developed for handling **large grids of simulations**, such as grids with varying stellar mass (M) and metallicity (Z).
+The Python package `mesalab` is designed for **processing and analyze of stellar evolution simulations performed with MESA** (Modules for Experiments in Stellar Astrophysics). It is developed for handling **large grids of simulations**, such as grids with varying stellar mass (M) and metallicity (Z). The main purpose of the pipeline is to analyze each simulation, checks if the star crosses the *blue loop* on the instability strip, **then generates inlist files and runs corresponding GYRE simulations**.
+
+The current version of `mesalab` is optimized for MESA version **23.05.01** and GYRE version **7.0**. The essential MESA output parameters required for this analysis are summarized in the following list:
 
 The package runs through the workflow of analyzing MESA outputs as follows:
 
-* **Data Collection:** Systematically gathers relevant data across entire simulation grids. This includes:
-    * **From MESA `LOGS/history.data` files:** Stellar evolution parameters like *log_g*, *log_Teff*, *log_L*, *star_mass*, *star_age*, *log_R*, *central_h*, and *he4*.
-    * **From MESA inlist files:** Initial simulation parameters such as **initial_mass** and **initial_Z**.* **Parameter Linking:** Seamlessly associating GYRE pulsation modes with their corresponding stellar parameters from MESA evolutionary tracks.
+* **Data Collection:** The pipeline  gathers relevant data across entire simulation grids, such as:
+    * **From MESA `LOGS/history.data` files:** Stellar evolution parameters like `log_g`, `log_Teff`, `log_L`, `mass`, `star_age`, `log_R`, `center_h1` and `center_he4`.
+    * **From MESA inlist files:** Initial simulation parameters such as `initial_mass` and `initial_Z`.
+* **Parameter Linking:** Seamlessly associating GYRE pulsation modes with their corresponding stellar parameters from MESA evolutionary tracks.
 * **Data Aggregation:** Consolidating diverse simulation outputs into easily manageable formats (e.g., CSV files).
 * **Visualization:** Generating insightful plots such as Hertzsprung-Russell Diagrams (HRDs) and Color-Magnitude Diagrams (CMDs), often enhanced with pulsation properties.
 
