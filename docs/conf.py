@@ -40,6 +40,8 @@ extensions = [
     'sphinx.ext.viewcode',    # Adds links to source code from the docs
     'sphinx.ext.mathjax',     # For rendering LaTeX math equations
     'sphinx.ext.intersphinx', # For linking to other Sphinx docs (e.g., NumPy, Pandas)
+    'myst_parser', # <--- ADD THIS LINE to enable Markdown parsing
+
 ]
 
 # Set the default role for intersphinx links if you use them
