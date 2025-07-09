@@ -44,6 +44,19 @@ extensions = [
 
 ]
 
+myst_enable_extensions = [
+    "colon_fence",  # Crucial for directives like ````{toctree}` to be parsed
+    # You can add other MyST extensions here if you need them:
+    # "deflist",      # For definition lists
+    # "fieldlist",    # For Sphinx-style field lists (like :param:)
+    # "html_image",   # For raw HTML <img> tags
+    # "replacements", # For common text replacements
+    # "smartquotes",  # For converting "quotes" to proper curly quotes
+    # "strikethrough",# For ~~strikethrough~~ text
+    # "substitution", # For |name| substitutions
+    # "tasklist",     # For - [ ] checkboxes
+]
+
 # Set the default role for intersphinx links if you use them
 # default_role = 'py:obj' 
 
