@@ -26,6 +26,10 @@ env/
 
 my_organized_output/
 output/
+output_mid/
+output_mid_01/
+output_low/
+output_high/
 output_nadconv/
 output_nadconv_high/
 zenodo_output/
@@ -45,3 +49,4 @@ detail*.*
 
 docs/.DS_Store
 docs/_build/
+plot_loop.py
