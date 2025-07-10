@@ -16,9 +16,9 @@ def extract_params_from_inlist(inlist_path):
         inlist_path (str): The absolute path to the MESA inlist file.
 
     Returns:
-        tuple: A tuple containing (mass, z) as floats. Returns (None, None)
-               if parameters cannot be extracted or file is not found.
+        tuple: (mass, z) as floats or (None, None) if not found.
     """
+
     mass = None
     z = None
 
@@ -72,7 +72,9 @@ def scan_mesa_runs(input_dir, inlist_name):
               - 'run_dir_path': Path to the MESA run directory
               - 'mass': Extracted initial_mass
               - 'z': Extracted initial_Z
-              Returns an empty list if no valid runs are found.
+
+        Note:
+            Returns an empty list if no valid runs are found.
     """
     mesa_run_infos = []
 

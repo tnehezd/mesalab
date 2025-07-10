@@ -6,11 +6,14 @@ This documentation provides an overview of the `mesalab` package, its functional
 
 ```{toctree}
 :maxdepth: 3
-:caption: Contents:
-
+:caption: Contents
+about
 installation
 first_run
-api_reference
+```
+```{toctree}
+:caption: API
+preprocessing
 ```
 
 ## About `mesalab`

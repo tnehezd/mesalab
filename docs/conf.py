@@ -12,8 +12,12 @@ import os
 import sys
 # This line is CRUCIAL. It tells Sphinx to add the parent directory (your project root)
 # to the Python path, so it can find and import your 'mesalab' package.
-sys.path.insert(0, os.path.abspath('..'))
+#sys.path.insert(0, os.path.abspath('..'))
 
+# Add the path to your project's root directory so Sphinx can find your modules
+# Replace '../../' with the actual path to your 'mesalab' directory from conf.py's location.
+# For example, if conf.py is in 'docs/' and 'mesalab/' is in the project root:
+sys.path.insert(0, os.path.abspath('../')) # Adjust this path as needed!
 
 # --- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -40,8 +44,8 @@ extensions = [
     'sphinx.ext.viewcode',    # Adds links to source code from the docs
     'sphinx.ext.mathjax',     # For rendering LaTeX math equations
     'sphinx.ext.intersphinx', # For linking to other Sphinx docs (e.g., NumPy, Pandas)
-    'myst_parser', # <--- ADD THIS LINE to enable Markdown parsing
-
+    'myst_parser', 
+#    'sphinx.ext.autosummary',
 ]
 
 myst_enable_extensions = [
@@ -73,10 +77,10 @@ html_theme = 'sphinx_rtd_theme' # The popular Read the Docs theme
 html_theme_options = {
     'collapse_navigation': False, # Ez a sor bontja ki mindig a menüt
     'sticky_navigation': True,
-    'navigation_depth': 4, # Ez szabályozza, hány szint mélységig bontsa ki
+    'navigation_depth': 5, # Ez szabályozza, hány szint mélységig bontsa ki
     'includehidden': True,
 }
-html_static_path = ['_static']
+#html_static_path = ['_static']
 
 # --- Autodoc settings --------------------------------------------------------
 # This helps autodoc find the right things
