@@ -9,16 +9,27 @@ logger = logging.getLogger(__name__) # Use a logger specific to this module
 
 def extract_params_from_inlist(inlist_path):
     """
-    Extract initial_mass and initial_Z from a MESA inlist file.
-    Handles 'd' or 'D' in scientific notation (e.g., 1.0d-2).
+    Extract `initial_mass` and `initial_Z` values from a MESA inlist file.
+
+    Handles Fortran-style scientific notation (e.g., `1.0d-2`, `2.5D+1`) by
+    converting it to Python-compatible form. Returns `None` for missing values,
+    with warnings logged.
 
     Args:
-        inlist_path (str): The absolute path to the MESA inlist file.
+        inlist_path (str): Absolute path to the MESA inlist file.
 
     Returns:
-        tuple: (mass, z) as floats or (None, None) if not found.
-    """
+        tuple: A tuple (mass, z) where both elements are floats or `None`
+               if the corresponding parameter is not found.
 
+    Example:
+        >>> from mesalab.analyzis import extract_params_from_inlist
+        >>> extract_params_from_inlist("mesa_runs/z0.006_m3.0/inlist_project")
+        (3.0, 0.006)
+
+        >>> extract_params_from_inlist("inlist_with_missing_z")
+        (2.5, None)
+    """
     mass = None
     z = None
 
@@ -57,24 +68,46 @@ def extract_params_from_inlist(inlist_path):
 
 def scan_mesa_runs(input_dir, inlist_name):
     """
-    Scan the input directory for MESA run subdirectories.
-    This function looks for any direct subdirectories within `input_dir`
-    that contain both the specified inlist file and the history.data file.
-    It also filters out hidden directories (starting with '.') like .mesa_temp_cache.
+    Scan a directory for MESA run subdirectories that contain both an inlist file and history.data.
+
+    Each valid subdirectory must:
+      - Be a direct (non-hidden) subdirectory of `input_dir`
+      - Contain the specified `inlist_name` file
+      - Contain a LOGS/history.data file
+
+    The function attempts to extract `initial_mass` and `initial_Z` from each inlist file.
+    Only runs with both values present are included in the output.
 
     Args:
-        input_dir (str): The absolute path to the main directory containing MESA run subdirectories.
-        inlist_name (str): The filename of the inlist (e.g., 'inlist_project') expected within each run directory.
+        input_dir (str): Absolute path to the main directory containing MESA run subdirectories.
+        inlist_name (str): Name of the inlist file expected in each subdirectory (e.g., 'inlist_project').
 
     Returns:
-        list: A list of dictionaries, where each dictionary contains:
-              - 'history_file_path': Path to history.data
-              - 'run_dir_path': Path to the MESA run directory
-              - 'mass': Extracted initial_mass
-              - 'z': Extracted initial_Z
+        list of dict: Each dictionary represents a valid MESA run and contains:
+            - 'history_file_path' (str): Full path to the history.data file
+            - 'run_dir_path' (str): Full path to the MESA run directory
+            - 'mass' (float): Extracted initial_mass
+            - 'z' (float): Extracted initial_Z
 
-        Note:
-            Returns an empty list if no valid runs are found.
+        Returns an empty list if no valid runs are found.
+
+    Example:
+        >>> from mesalab.analyzis import scan_mesa_runs 
+        >>> scan_mesa_runs("/home/user/mesa_runs", "inlist_project")
+        [
+            {
+                'history_file_path': '/home/user/mesa_runs/z0.006_m3.0/LOGS/history.data',
+                'run_dir_path': '/home/user/mesa_runs/z0.006_m3.0',
+                'mass': 3.0,
+                'z': 0.006
+            },
+            {
+                'history_file_path': '/home/user/mesa_runs/z0.014_m2.5/LOGS/history.data',
+                'run_dir_path': '/home/user/mesa_runs/z0.014_m2.5',
+                'mass': 2.5,
+                'z': 0.014
+            }
+        ]
     """
     mesa_run_infos = []
 
@@ -121,19 +154,33 @@ def scan_mesa_runs(input_dir, inlist_name):
 
 def get_data_from_history_file(history_file_path):
     """
-    Reads a MESA history.data file into a pandas DataFrame using np.genfromtxt.
+    Reads a MESA history.data file into a pandas DataFrame using NumPy's genfromtxt.
 
-    This function is designed to handle the structure of MESA history.data files,
-    including comments and header rows, and converts data to appropriate types.
+    This function handles the specific structure of MESA `history.data` files, which contain
+    a few descriptive lines followed by column headers and numerical data. It attempts to
+    parse all columns as numeric values and ensures that 'model_number' is an integer column,
+    if present.
 
     Args:
         history_file_path (str): The absolute path to the MESA history.data file.
 
     Returns:
-        pandas.DataFrame: A DataFrame containing the history data.
+        pandas.DataFrame: A DataFrame containing the parsed history data.
+                          Returns an empty DataFrame if the file is missing or cannot be parsed.
 
-    Raises:
-        Exception: If there's an error loading or processing the history file.
+    
+    Exception: 
+        If there's an error loading or processing the file, it is logged and an empty DataFrame is returned instead.
+
+    Example:
+        >>> from mesalab.analyzis import data_reader
+        >>> df = data_reader.get_data_from_history_file('/path/to/LOGS/history.data')
+        >>> if not df.empty:
+        ...     print(df.head())
+        ...     print(f"Total models: {len(df)}")
+        ...     print(f"Columns available: {list(df.columns)}")
+        ... else:
+        ...     print("Failed to load history.data or file was empty.")
     """
     if not os.path.exists(history_file_path):
         logger.error(f"History file not found: {history_file_path}")

@@ -26,7 +26,26 @@ BL_CENTER_HE4_END_THRESHOLD = 1e-4 # Defines the end of core helium burning for 
 
 def is_in_instability_strip(log_Teff, log_L):
     """
-    Checks if a given point (log_Teff, log_L) is inside the defined Instability Strip.
+    Checks if a given stellar point (log_Teff, log_L) is inside the predefined Instability Strip.
+
+    The instability strip is defined by a hardcoded polygon (instability_path)
+    in the HR Diagram (log_Teff vs log_L). The log_Teff axis is assumed to be
+    inverted as is common in HR diagrams.
+
+    Args:
+        log_Teff (float): Logarithm of the effective temperature (log10(Teff)).
+        log_L (float): Logarithm of the luminosity (log10(L/L_solar)).
+
+    Returns:
+        bool: True if the point is inside the instability strip, False otherwise.
+
+    Example:
+        >>> # Assuming instability_path is globally defined or accessible
+        >>> # (defined at the module level in this file)
+        >>> is_in_instability_strip(3.7, 3.0) # Example point inside the strip
+        True
+        >>> is_in_instability_strip(4.0, 3.0) # Example point outside
+        False
     """
     return instability_path.contains_point((log_Teff, log_L))
 
@@ -37,7 +56,8 @@ def analyze_blue_loop_and_instability(history_df: pd.DataFrame, initial_mass: fl
 
     Args:
         history_df (pd.DataFrame): DataFrame containing MESA history data.
-                                   Must include 'log_Teff', 'log_L', 'center_h1', 'star_age', 'model_number', 'log_g', 'center_he4'.
+                                   Must include 'log_Teff', 'log_L', 'center_h1', 'star_age',
+                                   'model_number', 'log_g', 'center_he4'.
         initial_mass (float): Initial mass of the star.
         initial_Z (float): Initial metallicity (Z) of the star.
 
@@ -47,7 +67,29 @@ def analyze_blue_loop_and_instability(history_df: pd.DataFrame, initial_mass: fl
               - 'state_times': Dictionary of specific ages (MS end, min Teff post-MS, IS entries/exits).
               - 'blue_loop_detail_df': DataFrame with detailed data points during the relevant blue loop phase,
                                        filtered to include only points inside or to the blue of the IS.
-              Returns a dictionary with NaN values if analysis cannot be performed (e.g., missing columns, no relevant phase).
+                                       
+        Returns a dictionary with NaN values if analysis cannot be performed (e.g., missing columns, no relevant phase).
+
+    Example:
+        >>> from mesalab.bluelooptools.blue_loop_analyzer import analyze_blue_loop_and_instability
+        >>> import pandas as pd
+        >>> import numpy as np
+        >>> # Create a dummy DataFrame that mimics MESA history data
+        >>> dummy_data = {
+        ...     'model_number': np.arange(100, 200),
+        ...     'star_age': np.linspace(1e8, 1.5e8, 100),
+        ...     'log_Teff': np.concatenate([np.linspace(3.7, 3.6, 50), np.linspace(3.6, 3.8, 50)]), # Simulate a loop
+        ...     'log_L': np.concatenate([np.linspace(2.0, 3.0, 50), np.linspace(3.0, 2.5, 50)]),
+        ...     'log_g': np.linspace(4.0, 3.0, 100),
+        ...     'center_h1': np.concatenate([np.linspace(0.7, 0.001, 50), np.zeros(50)]),
+        ...     'center_he4': np.concatenate([np.zeros(50), np.linspace(0.9, 0.0001, 50)]),
+        ... }
+        >>> dummy_df = pd.DataFrame(dummy_data)
+        >>> initial_mass = 5.0  # solar masses
+        >>> initial_Z = 0.006
+        >>>
+        >>> result = analyze_blue_loop_and_instability(dummy_df, initial_mass, initial_Z)
+        >>> print(f"Crossing count: {result['crossing_count']}")
     """
     # Initialize results. 'crossing_count' defaults to NaN for fundamental errors, 0 for 'no loop' scenarios.
     analysis_results = {

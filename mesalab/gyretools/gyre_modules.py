@@ -24,21 +24,36 @@ def run_single_gyre_model(
     num_gyre_threads: int
 ):
     """
-    Runs a single GYRE model for a given MESA profile.
-    Dynamically generates the inlist file for the specific run based on a template.
+    Runs a single GYRE model using a specified MESA profile.
+
+    Dynamically generates the GYRE inlist file based on a template,
+    updates the profile path, sets up the output directory, and runs
+    the GYRE executable with the given number of OpenMP threads.
 
     Args:
-        model_profile_path (str): Absolute path to the MESA profile file (e.g., profileXXXX.data.GYRE).
-        gyre_inlist_template_path (str): Path to the base GYRE inlist template file.
-        output_dir (str): Directory where GYRE output and its inlist will be saved for this run.
-                          This will typically be structured like:
-                          output_base_dir / mesa_run_dir_basename / profileXXXXX/
-        gyre_executable (str): Absolute path to the GYRE executable.
-        num_gyre_threads (int): Number of OpenMP threads GYRE should use for this single run.
-    
-    Raises:
-        subprocess.CalledProcessError: If GYRE execution fails.
-        Exception: For other unexpected errors during the run.
+        model_profile_path (str): Absolute path to the MESA profile file 
+            (e.g., 'profileXXXX.data.GYRE').
+        gyre_inlist_template_path (str): Path to the GYRE inlist template file.
+        output_dir (str): Directory where GYRE outputs and inlist for this run will be saved.
+        gyre_executable (str): Absolute path to the GYRE executable binary.
+        num_gyre_threads (int): Number of OpenMP threads for the GYRE run.
+
+    Returns:
+        int: The exit code of the GYRE process. Zero indicates success.
+
+    Return type:
+        int
+
+    Example:
+        >>> exit_code = run_single_gyre_model(
+        ...     model_profile_path='/data/mesa/profile1234.data.GYRE',
+        ...     gyre_inlist_template_path='/configs/gyre_inlist_template.in',
+        ...     output_dir='/results/run_1234/',
+        ...     gyre_executable='/usr/local/bin/gyre',
+        ...     num_gyre_threads=4
+        ... )
+        >>> if exit_code == 0:
+        ...     print("GYRE run succeeded.")
     """
     gyre_logger.info(f"Setting up GYRE run for profile: {os.path.basename(model_profile_path)}")
     os.makedirs(output_dir, exist_ok=True)
@@ -62,7 +77,6 @@ def run_single_gyre_model(
     # The 'file' parameter in '&model' block is updated to the absolute path of the profile
     nml['model']['file'] = os.path.abspath(model_profile_path)
 
-    # *** Módosítás itt: GYRE output subdirectory ***
     # GYRE expects 'summary_file = 'gyre_out/summary_...' and writes directly to CWD + 'gyre_out'.
     # We ensure that 'output_dir' is the CWD for GYRE. So, 'gyre_out' will be created INSIDE 'output_dir'.
     # No need to explicitly create `gyre_output_subdir` here, as GYRE will create `gyre_out` itself
@@ -136,8 +150,42 @@ def run_gyre_workflow(
     debug_mode: bool = False
 ):
     """
-    Orchestrates the GYRE runs based on configuration read from gyre_config_path.
+    Runs GYRE calculations based on the provided configuration file.
+
+    The function supports two modes of operation specified in the GYRE configuration:
+    - ALL_PROFILES: runs GYRE on all MESA profile files found matching a pattern.
+    - FILTERED_PROFILES: runs GYRE only on profiles filtered by criteria from a CSV file.
+
+
+    It performs extensive validation of input paths and configuration parameters,
+    prepares output directories, and constructs a list of tasks for running GYRE.
+    If required files (configuration, executable, templates, or input data) are missing,
+    or if configuration parameters are invalid, the function will raise errors to
+    notify the user accordingly. Reading the filtered profiles CSV may also fail if
+    the file is inaccessible or malformed.
+
+    Args:
+        config_path (str): Path to the GYRE configuration YAML file.
+        gyre_exec (str): Path to the GYRE executable.
+        global_output_base (str): Base directory where all GYRE output will be stored.
+        debug (bool, optional): Enables debug logging if True. Default is False.
+        nproc (int, optional): Number of parallel processes to use. Default is 1.
+
+    Returns:
+        list of dict: A list of tasks, each represented as a dictionary containing
+        information about the profile and associated GYRE run parameters.
+
+    Example:
+        >>> tasks = run_gyre_workflow(
+                config_path="configs/gyre_config.yaml",
+                gyre_exec="/usr/local/bin/gyre",
+                global_output_base="results/gyre_runs",
+                debug=True,
+                nproc=4
+            )
+        >>> print(f"Prepared {len(tasks)} GYRE tasks for execution.")
     """
+
     if debug_mode:
         gyre_logger.setLevel(logging.DEBUG)
         gyre_logger.debug("GYRE workflow debug mode enabled.")
@@ -410,7 +458,7 @@ if __name__ == "__main__":
     try:
         run_gyre_workflow(
             gyre_config_path=args.gyre_config_path,
-            filtered_profiles_csv_path=args.filtered_profiles_csv_path,
+            filtered_profiles_csav_path=args.filtered_profiles_csv_path,
             global_mesa_base_dir=args.global_mesa_base_dir,
             global_output_base_dir=args.global_output_base_dir,
             debug_mode=args.debug

@@ -19,6 +19,17 @@ def parsing_options():
 
     Returns:
         argparse.Namespace: A nested Namespace object containing the final resolved configuration.
+
+    Example:
+
+        >>> # Run mesalab from terminal as
+        >>> # $ python script.py --config config.yaml --output output/ --analyze-blue-loop --generate-heatmaps
+        >>> with patch('sys.argv', ['your_script_name.py', '--analyze-blue-loop', '--generate-heatmaps']):
+        ...     config = parsing_options()
+        ...     print(config.blue_loop_analysis.analyze_blue_loop)
+        True
+        >>> print(config.plotting_settings.generate_heatmaps)
+        True
     """
     # 1. Define command-line arguments. These arguments can override YAML settings.
     parser = argparse.ArgumentParser(

@@ -10,19 +10,36 @@ def analyze_mesa_grid_directory(grid_root_path,
                                 inlist_alternatives=None):
     """
     Searches for MESA run directories within a given grid root path
-    and extracts mass and metallicity from their inlist files.
+    and extracts stellar mass and metallicity from their inlist files.
+
+    A valid MESA run directory is defined as a subdirectory of `grid_root_path`
+    that contains the `mesa_output_subdir` (default: 'LOGS'), and an inlist file
+    from which initial_mass and initial_z can be extracted.
 
     Args:
-        grid_root_path (str): The root directory where MESA grid runs are located.
-        mesa_output_subdir (str): The name of the subdirectory within each MESA run
-                                  where output files (like history.data) are found.
-        inlist_filename (str): The primary filename for the MESA inlist file.
-        inlist_alternatives (list): A list of alternative inlist filenames to check
-                                    if the primary is not found.
+        grid_root_path (str): The root directory where multiple MESA runs are located.
+        mesa_output_subdir (str, optional): Subdirectory within each run directory
+                                            that indicates a valid MESA run (default: "LOGS").
+        inlist_filename (str, optional): Primary inlist filename to look for (default: "inlist").
+        inlist_alternatives (list of str, optional): Alternative inlist filenames to try if
+                                                     the primary is not found (default: None).
 
     Returns:
-        list: A list of dictionaries, each containing 'path', 'mass', and 'z'
-              for a found MESA run.
+        list of dict: A list of dictionaries. Each dictionary has the following keys:
+            - 'path': full path to the MESA run directory
+            - 'mass': float, the initial_mass from the inlist
+            - 'z': float, the initial_z from the inlist
+
+    Example:
+        >>> from mesalab.analyzis import grid_analyzer
+        >>> results = grid_analyzer.analyze_mesa_grid_directory(
+        ...     "/home/user/mesa_runs/",
+        ...     mesa_output_subdir="LOGS",
+        ...     inlist_filename="inlist",
+        ...     inlist_alternatives=["inlist_project", "inlist_massive"]
+        ... )
+        >>> for run in results:
+        ...     print(f"Path: {run['path']}, Mass: {run['mass']}, Z: {run['z']}")
     """
     found_runs = []
     

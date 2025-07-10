@@ -6,16 +6,22 @@ def get_mesa_params_from_inlist(run_path,
                                 inlist_filename="inlist",
                                 inlist_alternatives=None):
     """
-    Extracts initial_mass and initial_z from a MESA inlist file within a run directory.
+    Extracts `initial_mass` and `initial_z` from a MESA inlist file in a given run directory.
 
-    Args:
-        run_path (str): The full path to a single MESA run directory.
-        inlist_filename (str): The primary filename for the MESA inlist file (e.g., 'inlist').
-        inlist_alternatives (list): A list of alternative inlist filenames to check if the primary is not found.
+    This function looks for the specified inlist file or alternatives in the provided directory,
+    and parses the initial mass and metallicity values using regular expressions.
+
+    Parameters:
+        run_path (str): Path to the MESA run directory.
+        inlist_filename (str): Primary inlist filename to search for (default: "inlist").
+        inlist_alternatives (list, optional): Additional filenames to try before the primary one.
 
     Returns:
-        dict: A dictionary containing 'initial_mass' (float) and 'initial_z' (float),
-              or None if the inlist file is not found or parameters cannot be extracted.
+        dict or None: Dictionary with keys `'initial_mass'` and `'initial_z'`, or `None` if parsing fails.
+
+    Example:
+        >>> get_mesa_params_from_inlist("runs/model_001", inlist_alternatives=["inlist_project"])
+        {'initial_mass': 5.0, 'initial_z': 0.0152}
     """
     if inlist_alternatives is None:
         inlist_alternatives = []

@@ -19,11 +19,14 @@ def generate_all_hr_diagrams(data_by_metallicity: dict, model_name: str, output_
     """
     Generates Hertzsprung-Russell (HR) diagrams for pre-loaded MESA run data,
     grouping plots by metallicity and saving each metallicity's plots
-    as a single image. The pre-main sequence (pre-MS) phase can be excluded from the plots
+    as a single image. 
+
+    The pre-main sequence (pre-MS) phase can be excluded from the plots
     if 'drop_zams' is True.
-    Plots are sorted by initial mass within each metallicity group.
-    The subplot layout is fixed to 4 columns. Individual subplots maintain a 1:2
-    height:width aspect ratio with generous sizing. The colorbar is made thinner.
+    
+    Plots are sorted by initial mass within each metallicity group, the subplot layout is 
+    fixed to 4 columns. 
+
     If data is insufficient after trimming (and 'drop_zams' is True), the specific subplot
     for that run is skipped and a warning is logged.
 
@@ -48,6 +51,9 @@ def generate_all_hr_diagrams(data_by_metallicity: dict, model_name: str, output_
                                     is trimmed from the beginning of the track using
                                     the 'center_h1' drop criterion (or 'log_L' minimum as fallback).
                                     Defaults to False (i.e., full track is plotted).
+
+    Returns: 
+        None
     """
     logging.info(f"Starting HR diagram generation for model '{model_name}'.")
 

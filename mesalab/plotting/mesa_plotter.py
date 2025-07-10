@@ -14,17 +14,28 @@ from .all_hrd_plotter import generate_all_hr_diagrams # Import the HR diagram ge
 
 def handle_heatmap_generation(args, summary_df_for_plotting, plots_sub_dir, analysis_results_sub_dir, input_dir):
     """
-    Handles the generation of heatmaps based on data from MESA runs.
-    Now directly reads from 'crossing_count_grid.csv' to ensure 0-crossing data is included.
+    Generate heatmaps showing how often models cross the instability strip.
+
+    This function processes the YAML or CSV summary files from a previous analysis
+    to create Z-M (metallicity-mass) heatmaps of instability strip crossing counts.
+    It saves the figures in a subdirectory and labels them with the model grid name.
 
     Args:
-        args (argparse.Namespace): The command-line arguments object, containing flags like
-                                   `generate_heatmaps`, `blue_loop_output_type`, `analyze_blue_loop`.
-        summary_df_for_plotting (pd.DataFrame): The summary DataFrame of analyzed MESA runs.
-                                                    (This is still passed but no longer used for heatmap data source).
-        plots_sub_dir (str): The directory where plot images will be saved.
-        analysis_results_sub_dir (str): The directory where analysis results (e.g., CSVs) will be saved.
-        input_dir (str): The input directory, used to determine the model name for plot titles/filenames.
+        args (argparse.Namespace): Runtime arguments (e.g., plot options).
+        summary_df_for_plotting (pd.DataFrame): Optional preloaded summary dataframe (can be None).
+        plots_sub_dir (str): Output directory for saving heatmap images.
+        analysis_results_sub_dir (str): Directory with analysis summary files (e.g., YAML/CSV).
+        input_dir (str): Name of the input model grid (used in plot titles/filenames).
+
+    Returns:
+        None
+
+    Example:
+        >>> from mesalab.plotting import handle_heatmap_generation
+        >>> summary_dir = "results/summary"
+        >>> plot_dir = "results/plots"
+        >>> handle_heatmap_generation(args, None, plot_dir, summary_dir, input_dir="grid_z001")
+        Heatmaps saved to results/plots showing crossing frequencies by Z and M.
     """
     # FIX 1: Access generate_heatmaps from plotting_settings
     if not args.plotting_settings.generate_heatmaps:
@@ -84,16 +95,27 @@ def handle_heatmap_generation(args, summary_df_for_plotting, plots_sub_dir, anal
 
 def handle_blue_loop_bc_plotting(args, combined_detail_data_for_plotting, blue_loop_plots_bc_sub_dir, detail_files_output_dir):
     """
-    Handles the generation of blue loop specific plots with bolometric corrections (BCs).
+    Plot blue loop tracks in the color–magnitude diagram with bolometric corrections.
+
+    Reads preprocessed detail CSV files and bolometric correction data (e.g., for Gaia bands),
+    then plots the evolutionary tracks during the blue loop phase on CMDs. 
+    Used for visualizing where and how models populate the instability strip.
 
     Args:
-        args (argparse.Namespace): The command-line arguments object, containing flags like
-                                   `generate_blue_loop_plots_with_bc` and `force_reanalysis`.
-        combined_detail_data_for_plotting (pd.DataFrame): Detailed MESA run data, potentially combined from multiple runs.
-                                                            This might be empty initially if not reanalyzed.
-        blue_loop_plots_bc_sub_dir (str): The directory where blue loop BC plots will be saved.
-        detail_files_output_dir (str): The directory where individual detail data files are stored,
-                                        used if data needs to be loaded from disk.
+        args (argparse.Namespace): Runtime arguments (e.g., filters, flags).
+        combined_detail_data_for_plotting (pd.DataFrame): Optional preloaded detail data.
+        blue_loop_plots_bc_sub_dir (str): Directory to save output CMD plots.
+        detail_files_output_dir (str): Directory where the input detail CSVs are located.
+
+    Returns:
+        None
+
+    Example:
+        >>> from mesalab.plotting import handle_blue_loop_bc_plotting
+        >>> detail_dir = "processed/detail_data"
+        >>> cmd_plot_dir = "results/plots/cmd"
+        >>> handle_blue_loop_bc_plotting(args, None, cmd_plot_dir, detail_dir)
+        Plots saved for each Z showing blue loop positions in Gaia CMD.
     """
     # FIX 4: Access generate_blue_loop_plots_with_bc from plotting_settings
     if not args.plotting_settings.generate_blue_loop_plots_with_bc:
@@ -123,19 +145,27 @@ def handle_blue_loop_bc_plotting(args, combined_detail_data_for_plotting, blue_l
 # --- HR diagram generation handler ---
 def handle_hr_diagram_generation(args, plots_sub_dir, full_history_data_for_plotting, drop_zams):
     """
-    Handles the generation of Hertzsprung-Russell (HR) diagrams using pre-loaded MESA run data.
+    Generate Hertzsprung–Russell diagrams from full stellar evolutionary tracks.
+
+    This function loops through available history data by metallicity, and plots
+    the full evolutionary path (log Teff vs log L). Optionally filters out
+    pre-ZAMS data points for clarity.
 
     Args:
-        args (argparse.Namespace): The command-line arguments object, containing
-                                   `generate_hr_diagrams` and potentially
-                                   `mesa_output_subdir`, `inlist_filename`, `inlist_alternatives`.
-        plots_sub_dir (str): The directory where HR diagram images will be saved.
-        full_history_data_for_plotting (dict): A dictionary where keys are metallicities (Z)
-                                               and values are lists of full, untrimmed
-                                               history DataFrames for each MESA run.
-        drop_zams (bool): Flag indicating whether to drop the pre-MS (ZAMS) phase.
-                          This parameter is passed from cli.py.
-                                                                
+        args (argparse.Namespace): Command-line arguments including force overwrite, limits.
+        plots_sub_dir (str): Output directory for saving HR diagrams.
+        full_history_data_for_plotting (dict): Dictionary of DataFrames keyed by Z values.
+        drop_zams (bool): Whether to skip points before the zero-age main sequence.
+
+    Returns:
+        None
+
+    Example:
+        >>> from mesalab.plotting import handle_hr_diagram_generation
+        >>> data = {0.004: df_z004, 0.014: df_z014}
+        >>> output_dir = "results/plots/hr"
+        >>> handle_hr_diagram_generation(args, output_dir, data, drop_zams=True)
+        HR diagrams saved to results/plots/hr for each metallicity.
     """
     # FIX 6: Access generate_hr_diagrams from plotting_settings
     # Note: cli.py passes a boolean for drop_zams, so args.plotting_settings.generate_hr_diagrams

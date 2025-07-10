@@ -17,6 +17,25 @@ print("INFO: MIST Bolometric Correction Grid initialized.")
 
 # Helper function to calculate BC for a single row.
 def _calculate_bc_for_single_point(args):
+
+    """
+    Helper function to calculate bolometric corrections for a single stellar point.
+
+    This function is intended for internal use, typically within a parallel processing context.
+    It handles NaN inputs and interpolation errors gracefully.
+
+    Args:
+        args (tuple): A tuple containing (original_idx, teff_i, logg_i, feh_i, av_i).
+                      - original_idx: The original index of the row in the DataFrame.
+                      - teff_i (float): Effective temperature in Kelvin.
+                      - logg_i (float): Logarithm of surface gravity (log10(g)).
+                      - feh_i (float): Metallicity [Fe/H].
+                      - av_i (float): Extinction in magnitudes (assumed 0.0 for MESA).
+
+    Returns:
+        tuple: A tuple containing (original_idx, BC_G_val, BC_BP_val, BC_RP_val).
+               Returns NaN for BC values if interpolation fails or inputs are invalid.
+    """    
     original_idx, teff_i, logg_i, feh_i, av_i = args
     
     # Check if any input argument is NaN before attempting interpolation
@@ -34,12 +53,72 @@ def _calculate_bc_for_single_point(args):
         return (original_idx, np.nan, np.nan, np.nan)
 
 def z_to_feh(Z):
+    """
+    Converts metallicity Z to [Fe/H] (logarithmic iron-to-hydrogen ratio).
+
+    Uses a solar metallicity (Z_sun = 0.0152). Returns NaN for non-positive Z values.
+
+    Args:
+        Z (float): The metallicity value (mass fraction of elements heavier than H and He).
+
+    Returns:
+        float: The [Fe/H] value, or np.nan if Z is not positive.
+
+    Example:
+        >>> z_to_feh(0.0152)
+        0.0
+        >>> z_to_feh(0.0076)
+        -0.30102999566398116
+        >>> z_to_feh(0)
+        nan
+    """
+
     Z_sun = 0.0152
     if Z <= 0: # Z cannot be zero or negative for log10 calculation and physical reasons
         return np.nan
     return np.log10(Z / Z_sun)
 
 def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_type_label="all_blue_loop_data"):
+    """
+    Analyzes MESA history data for stellar blue loop characteristics and Instability Strip crossings.
+
+    :param history_df: DataFrame of MESA history data.
+                       Required columns: 'log_Teff', 'log_L', 'center_h1', 'star_age',
+                       'model_number', 'log_g', 'center_he4'.
+    :type history_df: pandas.DataFrame
+    :param initial_mass: Initial mass of the star in solar masses.
+    :type initial_mass: float
+    :param initial_Z: Initial metallicity (Z) of the star.
+    :type initial_Z: float
+
+    :returns: Dictionary with analysis results.
+              Includes:
+              - 'crossing_count': Number of IS entries during relevant phase.
+              - 'state_times': Key stellar ages (MS end, min Teff post-MS, IS entries/exits).
+              - 'blue_loop_detail_df': DataFrame of data points within/blue of IS during blue loop.
+    :rtype: dict
+
+    This function returns NaN values if analysis cannot be performed (e.g., missing data).
+
+    Example::
+
+        >>> from mesalab.bluelooptools.blue_loop_analyzer import analyze_blue_loop_and_instability
+        >>> import pandas as pd
+        >>> import numpy as np
+        >>> # Dummy MESA history data for demonstration
+        >>> dummy_data = {
+        ...     'model_number': np.arange(100, 200), 'star_age': np.linspace(1e8, 1.5e8, 100),
+        ...     'log_Teff': np.concatenate([np.linspace(3.7, 3.6, 50), np.linspace(3.6, 3.8, 50)]),
+        ...     'log_L': np.concatenate([np.linspace(2.0, 3.0, 50), np.linspace(3.0, 2.5, 50)]),
+        ...     'log_g': np.linspace(4.0, 3.0, 100),
+        ...     'center_h1': np.concatenate([np.linspace(0.7, 0.001, 50), np.zeros(50)]),
+        ...     'center_he4': np.concatenate([np.zeros(50), np.linspace(0.9, 0.0001, 50)]),
+        ... }
+        >>> dummy_df = pd.DataFrame(dummy_data)
+        >>> initial_mass, initial_Z = 5.0, 0.006
+        >>> result = analyze_blue_loop_and_instability(dummy_df, initial_mass, initial_Z)
+        >>> print(f"Crossing count: {result['crossing_count']}")
+    """
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     print(f"Generating combined blue loop HRD, CMD, and LogL-LogG plots (with BCs) to '{output_dir}'...")
@@ -255,6 +334,47 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
 
 
 def load_and_group_data(input_dir):
+
+    """
+    Loads all CSV files from a specified directory, concatenates them into
+    a single DataFrame, and performs basic validation and column renaming.
+
+    This function expects CSV files to contain stellar evolution data.
+    It checks for 'initial_Z' or 'Z' and 'initial_mass' columns.
+
+    Args:
+        input_dir (str): The path to the directory containing the CSV files.
+
+    Returns:
+        pd.DataFrame: A concatenated DataFrame of all valid CSV data, or an empty
+                      DataFrame if no files are found or critical columns are missing.
+
+    Example:
+        >>> import pandas as pd
+        >>> import os
+        >>> # Assume load_and_group_data is imported
+        >>> # from mesalab.bluelooptools.blue_loop_cmd_plotter import load_and_group_data
+        >>>
+        >>> # Create a dummy input directory and a dummy CSV
+        >>> temp_input_dir = "./temp_data_example"
+        >>> os.makedirs(temp_input_dir, exist_ok=True)
+        >>> dummy_csv_path = os.path.join(temp_input_dir, "test_data.csv")
+        >>> pd.DataFrame({
+        ...     'model_number': [1,2],
+        ...     'Z': [0.01, 0.02],
+        ...     'initial_mass': [5.0, 5.0],
+        ...     'log_Teff': [3.7, 3.8],
+        ...     'log_L': [2.0, 2.1],
+        ...     'log_g': [3.5, 3.6]
+        ... }).to_csv(dummy_csv_path, index=False)
+        >>>
+        >>> # Load the data
+        >>> loaded_df = load_and_group_data(temp_input_dir)
+        >>> print(loaded_df.head())
+        >>> # Clean up dummy files
+        >>> os.remove(dummy_csv_path)
+        >>> os.rmdir(temp_input_dir)
+    """
     all_dfs = []
     print(f"INFO: Loading CSV files from '{input_dir}'...")
     for filename in os.listdir(input_dir):

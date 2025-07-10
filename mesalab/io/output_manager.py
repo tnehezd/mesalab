@@ -14,6 +14,11 @@ def create_output_directories(output_dir, analyze_blue_loop, should_generate_plo
 
     Returns:
         tuple: Paths to (analysis_results_sub_dir, plots_sub_dir, blue_loop_plots_bc_sub_dir, detail_files_output_dir)
+
+    Example:
+        >>> create_output_directories("output", True, True, False)
+        ('output/analysis_results', 'output/plots', 'output/blue_loop_plots_bc', 'output/detail_files')
+
     """
     analysis_results_sub_dir = os.path.join(output_dir, "analysis_results")
     plots_sub_dir = os.path.join(output_dir, "plots")
@@ -45,6 +50,11 @@ def get_analysis_file_paths(analysis_results_sub_dir):
 
     Returns:
         tuple: (summary_csv_path, cross_csv_path)
+
+    Example:
+        >>> get_analysis_file_paths("output/analysis_results")
+        ('output/analysis_results/mesa_grid_analysis_summary.csv',
+         'output/analysis_results/mesa_grid_cross.csv')
     """
     summary_csv_path = os.path.join(analysis_results_sub_dir, "mesa_grid_analysis_summary.csv")
     cross_csv_path = os.path.join(analysis_results_sub_dir, "mesa_grid_cross.csv")
