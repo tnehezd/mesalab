@@ -14,6 +14,7 @@ first_run
 ```{toctree}
 :caption: API
 preprocessing
+blueloopanalyze
 ```
 
 ## About `mesalab`
