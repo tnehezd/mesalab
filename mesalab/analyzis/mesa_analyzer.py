@@ -6,19 +6,47 @@ import numpy as np
 import yaml
 import logging
 from tqdm import tqdm
+import sys # Import sys for stream handling
 
-import sys # Ezt a sort is hozzá kell adni a fájl elejére
+# --- LOGGING CONFIGURATION FOR TQDM COMPATIBILITY ---
+# This setup ensures that logging messages do not disrupt the tqdm progress bar,
+# by directing them through tqdm.write().
 
-# Import necessary functions from other modules
-from .data_reader import scan_mesa_runs, get_data_from_history_file
-from ..bluelooptools.blue_loop_analyzer import analyze_blue_loop_and_instability
-
-
+# Configure the root logger.
+# We explicitly set an empty list for handlers initially to prevent
+# an automatic default StreamHandler from being added, which we will replace.
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
-    stream=sys.stderr # EZ AZ EGYETLEN FONTOS VÁLTOZTATÁS
+    handlers=[] # Start with an empty list of handlers
 )
+
+from .data_reader import scan_mesa_runs, get_data_from_history_file
+from ..bluelooptools.blue_loop_analyzer import analyze_blue_loop_and_instability
+
+# Define a custom logging handler that uses tqdm.write()
+# This ensures log messages are printed in a way that is compatible with tqdm's output.
+class TqdmLoggingHandler(logging.Handler):
+    def __init__(self, level=logging.NOTSET):
+        super().__init__(level)
+
+    def emit(self, record):
+        try:
+            # Format the log message
+            msg = self.format(record)
+            # Use tqdm.write() to print the message. This method handles
+            # clearing and redrawing the progress bar to avoid corruption.
+            # Direct it to sys.stderr, as tqdm's progress bar also writes there by default.
+            tqdm.write(msg, file=sys.stderr)
+        except Exception:
+            # Handle any errors during logging
+            self.handleError(record)
+
+# Add our custom TqdmLoggingHandler to the root logger.
+# This ensures all logging messages (INFO level and above) go through this handler.
+logging.getLogger().addHandler(TqdmLoggingHandler())
+# --- END OF LOGGING CONFIGURATION ---
+
 
 def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_dir, gyre_input_csv_name: str = 'sorted_mass_Z_min_max.csv'):
     """
