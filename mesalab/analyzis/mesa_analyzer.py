@@ -7,10 +7,18 @@ import yaml
 import logging
 from tqdm import tqdm
 
+import sys # Ezt a sort is hozzá kell adni a fájl elejére
+
 # Import necessary functions from other modules
 from .data_reader import scan_mesa_runs, get_data_from_history_file
 from ..bluelooptools.blue_loop_analyzer import analyze_blue_loop_and_instability
 
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    stream=sys.stderr # EZ AZ EGYETLEN FONTOS VÁLTOZTATÁS
+)
 
 def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_dir, gyre_input_csv_name: str = 'sorted_mass_Z_min_max.csv'):
     """
