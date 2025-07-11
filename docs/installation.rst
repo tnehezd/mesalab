@@ -16,17 +16,15 @@ You can also install the current development version of `mesalab` with cloning t
 .. code-block:: console
 
   $ git clone https://github.com/tnehezd/mesa_blue_loop
-  $ cd seismolab
+  $ cd mesalab
   $ pip install .
 
+
+Unit test
+---------
 To run the unit tests you may need to install ``pytest``:
 
 .. code-block:: console
 
   $ pip install pytest
-
-Check if the unit tests pass:
-
-.. code-block:: console
-
   $ python3 -m pytest

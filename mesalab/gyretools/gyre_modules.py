@@ -41,9 +41,6 @@ def run_single_gyre_model(
     Returns:
         int: The exit code of the GYRE process. Zero indicates success.
 
-    Return type:
-        int
-
     Example:
         >>> exit_code = run_single_gyre_model(
         ...     model_profile_path='/data/mesa/profile1234.data.GYRE',

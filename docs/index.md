@@ -9,7 +9,7 @@ This documentation provides an overview of the `mesalab` package, its functional
 :caption: Contents
 about
 installation
-first_run
+getting_started
 ```
 ```{toctree}
 :caption: API
