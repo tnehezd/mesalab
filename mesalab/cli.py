@@ -96,6 +96,31 @@ else:
 
 # --- Main Application Logic ---
 def main():
+    """
+    Main entry point for the MESA/GYRE analysis and plotting pipeline.
+
+    This function initializes logging, parses the configuration (from command-line arguments and YAML),
+    sets up necessary output directories, performs the MESA model analysis, generates plots
+    (heatmaps, HR diagrams, Blue Loop plots), and optionally runs the GYRE pulsation workflow.
+
+    It logs progress at each step and handles errors gracefully. If a critical error occurs
+    (e.g. missing input files, invalid configuration, or failed import), the program terminates
+    with an informative message and non-zero exit code.
+
+    Args:
+        None
+
+    Returns:
+        None
+
+    Example:
+        To run from the command line:
+            $ python cli.py --config config/example.yaml --debug
+        Or, programmatically:
+            if __name__ == "__main__":
+                main()
+    """
+
     logger.debug(f"Starting main application logic. Raw CLI arguments: {sys.argv[1:]}")
     
     # Call config_parser.parsing_options(). This function now handles all argument parsing,
