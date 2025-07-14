@@ -1,4 +1,4 @@
-# cli.py - REVISED for correct plotting handler calls and enhanced error logging
+# cli.py
 
 import sys
 import os
@@ -14,7 +14,7 @@ from mesalab.io import config_parser
 # This basic configuration ensures logs appear from the start.
 # The level will be adjusted later by config_parser based on the 'debug' setting.
 logging.basicConfig(
-    level=logging.WARNING, # Default level, will be overridden by config_parser based on config.general_settings.debug
+    level=logging.ERROR, # <-- MODIFIED: Set this to ERROR to only show errors by default
     format='%(asctime)s - %(levelname)s: %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout) # Log to console
@@ -30,7 +30,10 @@ logger = logging.getLogger(__name__) # Logger for cli.py itself
 _GYRE_MODULES_LOADED = False
 
 try:
-    # Add a print statement IMMEDIATELY before the import to trace execution
+    # Print statements are redirected to stderr to avoid interfering with normal log output,
+    # and default logging is turned off if not in DEBUG mode.
+    # If you want to see these print statements even when logging is at ERROR, leave them as is.
+    # Otherwise, you can remove them or convert them to debug logger calls.
     print("DEBUG: Attempting to import core mesalab modules...", file=sys.stderr)
     
     # Correct import for mesa_analyzer (which is perform_mesa_analysis from mesa_analyzer.py)
@@ -84,15 +87,6 @@ else:
     # If successful, no need to assign dummy; gyre_modules is already the real module
     pass
 
-# These other assignments should happen regardless, as they are not conditionally loaded here
-# (assuming mesa_analyzer, handle_heatmap_generation etc. are always loaded successfully or handled elsewhere)
-# If they are also part of the try-except above, they don't need dummy assignment here.
-# For simplicity, if they were *also* problematic, the main try-except would catch it.
-# If they are not conditionally loaded, ensure their import is covered by the main try-except.
-# For clarity, I'm removing redundant dummy assignments that would only trigger if they *also* failed
-# if mesa_analyzer was not defined, it would be caught by the main try-except and sys.exit(1)
-# Same for handle_heatmap_generation, etc.
-
 
 # --- Main Application Logic ---
 def main():
@@ -121,6 +115,8 @@ def main():
                 main()
     """
 
+    # This `logger.debug` message will only appear if the root logger's level is DEBUG.
+    # Since we set it to ERROR in the `debug=False` branch, this likely won't show.
     logger.debug(f"Starting main application logic. Raw CLI arguments: {sys.argv[1:]}")
     
     # Call config_parser.parsing_options(). This function now handles all argument parsing,
@@ -134,15 +130,18 @@ def main():
         logging.getLogger().setLevel(logging.DEBUG) # Set root logger to DEBUG
         logger.debug("Debug logging confirmed and enabled by final configuration.")
     else:
-        logging.getLogger().setLevel(logging.INFO) # Ensure root logger is INFO if not debug
-        logger.info("Debug mode is OFF. Logging level for cli.py is INFO.") # Clarify INFO level
-
+        # <-- MODIFIED: Set this to ERROR if debug=False
+        logging.getLogger().setLevel(logging.ERROR) 
+        # Changed text to reflect ERROR level when debug is off.
+        logger.info("Debug mode is OFF. Logging level for cli.py is ERROR.") 
+    
+    # This line will now be suppressed by the ERROR level.
     logger.info(f"Final resolved configuration being used by cli.py: {config}")
 
     # --- Output Directory Setup ---
     # No timestamped subfolder in output_base_dir as per your request
     output_base_dir = os.path.abspath(config.general_settings.output_dir)
-    session_output_dir = output_base_dir 
+    session_output_dir = output_base_dir
     analysis_results_sub_dir = os.path.join(session_output_dir, 'analysis_results')
     detail_files_output_dir = os.path.join(session_output_dir, 'detail_files')
     plots_output_dir = os.path.join(session_output_dir, 'plots')
@@ -153,9 +152,11 @@ def main():
     os.makedirs(detail_files_output_dir, exist_ok=True)
     os.makedirs(plots_output_dir, exist_ok=True)
     os.makedirs(gyre_output_dir, exist_ok=True)
+    # This line will now be suppressed by the ERROR level.
     logger.info(f"All outputs for this session will be saved in: '{session_output_dir}'")
 
     # --- MESA Analysis Workflow ---
+    # This line will now be suppressed by the ERROR level.
     logger.info("\n--- Starting MESA Analysis Workflow ---")
     try:
         # Call the perform_mesa_analysis function directly
@@ -166,6 +167,7 @@ def main():
                 detail_files_output_dir=detail_files_output_dir,
                 gyre_input_csv_name=config.gyre_workflow.filtered_profiles_csv_name
             )
+        # This line will now be suppressed by the ERROR level.
         if summary_df.empty:
             logger.info("No summary data generated from MESA analysis. Skipping subsequent steps.")
             sys.exit(0)
@@ -178,6 +180,7 @@ def main():
     # --- Plotting Workflow ---
     # Access generate_plots from plotting_settings
     if config.plotting_settings.generate_plots:
+        # This line will now be suppressed by the ERROR level.
         logger.info("\n--- Starting Plotting Workflow ---")
         try:
             # Call the heatmap handler
@@ -207,10 +210,12 @@ def main():
                     blue_loop_plots_bc_sub_dir=plots_output_dir, # Plots go to plots_output_dir
                     detail_files_output_dir=detail_files_output_dir
                 )
+            # This line will now be suppressed by the ERROR level.
             logger.info("Plotting workflow completed successfully.")
         except Exception as e:
             logger.error(f"Error during plotting workflow: {e}", exc_info=True)
     else:
+        # This line will now be suppressed by the ERROR level.
         logger.info("Plotting workflow is disabled in configuration (generate_plots=False).")
 
 
@@ -219,6 +224,7 @@ def main():
     # Use the _GYRE_MODULES_LOADED flag to determine if actual modules are available
     if config.gyre_workflow.run_gyre_workflow:
         if _GYRE_MODULES_LOADED: # Check the global flag set by the import attempt
+            # This line will now be suppressed by the ERROR level.
             logger.info("\n--- Starting GYRE Workflow ---")
             # Access gyre_config_path from gyre_workflow settings
             gyre_config_full_path = os.path.abspath(config.gyre_workflow.gyre_config_path)
@@ -230,11 +236,12 @@ def main():
             # Access analyze_blue_loop from blue_loop_analysis
             # Access filtered_profiles_csv_name from gyre_workflow
             elif config.blue_loop_analysis.analyze_blue_loop and \
-                  (not gyre_input_csv_path or not os.path.exists(gyre_input_csv_path)):
+                    (not gyre_input_csv_path or not os.path.exists(gyre_input_csv_path)):
                 logger.warning(f"GYRE workflow enabled, but the filtered profiles CSV ('{config.gyre_workflow.filtered_profiles_csv_name}') "
-                                f"was not generated or not found at '{gyre_input_csv_path}'. "
-                                "This is required for GYRE to run on filtered profiles. Skipping GYRE workflow.")
+                                 f"was not generated or not found at '{gyre_input_csv_path}'. "
+                                 "This is required for GYRE to run on filtered profiles. Skipping GYRE workflow.")
             else:
+                # This line will now be suppressed by the ERROR level.
                 logger.info(f"Using GYRE specific settings from: '{gyre_config_full_path}'")
                 try:
                     gyre_modules.run_gyre_workflow(
@@ -246,15 +253,18 @@ def main():
                         # Access debug from general_settings
                         debug_mode=config.general_settings.debug
                     )
+                    # This line will now be suppressed by the ERROR level.
                     logger.info("GYRE workflow completed successfully.")
                 except Exception as e:
                     logger.critical(f"Critical error during GYRE workflow: {e}", exc_info=True)
         else:
-            # This block is for when run_gyre_workflow is True, but gyre_modules import failed earlier
+            # This line will now be suppressed by the ERROR level (WARNINGs will still show).
             logger.warning("GYRE workflow is enabled in configuration, but GYRE modules failed to load. Skipping GYRE workflow.")
     else:
+        # This line will now be suppressed by the ERROR level.
         logger.info("GYRE workflow is disabled in configuration (run_gyre_workflow=False).")
 
+    # This line will now be suppressed by the ERROR level.
     logger.info("\n--- MESA Grid Analysis and Workflow Finished ---")
 
 # --- Entry Point ---
