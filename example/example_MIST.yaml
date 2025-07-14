@@ -1,48 +1,58 @@
-# example.yaml
+# example_MIST.yaml
 # Configuration for mesa_grid_analyzer - example run
 
 # --- Required Input/Output Paths ---
 # These are essential for the program to find your MESA data and save results.
 # IMPORTANT: Replace these with your actual paths!
-input_dir: MIST_synthetic
-output_dir: MIST_example_output
 
-# Name of the inlist file found in each MESA run directory
-inlist_name: inlist_project
+# --- General Settings ---
+general_settings:
+  input_dir: MIST_synthetic
+  output_dir: MIST_synthetic_output
+  inlist_name: "inlist_project"
 
-# --- Analysis and Plotting Options ---
+# If you've run a full analysis before and the 'detail_z*.csv' files exist,
+# you can set 'force_reanalysis' to 'false' to speed things up.
+# If you want to re-run the blue loop analysis from scratch, set it to 'true'.  
+  force_reanalysis: True
+  debug: True
+
+# --- Analysis Options ---
 # Set these to 'true' ONLY for the specific tasks you want to perform.
+blue_loop_analysis:
 
 # This is CRITICAL. The blue loop BC plots rely on the detailed
 # blue loop analysis data, which is generated when this is 'true'.
 # Keep this as 'true' to ensure the necessary data is processed.
-analyze_blue_loop: true
+  analyze_blue_loop: True
+
+# Defines the columns saved in the detailed blue loop CSV files.
+# 'all' saves all columns from the blue loop phase.
+# 'summary' saves only key columns (e.g., star_age, log_Teff, log_L).
+  blue_loop_output_type: "summary"
+
+# --- Plotting specific settings ---
+# Set these to 'true' ONLY for the specific tasks you want to perform.
+plotting_settings:
 
 # Set to 'true' to enable heatmap generation.
-generate_heatmaps: true
+  generate_heatmaps: True
 
-# Set to 'true' to generate the blue loop specific
-# HRD/CMD/logg-L plots with bolometric corrections.
-generate_blue_loop_plots_with_bc: true
-
-# --- HR Diagram Generation ---
 # This controls the generation of the main HR diagrams.
 # Options:
 #   - 'default': Generates standard HRDs with full tracks (no ZAMS trimming).
 #   - 'drop_zams': Generates HRDs with pre-main sequence (ZAMS) trimming.
 #   - (Omit this line entirely or set to null/None): Does NOT generate HRDs.
 #
-# For standard HRDs, it is set to 'default'.
-generate_hr_diagrams: default
+# For standard HRDs, it is set to 'default'. 
+  generate_hr_diagrams: "default"
+  
+# Set to 'true' to generate the blue loop specific
+# HRD/CMD/logg-L plots with bolometric corrections.  
+  generate_blue_loop_plots_with_bc: True
 
 
-# --- Other Settings ---
-# If you've run a full analysis before and the 'detail_z*.csv' files exist,
-# you can set 'force_reanalysis' to 'false' to speed things up.
-# If you want to re-run the blue loop analysis from scratch, set it to 'true'.
 force_reanalysis: true
 
-# Defines the columns saved in the detailed blue loop CSV files.
-# 'all' saves all columns from the blue loop phase.
-# 'summary' saves only key columns (e.g., star_age, log_Teff, log_L).
+
 blue_loop_output_type: summary
