@@ -168,7 +168,7 @@ The ``mesalab`` `GYRE <https://gyre.readthedocs.io/>`_ workflow module provides 
 	**Default**: True
 
 ``--gyre-config-path``
-	**Description**: Specifies the path to your GYRE-specific configuration file (e.g., ``gyre_config.in``).
+    **Description**: Defines the filename for the CSV file that lists the MESA profiles selected for GYRE analysis. By default, this file is saved in the ``analysis_results`` subdirectory within your output directory, generated during the blue loop analysis step. It acts as a critical index, detailing which MESA models ``mesalab`` has chosen to generate GYRE inputs from. It typically includes information like the MESA profile number, key stellar parameters (e.g., initial mass, metallicity, effective temperature, luminosity), and the path to the corresponding MESA profile file.
 
 	**Example**: ``mesalab --config my_config.yaml --gyre-config-path ./custom_gyre_settings.in``
 
