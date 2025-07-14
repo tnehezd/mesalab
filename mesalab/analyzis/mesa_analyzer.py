@@ -78,13 +78,13 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
         ...     input_dir="mesa_grid",
         ...     inlist_name="inlist",
         ...     analyze_blue_loop=True,
-        ...     blue_loop_output_type="detail",
+        ...     blue_loop_output_type="all",
         ...     force_reanalysis=False
         ... )
         >>> summary_df, detail_df, history_dict, gyre_csv = perform_mesa_analysis(
         ...     args,
         ...     analysis_results_sub_dir="output/summary",
-        ...     detail_files_output_dir="output/detail"
+        ...     detail_files_output_dir="output/all"
         ... )
         >>> print(summary_df.head())
     """
