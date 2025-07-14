@@ -31,9 +31,12 @@ def set_environment_variables_for_executables(config_data):
             if 'PATH' in os.environ and mesasdk_bin_path not in os.environ['PATH']:
                 os.environ['PATH'] = f"{mesasdk_bin_path}:{os.environ['PATH']}"
                 logger.debug(f"MESASDK bin added to PATH: {mesasdk_bin_path}")
+                print("MESASDK bin added to PATH: {mesasdk_bin_path}")
+
             elif 'PATH' not in os.environ:
                 os.environ['PATH'] = mesasdk_bin_path
                 logger.debug(f"PATH set to MESASDK bin: {mesasdk_bin_path}")
+                print("PATH set to MESASDK bin: {mesasdk_bin_path}")
         else:
             logger.warning(f"MESASDK bin directory not found: {mesasdk_bin_path}. Check MESASDK_ROOT.")
             mesasdk_bin_path = None # Mark as not successfully added
