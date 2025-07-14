@@ -174,6 +174,19 @@ def parsing_options():
             else:
                 logger.debug(f"CLI argument '{arg_name}' with value '{cli_value}' was provided but not explicitly mapped to a config setting. It will be ignored.")
 
+
+    # --- NEW LOGIC START ---
+    # Ensure 'generate_plots' is True if any specific plotting option is enabled.
+    # This makes 'generate_plots' effectively a derived setting for the overall plotting workflow.
+    if (final_config_dict['plotting_settings']['generate_heatmaps'] or
+        final_config_dict['plotting_settings']['generate_hr_diagrams'] != 'none' or
+        final_config_dict['plotting_settings']['generate_blue_loop_plots_with_bc']):
+        final_config_dict['plotting_settings']['generate_plots'] = True
+        logger.debug("Forcing 'generate_plots' to True because a specific plotting option is enabled.")
+    # --- NEW LOGIC END ---
+
+
+
     # 5. Final validation for required arguments
     if final_config_dict['general_settings']['input_dir'] is None:
         logger.critical("ERROR: 'input_dir' must be specified either via command-line (--input-dir) or in the config file.")
