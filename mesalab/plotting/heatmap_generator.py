@@ -8,6 +8,7 @@ import os
 import math
 from matplotlib.colors import ListedColormap, BoundaryNorm
 import logging # Import the logging module
+import sys
 
 # --- Logging Setup for this module ---
 # This ensures that if the module is run directly, it has a basic logging setup.
