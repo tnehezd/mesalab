@@ -14,7 +14,7 @@ from mesalab.io import config_parser
 # This basic configuration ensures logs appear from the start.
 # The level will be adjusted later by config_parser based on the 'debug' setting.
 logging.basicConfig(
-    level=logging.ERROR, # <-- MODIFIED: Set this to ERROR to only show errors by default
+    level=logging.ERROR, # Set this to ERROR to only show errors by default
     format='%(asctime)s - %(levelname)s: %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout) # Log to console
@@ -30,11 +30,9 @@ logger = logging.getLogger(__name__) # Logger for cli.py itself
 _GYRE_MODULES_LOADED = False
 
 try:
-    # Print statements are redirected to stderr to avoid interfering with normal log output,
-    # and default logging is turned off if not in DEBUG mode.
-    # If you want to see these print statements even when logging is at ERROR, leave them as is.
-    # Otherwise, you can remove them or convert them to debug logger calls.
-    print("DEBUG: Attempting to import core mesalab modules...", file=sys.stderr)
+    # CONVERTED FROM print() TO logger.debug():
+    # These messages will now respect the logging level set.
+    logger.debug("Attempting to import core mesalab modules...")
     
     # Correct import for mesa_analyzer (which is perform_mesa_analysis from mesa_analyzer.py)
     from mesalab.analyzis.mesa_analyzer import perform_mesa_analysis as mesa_analyzer
@@ -48,11 +46,13 @@ try:
     # Attempt to import GYRE modules. This is the critical line we are debugging.
     from mesalab.gyretools import gyre_modules
     _GYRE_MODULES_LOADED = True # Set flag to True if import is successful
-    print("DEBUG: Successfully imported all core mesalab modules, including GYRE.", file=sys.stderr)
+    # CONVERTED FROM print() TO logger.debug():
+    logger.debug("Successfully imported all core mesalab modules, including GYRE.")
 
 except ImportError as e:
     # This block is specifically designed to catch ImportError and provide full traceback
     logger.error(f"Failed to import core MESA/GYRE modules due to ImportError: {e}", exc_info=True)
+    # Keeping these print statements for FATAL errors to ensure they are always seen
     print(f"FATAL ERROR: Failed to import critical mesalab/GYRE modules at startup. Please check installation and dependencies.", file=sys.stderr)
     print(f"Error details: {e}", file=sys.stderr)
     print("Full traceback (printed to stderr):", file=sys.stderr)
@@ -63,6 +63,7 @@ except ImportError as e:
 except Exception as e:
     # This catches any other unexpected exceptions during the initial imports
     logger.critical(f"CRITICAL UNEXPECTED ERROR during initial module imports: {e}", exc_info=True)
+    # Keeping these print statements for FATAL errors to ensure they are always seen
     print(f"FATAL ERROR: An unexpected critical error occurred during initial module imports: {e}", file=sys.stderr)
     print("Full traceback (printed to stderr):", file=sys.stderr)
     import traceback
@@ -115,8 +116,6 @@ def main():
                 main()
     """
 
-    # This `logger.debug` message will only appear if the root logger's level is DEBUG.
-    # Since we set it to ERROR in the `debug=False` branch, this likely won't show.
     logger.debug(f"Starting main application logic. Raw CLI arguments: {sys.argv[1:]}")
     
     # Call config_parser.parsing_options(). This function now handles all argument parsing,
@@ -130,10 +129,11 @@ def main():
         logging.getLogger().setLevel(logging.DEBUG) # Set root logger to DEBUG
         logger.debug("Debug logging confirmed and enabled by final configuration.")
     else:
-        # <-- MODIFIED: Set this to ERROR if debug=False
+        # Set to ERROR if debug=False
         logging.getLogger().setLevel(logging.ERROR) 
-        # Changed text to reflect ERROR level when debug is off.
-        logger.info("Debug mode is OFF. Logging level for cli.py is ERROR.") 
+        # CONVERTED FROM logger.info() TO logger.debug() or remove this line if not needed at all
+        # This will now be suppressed when root logger is ERROR
+        logger.debug("Debug mode is OFF. Logging level for cli.py is ERROR.") 
     
     # This line will now be suppressed by the ERROR level.
     logger.info(f"Final resolved configuration being used by cli.py: {config}")
