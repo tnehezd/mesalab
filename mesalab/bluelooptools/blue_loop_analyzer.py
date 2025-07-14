@@ -18,7 +18,7 @@ INSTABILITY_STRIP_VERTICES = np.array([
 instability_path = Path(INSTABILITY_STRIP_VERTICES)
 
 # Define physical thresholds for blue loop identification
-BLUELOOP_MASS_THRESHOLD = 1.2 # In solar masses. Stars below this mass are generally not classic blue-loopers.
+BLUELOOP_MASS_THRESHOLD = 2.0 # In solar masses. Stars below this mass are generally not classic blue-loopers.
 # Thresholds for central helium to define the blue loop relevant phase window
 BL_CENTER_HE4_START_THRESHOLD = 0.9 # Defines the start of significant core helium burning for RGB tip search
 BL_CENTER_HE4_END_THRESHOLD = 1e-4 # Defines the end of core helium burning for the blue loop phase
