@@ -33,6 +33,11 @@ os.environ['TQDM_ASCII'] = '1'
 # Define a custom logging handler that uses tqdm.write()
 # This ensures log messages are printed in a way that is compatible with tqdm's output.
 class TqdmLoggingHandler(logging.Handler):
+
+    """
+    Emits a log record, writing messages to stderr via tqdm.write
+    to prevent interfering with the progress bar.
+    """
     def __init__(self, level=logging.NOTSET):
         super().__init__(level)
 

@@ -11,6 +11,21 @@ about
 installation
 getting_started
 ```
+
+```{toctree}
+:maxdepth: 3
+:caption: Troubleshooting
+trouble_shooting
+```
+
+
+```{toctree}
+:maxdepth: 3
+:caption: Getting Help/Reporting Issues
+getting_help
+```
+
+
 ```{toctree}
 :caption: API
 api_reference

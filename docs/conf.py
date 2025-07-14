@@ -89,7 +89,7 @@ autodoc_default_options = {
     'undoc-members': True,
     'private-members': False, # Set to True if you want to document private members
     'special-members': '__init__',
-    'inherited-members': True,
+    'inherited-members': False,
     'show-inheritance': True,
     'member-order': 'bysource', # or 'alphabetical'
 }

@@ -161,7 +161,7 @@ The ``mesalab`` `GYRE <https://gyre.readthedocs.io/>`_ workflow module provides 
 
 ``--run-gyre-workflow``
 
-	**Description**: Enables the full GYRE workflow within mesalab. When this flag is active, mesalab will identify specific MESA stellar models suitable for pulsation analysis, generate the necessary `GYRE <https://gyre.readthedocs.io/en/v7.0/>`_ v7.0 input files (.GYRE files), and optionally execute GYRE (assuming GYRE is properly installed and accessible in your system's PATH environment variable). If this flag is False, no GYRE-related files or processes will be initiated.
+	**Description**: Enables the full GYRE workflow within mesalab. When this flag is active, mesalab will identify specific MESA stellar models suitable for pulsation analysis, generate the necessary GYRE v7.0 input files (.GYRE files), and optionally execute GYRE (assuming GYRE is properly installed and accessible in your system's PATH environment variable). If this flag is False, no GYRE-related files or processes will be initiated.
 
 	**Example**: To activate the GYRE workflow: ``mesalab --config my_config.yaml --run-gyre-workflow``
 	
@@ -191,7 +191,7 @@ Below is a heavily commented example of a typical ``mesalab`` configuration file
 
 .. code-block:: yaml
 
-   # my_config_settings.yaml
+   # my_config.yaml
 
    # General settings for the MesaLab run
    general_settings:
@@ -216,19 +216,8 @@ Below is a heavily commented example of a typical ``mesalab`` configuration file
                                                   #      'summary': Generates aggregated metrics for each run (e.g., lifetime, min/max Teff/logL).
                                                   #      'detailed': Generates a CSV with all individual star_age points during the blue loop.
 
-   # Settings for GYRE workflow integration
-   gyre_workflow:
-     run_gyre_workflow: True                      # Set to 'True' to enable the GYRE input generation and optional workflow.
-                                                  #      Requires MESA to have generated profile data.
-     gyre_config_path: gyre_config.in             # Path to your GYRE configuration file. This will be copied to the
-                                                  #      GYRE output directory if the workflow is enabled.
-     filtered_profiles_csv_name: sorted_mass_Z_min_max.csv # Name of the CSV file that will list the selected
-                                                          #      MESA profiles for GYRE analysis.
-
    # Settings for plotting
    plotting_settings:
-     generate_plots: True                         # Set to 'True' to enable the generation of all specified plots.
-                                                  #      If 'False', no plot files will be created.
      generate_hr_diagrams: 'drop_zams'            # Type of HR diagrams to generate:
                                                   #      'drop_zams': HR diagram starting after ZAMS.
                                                   #      'full_hrd': Full HR diagram from pre-MS to termination.
@@ -237,3 +226,12 @@ Below is a heavily commented example of a typical ``mesalab`` configuration file
                                                   #      (e.g., lifetime, effective temperature ranges across the grid).
      generate_blue_loop_plots_with_bc: True       # Set to 'True' to generate specific blue loop plots using
                                                   #      bolometric corrections (requires MIST BC grid setup).
+
+   # Settings for GYRE workflow integration
+   gyre_workflow:
+     run_gyre_workflow: True                      # Set to 'True' to enable the GYRE input generation and optional workflow.
+                                                  #      Requires MESA to have generated profile data.
+     gyre_config_path: gyre_config.in             # Path to your GYRE configuration file. This will be copied to the
+                                                  #      GYRE output directory if the workflow is enabled.
+     filtered_profiles_csv_name: sorted_mass_Z_min_max.csv # Name of the CSV file that will list the selected
+                                                          #      MESA profiles for GYRE analysis.

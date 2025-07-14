@@ -23,3 +23,4 @@ Data Analysis Performer
     :members:
     :undoc-members:
     :show-inheritance:
+        :exclude-members: __init__, emit
