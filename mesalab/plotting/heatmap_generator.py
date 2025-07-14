@@ -74,8 +74,10 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
 
     logger.debug(f"cross_data_df_reindexed shape: {cross_data_df_reindexed.shape}")
     logger.debug(f"cross_data_df_reindexed has NaN values: {cross_data_df_reindexed.isnull().any().any()}")
-    logger.debug(f"cross_data_df_reindexed head:\n{cross_data_df_reindexed.head()}")
-
+    print(f"\n{'='*70}\n  Full Instability Strip Crossings Matrix (for Heatmap):\n{'='*70}\n"
+        f"{cross_data_df_reindexed.to_string()}\n"
+        f"{'='*70}\n")
+                                             
     # --- Heatmap generation ---
     # Convert DataFrame to numpy array for imshow
     data_for_heatmap = cross_data_df_reindexed.to_numpy()
