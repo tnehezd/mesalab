@@ -1,4 +1,4 @@
-#mesalab/plotting/heatmap_generator.py
+# mesalab/plotting/heatmap_generator.py
 
 import pandas as pd
 import numpy as np
@@ -7,6 +7,19 @@ import seaborn as sns
 import os
 import math
 from matplotlib.colors import ListedColormap, BoundaryNorm
+import logging # Import the logging module
+
+# --- Logging Setup for this module ---
+# This ensures that if the module is run directly, it has a basic logging setup.
+# When run via cli.py, the root logger configured in cli.py will take precedence.
+logging.basicConfig(
+    level=logging.INFO, # Default for this module if run standalone; cli.py will override
+    format='%(asctime)s - %(levelname)s - %(name)s: %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__) # Logger for this specific module
 
 def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_zs, unique_masses,
                                          plots_output_dir, analysis_results_output_dir,
@@ -21,7 +34,7 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
 
     Args:
         cross_data_df (pd.DataFrame): Grid-like DataFrame with metallicities as index and masses as columns, 
-            each value representing the number of IS crossings (0–5).
+                                      each value representing the number of IS crossings (0–5).
         summary_csv_path (str): Path to the summary CSV file containing time information.
         unique_zs (list): List of sorted unique metallicities (Z values).
         unique_masses (list): List of sorted unique initial masses.
@@ -33,36 +46,10 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
     
     Returns:
         None
-
-
-    Example:
-        >>> import pandas as pd
-        >>> df = pd.DataFrame({
-        ...     3.0: [0, 1, 2],
-        ...     4.0: [1, 3, 5]
-        ... }, index=[0.001, 0.010, 0.020])
-        >>> generate_heatmaps_and_time_diff_csv(
-        ...     cross_data_df=df,
-        ...     summary_csv_path="output/summary.csv",
-        ...     unique_zs=[0.001, 0.010, 0.020],
-        ...     unique_masses=[3.0, 4.0],
-        ...     plots_output_dir="output/plots",
-        ...     analysis_results_output_dir="output",
-        ...     model_name="Test Grid",
-        ...     analyze_blue_loop=True
-        ... )
-
-        ... # Generated heatmap: mesa_grid_blue_loop_heatmap.png
-        ... # Time differences CSV generated: output/mesa_grid_time_differences.csv
-        
-    Notes:
-        - The heatmap uses a modified `viridis` color map and assigns light grey to missing or invalid data.
-        - The function expects the summary CSV to contain columns like 
-          `blue_loop_start_age`, `blue_loop_end_age`, etc., for time difference calculations.
     """
 
     if cross_data_df.empty:
-        print("Warning: cross_data_df is empty. Cannot generate heatmaps.")
+        logger.warning("cross_data_df is empty. Cannot generate heatmaps.")
         return
 
     # Ensure index and columns are float for proper numerical operations and plotting
@@ -85,9 +72,9 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
     for col in cross_data_df_reindexed.columns:
         cross_data_df_reindexed[col] = pd.to_numeric(cross_data_df_reindexed[col], errors='coerce')
 
-    print(f"DEBUG: cross_data_df_reindexed shape: {cross_data_df_reindexed.shape}")
-    print(f"DEBUG: cross_data_df_reindexed has NaN values: {cross_data_df_reindexed.isnull().any().any()}")
-    print(f"DEBUG: cross_data_df_reindexed head:\n{cross_data_df_reindexed.head()}")
+    logger.debug(f"cross_data_df_reindexed shape: {cross_data_df_reindexed.shape}")
+    logger.debug(f"cross_data_df_reindexed has NaN values: {cross_data_df_reindexed.isnull().any().any()}")
+    logger.debug(f"cross_data_df_reindexed head:\n{cross_data_df_reindexed.head()}")
 
     # --- Heatmap generation ---
     # Convert DataFrame to numpy array for imshow
@@ -136,7 +123,7 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
     plt.tight_layout()
     plt.savefig(os.path.join(plots_output_dir, heatmap_filename), dpi=300)
     plt.close()
-    print(f"Generated heatmap: {heatmap_filename}")
+    logger.info(f"Generated heatmap: {heatmap_filename}")
 
     # Time differences logic (if analyze_blue_loop is True)
     if os.path.exists(summary_csv_path) and analyze_blue_loop:
@@ -150,7 +137,6 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
             summary_df['instability_end_age'] = pd.to_numeric(summary_df['instability_end_age'], errors='coerce')
             # Ensure crossing count is also numeric
             summary_df['blue_loop_crossing_count'] = pd.to_numeric(summary_df['blue_loop_crossing_count'], errors='coerce')
-
 
             # Round durations
             summary_df['calculated_blue_loop_duration'] = summary_df['calculated_blue_loop_duration'].apply(lambda x: round(x, 4) if pd.notna(x) else np.nan)
@@ -167,7 +153,7 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
             ].copy() # Use .copy() to avoid SettingWithCopyWarning
 
             if initial_rows > 0 and len(filtered_df) < initial_rows:
-                print(f"Filtered out {initial_rows - len(filtered_df)} rows from time_differences CSV where no valid blue loop was detected.")
+                logger.info(f"Filtered out {initial_rows - len(filtered_df)} rows from time_differences CSV where no valid blue loop was detected.")
             # --- END Filtering Logic ---
 
             # Renamed output file for consistency
@@ -184,13 +170,13 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
             output_cols_existing = [col for col in output_cols if col in filtered_df.columns]
 
             if not output_cols_existing:
-                print(f"Warning: No relevant time difference columns found in filtered data. Skipping generation of time differences CSV.")
+                logger.warning(f"No relevant time difference columns found in filtered data. Skipping generation of time differences CSV.")
             else:
                 # Save the filtered DataFrame
                 filtered_df[output_cols_existing].to_csv(time_diff_csv_path, index=False)
-                print(f"Time differences CSV generated: {time_diff_csv_path}")
+                logger.info(f"Time differences CSV generated: {time_diff_csv_path}")
 
         except Exception as e:
-            print(f"Error generating time differences CSV: {e}")
+            logger.error(f"Error generating time differences CSV: {e}", exc_info=True) # Added exc_info=True for traceback
     else:
-        print("Summary CSV not found or blue loop analysis not enabled. Skipping time differences CSV generation.")
+        logger.info("Summary CSV not found or blue loop analysis not enabled. Skipping time differences CSV generation.")
