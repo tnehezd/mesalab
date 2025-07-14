@@ -10,6 +10,8 @@ import pkg_resources # Import pkg_resources to get package version
 
 # Import config_parser module, which now handles ALL argument parsing and config loading
 from mesalab.io import config_parser
+from mesalab import config_paths 
+
 
 # --- Logging Setup (Initial) ---
 logging.basicConfig(
@@ -89,6 +91,11 @@ def main():
     print(f"### {'mesalab CLI - Starting Analysis Workflow':^72} ###")
     print(f"### {'Version: ' + mesalab_version:^72} ###")
     print(f"{'#'*80}\n")
+
+    config = config_parser.parsing_options()
+
+
+    config_paths.set_environment_variables_for_executables(config)
 
     logger.debug(f"Starting main application logic. Raw CLI arguments: {sys.argv[1:]}")
     
