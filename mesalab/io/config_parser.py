@@ -97,17 +97,17 @@ def parsing_options():
             'debug': False
         },
         'blue_loop_analysis': {
-            'analyze_blue_loop': False,
+            'analyze_blue_loop': True,
             'blue_loop_output_type': 'all'
         },
         'plotting_settings': {
-            'generate_heatmaps': True,
-            'generate_plots': True,
+            'generate_heatmaps': False,
+            'generate_plots': False,
             'generate_hr_diagrams': 'none', # Default HR diagram generation
             'generate_blue_loop_plots_with_bc': False
         },
         'gyre_workflow': {
-            'run_gyre_workflow': False,
+            'run_gyre_workflow': True,
             'gyre_config_path': 'gyre_config.in',
             'filtered_profiles_csv_name': 'sorted_mass_Z_min_max.csv' # Consistent naming
         }
