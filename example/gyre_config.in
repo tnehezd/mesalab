@@ -1,0 +1,62 @@
+! mesalab_config.in
+
+&setup
+  ! Basic directory settings
+!  mesa_dir = '/home/tnd/mesa-r23.05.1/STRANGE/nad_convos_mid/'
+  mesa_dir = '/home/tnehezd/workdir/mesa-r23.05.1/STRANGE/nad_convos_mid/'
+!  mesasdk_root = '/home/tnd/mesasdk'
+  mesasdk_root = '/home/tnehezd/workdir/mesasdk'
+  ! The GYRE_DIR is the directory that contains the 'bin' folder with the GYRE executable.
+  ! Example: if the GYRE executable is at: /path/to/gyre_install/bin/gyre
+  ! then gyre_dir = '/path/to/gyre_install'
+  ! In your case, it's inside your MESA installation, so GYRE_DIR should be:
+!  gyre_dir = '/home/tnd/mesa-r23.05.1/gyre/gyre'
+  gyre_dir = '/home/tnehezd/workdir/mesa-r23.05.1/gyre/gyre'
+  output_base_dir = './mesalab_results' ! Base directory for all outputs
+/
+
+&run_control
+  ! Which steps should mesalab execute
+  run_mesa = .FALSE.    ! Not yet implemented. In the future, this could launch MESA runs.
+  run_gyre = .TRUE.     ! Run GYRE on the specified profiles.
+  run_analysis = .FALSE. ! Not yet implemented. For processing results.
+  run_plots = .FALSE.   ! Not yet implemented. For plotting results.
+/
+
+&gyre_options
+  ! GYRE-specific settings for the runs
+  enable_parallel = .TRUE.   ! Enable parallel execution of GYRE runs.
+  num_gyre_threads = 2       ! How many OpenMP threads (CPU cores) should ONE GYRE run use.
+  max_concurrent_gyre_runs = 3 ! How many GYRE runs should execute simultaneously (processes).
+  gyre_inlist_template = 'gyre.in' ! The name of the base GYRE inlist template file (assumed in the same directory).
+  mesa_profile_pattern = 'LOGS/profile*.data.GYRE' ! Pattern to find MESA profile files in the MESA LOGS directory.
+!  mesa_profile_base_dir = '/home/tnd/mesagrid/mesa_blue_loop/mesalab/gyretools/mesalab_results' ! Relative or absolute path to the MESA LOGS directory (where profiles are).
+  mesa_profile_base_dir = '/home/tnehezd/workdir/mesa_blue_loop/mesalab/gyretools/mesalab_results' ! Relative or absolute path to the MESA LOGS directory (where profiles are).
+
+  ! Profile selection mode
+  ! 'ALL_PROFILES': Process all profile*.data.GYRE files found in mesa_profile_base_dir.
+  ! 'FILTERED_PROFILES': Use the profiles specified in filtered_profiles_csv based on model numbers.
+  run_mode = 'FILTERED_PROFILES' ! <--- ADD THIS LINE! Set to 'FILTERED_PROFILES' or 'ALL_PROFILES'
+  
+  ! Used only if run_mode = 'FILTERED_PROFILES'
+  ! This path is relative to the 'output_base_dir' 
+  ! (e.g., './mesalab_results/analysis_results/sorted_mass_Z_min_max.csv')
+!  filtered_profiles_csv = '/home/tnd/mesagrid/mesa_blue_loop/output/analysis_results/sorted_mass_Z_min_max.csv' ! <--- ADD THIS LINE!
+  filtered_profiles_csv = '/home/tnehezd/workdir/mesa_blue_loop/output/analysis_results/sorted_mass_Z_min_max.csv' ! <--- ADD THIS LINE!
+/
+
+&analyze_options
+  ! Analysis-related settings
+  ! (Not used yet, just an example of structure)
+  calc_stability = .TRUE.
+  output_summary_csv = .TRUE.
+/
+
+&plot_options
+  ! Plotting-related settings
+  ! (Not used yet, just an example of structure)
+  plot_hr = .TRUE.
+  plot_k_diagram = .FALSE.
+  plot_save_format = 'png'
+  plot_dpi = 300
+/
