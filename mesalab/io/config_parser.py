@@ -62,8 +62,8 @@ def parsing_options():
     # Plotting Settings (can be overridden by CLI)
     parser.add_argument("--generate-heatmaps", action="store_true",
                         help="Override plotting_settings.generate_heatmaps. Generate heatmaps from cross-grid data.")
-    parser.add_argument("--generate-plots", action="store_true",
-                        help="Override plotting_settings.generate_plots. Generate general plots.")
+#    parser.add_argument("--generate-plots", action="store_true",
+#                        help="Override plotting_settings.generate_plots. Generate general plots.")
     parser.add_argument("--generate-hr-diagrams", type=str, choices=['none', 'all', 'drop_zams'],
                         help='Override plotting_settings.generate_hr_diagrams. Control HR diagram generation.')
     parser.add_argument("--generate-blue-loop-plots-with-bc", action="store_true",
@@ -102,7 +102,7 @@ def parsing_options():
         },
         'plotting_settings': {
             'generate_heatmaps': False,
-            'generate_plots': False,
+#            'generate_plots': False,
             'generate_hr_diagrams': 'none', # Default HR diagram generation
             'generate_blue_loop_plots_with_bc': False
         },
@@ -167,7 +167,9 @@ def parsing_options():
                 final_config_dict['general_settings'][arg_name] = cli_value
             elif arg_name in ['analyze_blue_loop', 'blue_loop_output_type']:
                 final_config_dict['blue_loop_analysis'][arg_name] = cli_value
-            elif arg_name in ['generate_heatmaps', 'generate_plots', 'generate_hr_diagrams', 'generate_blue_loop_plots_with_bc']:
+#            elif arg_name in ['generate_heatmaps', 'generate_plots', 'generate_hr_diagrams', 'generate_blue_loop_plots_with_bc']:
+#                final_config_dict['plotting_settings'][arg_name] = cli_value
+            elif arg_name in ['generate_heatmaps', 'generate_hr_diagrams', 'generate_blue_loop_plots_with_bc']:
                 final_config_dict['plotting_settings'][arg_name] = cli_value
             elif arg_name in ['run_gyre_workflow', 'gyre_config_path', 'filtered_profiles_csv_name']:
                 final_config_dict['gyre_workflow'][arg_name] = cli_value
@@ -176,13 +178,16 @@ def parsing_options():
 
 
     # --- NEW LOGIC START ---
-    # Ensure 'generate_plots' is True if any specific plotting option is enabled.
-    # This makes 'generate_plots' effectively a derived setting for the overall plotting workflow.
-    if (final_config_dict['plotting_settings']['generate_heatmaps'] or
+    # Dynamically set 'generate_plots' based on whether any specific plotting option is enabled.
+    # This means 'generate_plots' is no longer a user-configurable option via CLI/YAML,
+    # but an internal flag derived from other plotting settings.
+    final_config_dict['plotting_settings']['generate_plots'] = (
+        final_config_dict['plotting_settings']['generate_heatmaps'] or
         final_config_dict['plotting_settings']['generate_hr_diagrams'] != 'none' or
-        final_config_dict['plotting_settings']['generate_blue_loop_plots_with_bc']):
-        final_config_dict['plotting_settings']['generate_plots'] = True
-        logger.debug("Forcing 'generate_plots' to True because a specific plotting option is enabled.")
+        final_config_dict['plotting_settings']['generate_blue_loop_plots_with_bc']
+    )
+    if final_config_dict['plotting_settings']['generate_plots']:
+        logger.debug("Internal 'generate_plots' flag set to True as a specific plotting option is enabled.")
     # --- NEW LOGIC END ---
 
 
