@@ -14,7 +14,7 @@ from mesalab.io import config_parser
 # This basic configuration ensures logs appear from the start.
 # The level will be adjusted later by config_parser based on the 'debug' setting.
 logging.basicConfig(
-    level=logging.INFO, # Default level, will be overridden by config_parser based on config.general_settings.debug
+    level=logging.WARNING, # Default level, will be overridden by config_parser based on config.general_settings.debug
     format='%(asctime)s - %(levelname)s: %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout) # Log to console
