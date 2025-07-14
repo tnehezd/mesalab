@@ -1,0 +1,27 @@
+# example_config.yaml - MESA Lab Configuration
+
+
+# --- General Settings ---
+general_settings:
+  input_dir: example/MESA_grid/
+  output_dir: output/
+  inlist_name: "inlist_project"
+  force_reanalysis: True
+  debug: True
+
+# --- Blue Loop Analysis Settings ---
+blue_loop_analysis:
+  analyze_blue_loop: True
+  blue_loop_output_type: "summary"
+
+# --- Plotting specific settings ---
+plotting_settings:
+  generate_heatmaps: True
+  generate_hr_diagrams: "drop_zams"
+  generate_blue_loop_plots_with_bc: True
+
+# --- GYRE Workflow specific settings ---
+gyre_workflow:
+  run_gyre_workflow: False
+  gyre_config_path: "gyre_config.in"
+  gyre_input_csv_name: "sorted_mass_Z_min_max.csv"

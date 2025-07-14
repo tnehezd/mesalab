@@ -24,6 +24,12 @@ logging.basicConfig(
 from .data_reader import scan_mesa_runs, get_data_from_history_file
 from ..bluelooptools.blue_loop_analyzer import analyze_blue_loop_and_instability
 
+
+# Force tqdm to use an ASCII-only progress bar for maximum compatibility
+# This should be done before any actual tqdm progress bars are created.
+import os
+os.environ['TQDM_ASCII'] = '1'
+
 # Define a custom logging handler that uses tqdm.write()
 # This ensures log messages are printed in a way that is compatible with tqdm's output.
 class TqdmLoggingHandler(logging.Handler):
