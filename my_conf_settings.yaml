@@ -17,7 +17,6 @@ blue_loop_analysis:
 # --- Plotting specific settings ---
 plotting_settings:
   generate_heatmaps: True
-  generate_plots: True                                                  # General plots (e.g., summary scatter plots)
   generate_hr_diagrams: "drop_zams"                                     # Options: "none", "all", "drop_zams"
   generate_blue_loop_plots_with_bc: True                                # Generate HR diagrams with bolometric corrections for blue loops
 
