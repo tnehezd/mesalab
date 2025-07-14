@@ -1,0 +1,70 @@
+&constants
+    GYRE_DIR = '.'
+/
+
+&model
+    add_center = .TRUE.
+    model_type = 'EVOL'
+    file = 'LOGS_profiles/profile1.data.GYRE'
+    file_format = 'MESA'
+/
+
+&mode
+    l = 0
+!    n_pg_max = 100   !20 -- just for adiabatic calculations!
+/
+
+&osc
+    outer_bound = 'JCD'
+    variables_set = 'JCD'
+
+    adiabatic = .FALSE.
+    nonadiabatic = .TRUE.
+/
+
+&grid
+    w_ctr = 20
+    w_osc = 20
+    w_exp = 2
+/
+
+&rot
+/
+
+&num
+    diff_scheme = 'MAGNUS_GL2'
+    restrict_roots = .FALSE.
+    nad_search = 'CONTOUR'  ! Próbáld 'AD' helyett 'CONTOUR'-ral is, ha kell
+    n_iter_max = 100
+/
+
+&scan
+    axis = 'REAL'
+    grid_type = 'INVERSE' ! 'LINEAR'
+    freq_min = 0.01
+    freq_max = 10      !10
+    n_freq = 200
+    freq_units = 'CYC_PER_DAY'
+/
+
+!&scan
+!  axis = 'IMAG'
+!  grid_type = 'LINEAR'
+!  freq_min = -0.28
+!  freq_max = 0.28
+!  n_freq = 50
+!/
+
+&tide_output
+/
+
+
+&nad_output
+    summary_file = 'summary_nad.txt'
+    summary_file_format = 'TXT'
+    summary_item_list = 'l,n_pg,n_p,n_g,omega,omega_int'
+    detail_file = 'nad_output_details.txt'
+    detail_file_format = 'TXT'
+    detail_item_list = 'l,n_pg,omega,freq,x,xi_r,xi_h,xi_r_ref,xi_h_ref'
+    freq_units = 'CYC_PER_DAY'
+/
