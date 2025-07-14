@@ -4,8 +4,8 @@
 # --- Required Input/Output Paths ---
 # These are essential for the program to find your MESA data and save results.
 # IMPORTANT: Replace these with your actual paths!
-input_dir: /path_to_your_data/example/MIST_synthetic
-output_dir: /path_to_your_data/MIST_example_output
+input_dir: MIST_synthetic
+output_dir: MIST_example_output
 
 # Name of the inlist file found in each MESA run directory
 inlist_name: inlist_project
@@ -21,22 +21,18 @@ analyze_blue_loop: true
 # Set to 'true' to enable heatmap generation.
 generate_heatmaps: true
 
-# This flag is for general plots (e.g., if you had other custom plots).
-# Currently set to 'true' as requested.
-generate_plots: true
-
-# This is what you want! Set to 'true' to generate the blue loop specific
+# Set to 'true' to generate the blue loop specific
 # HRD/CMD/logg-L plots with bolometric corrections.
 generate_blue_loop_plots_with_bc: true
 
-# --- HR Diagram Generation (New Format) ---
+# --- HR Diagram Generation ---
 # This controls the generation of the main HR diagrams.
 # Options:
 #   - 'default': Generates standard HRDs with full tracks (no ZAMS trimming).
 #   - 'drop_zams': Generates HRDs with pre-main sequence (ZAMS) trimming.
 #   - (Omit this line entirely or set to null/None): Does NOT generate HRDs.
 #
-# Since you want standard HRDs, it is set to 'default'.
+# For standard HRDs, it is set to 'default'.
 generate_hr_diagrams: default
 
 
