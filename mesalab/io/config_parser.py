@@ -212,8 +212,8 @@ def parsing_options():
         logger.setLevel(logging.DEBUG)
         logger.debug("Debug mode enabled after full config merge.")
     else:
-        logging.root.setLevel(logging.INFO)
-        logger.setLevel(logging.INFO)
+        logging.root.setLevel(logging.WARNING)
+        logger.setLevel(logging.WARNING)
 
     logger.info(f"Final resolved configuration: {final_namespace}")
     return final_namespace
