@@ -1,27 +1,34 @@
-# example_config.yaml - MESA Lab Configuration
+# config/example_config.yaml - MESA Lab Configuration
 
-
-# --- General Settings ---
 general_settings:
-  input_dir: example/MESA_grid/
-  output_dir: output/
-  inlist_name: "inlist_project"
-  force_reanalysis: True
-  debug: True
+  input_dir: "/path/to/your/mesa_runs_grid"  # Replace with the actual path to your MESA grid directory (REQUIRED)
+  output_dir: "./mesalab_output"              # Output base directory for all mesalab results
+  inlist_name: "inlist_project"               # Inlist filename to identify MESA runs (e.g., "inlist_1.0M_0.02Z")
+  force_reanalysis: false                     # Force reanalysis even if summary files exist
+  debug: false                                # Enable debug logging (can be overridden by --debug CLI flag)
+  mesasdk_root: "/path/to/your/mesasdk"       # Optional: Override MESASDK_ROOT environment variable
+  gyre_dir: "/path/to/your/gyre/install/bin"  # Optional: Override GYRE_DIR environment variable; should point to GYRE's 'bin' directory
 
-# --- Blue Loop Analysis Settings ---
 blue_loop_analysis:
-  analyze_blue_loop: True
-  blue_loop_output_type: "summary"
+  analyze_blue_loop: true                     # Perform blue loop analysis
+  blue_loop_output_type: "all"                # "summary" or "all" for blue loop detail files
 
-# --- Plotting specific settings ---
 plotting_settings:
-  generate_heatmaps: True
-  generate_hr_diagrams: "drop_zams"
-  generate_blue_loop_plots_with_bc: True
+  generate_heatmaps: false                    # Generate heatmaps from cross-grid data
+  generate_hr_diagrams: "none"                # Controls HR diagram generation: "none", "all", or "drop_zams"
+  generate_blue_loop_plots_with_bc: false     # Generate blue loop plots including bolometric corrections
+  # generate_plots: false                     # This is an internal flag derived from other plotting settings, do not set here
 
-# --- GYRE Workflow specific settings ---
 gyre_workflow:
-  run_gyre_workflow: False
-  gyre_config_path: "gyre_config.in"
-  gyre_input_csv_name: "sorted_mass_Z_min_max.csv"
+  run_gyre_workflow: true                     # Execute the full GYRE workflow
+  # NEW: Absolute or relative path to the GYRE inlist template file.
+  # This can be anywhere on your system. If relative, it's relative to the CWD.
+  gyre_inlist_template_path: "config/gyre.in" # Example: Relative path assuming 'config' directory is in the mesalab project root.
+                                              # You can also use an absolute path like "/home/user/my_gyre_templates/my_custom_gyre.in"
+  run_mode: "FILTERED_PROFILES"               # "ALL_PROFILES" or "FILTERED_PROFILES"
+  num_gyre_threads: 1                         # Number of OpenMP threads for each individual GYRE run
+  enable_parallel: true                       # Enable/disable parallel execution of multiple GYRE runs
+  max_concurrent_gyre_runs: 4                 # Maximum number of concurrent GYRE runs if enable_parallel is true
+  filtered_profiles_csv_name: "sorted_mass_Z_min_max.csv" # Name of the CSV file for FILTERED_PROFILES mode
+  mesa_profile_pattern: "profile*.data.GYRE"  # Wildcard pattern for MESA profile files (e.g., "profile*.data.GYRE")
+  mesa_profile_base_dir_relative: "LOGS"      # Relative path from a MESA run directory to its LOGS folder (e.g., "LOGS")
