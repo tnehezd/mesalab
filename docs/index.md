@@ -14,6 +14,13 @@ getting_started
 
 ```{toctree}
 :maxdepth: 3
+:caption: Jupyter-notebook Tutorial
+tutorial
+```
+
+
+```{toctree}
+:maxdepth: 3
 :caption: Troubleshooting
 trouble_shooting
 ```
