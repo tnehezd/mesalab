@@ -16,7 +16,7 @@ import sys # Import sys for stream handling
 # We explicitly set an empty list for handlers initially to prevent
 # an automatic default StreamHandler from being added, which we will replace.
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.ERROR,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[] # Start with an empty list of handlers
 )

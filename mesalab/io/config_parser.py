@@ -102,7 +102,6 @@ def parsing_options():
         logger.debug("Debug logging enabled via CLI in config_parser (early stage).")
     else:
         # If not debug, set a more standard info/warning level for early stages
-        logging.getLogger().setLevel(logging.INFO)
         logger.info("Default logging level is INFO (early stage).")
 
 
@@ -305,9 +304,8 @@ def parsing_options():
     else:
         # If not debug, set the root logger level back to INFO or higher for normal operation.
         # This will affect all loggers unless they have a more specific level set.
-        logging.root.setLevel(logging.INFO)
-        logger.setLevel(logging.INFO) # Set this module's logger to INFO too
-        logger.info("Logging level set to INFO after full config merge in config_parser.") # This will show
+        logger.setLevel(logging.ERROR) # Set this module's logger to INFO too
+        logger.info("Logging level set to ERROR after full config merge in config_parser.") # This will show
 
     logger.info(f"Final resolved configuration: {final_config_dict}")
     return final_config_dict

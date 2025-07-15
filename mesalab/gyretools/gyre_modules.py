@@ -166,7 +166,7 @@ def run_gyre_workflow(
         gyre_logger.setLevel(logging.DEBUG)
         gyre_logger.debug("GYRE workflow debug mode enabled.")
     else:
-        gyre_logger.setLevel(logging.INFO) # Default to INFO if not in debug mode
+        gyre_logger.setLevel(logging.WARNING) # Default to INFO if not in debug mode
 
     gyre_logger.info("Initializing GYRE workflow from mesalab configuration...")
 
@@ -466,7 +466,7 @@ if __name__ == "__main__":
 
     # Setup basic logger if not already configured (e.g., by main mesalab application)
     if not gyre_logger.handlers:
-        gyre_logger.setLevel(logging.DEBUG if args.debug else logging.INFO)
+        gyre_logger.setLevel(logging.DEBUG if args.debug else logging.WARNING)
         handler = logging.StreamHandler(sys.stdout)
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         handler.setFormatter(formatter)

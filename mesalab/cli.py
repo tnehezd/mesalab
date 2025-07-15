@@ -1,4 +1,4 @@
-# mesalab/cli.py - REVISED with "nice" print statements for workflow stages
+# mesalab/cli.py
 
 import sys
 import os
@@ -13,17 +13,28 @@ from mesalab.io import config_parser
 from mesalab import config_paths
 
 
-# --- Logging Setup (Initial) ---
-logging.basicConfig(
-    level=logging.ERROR, # Set this to ERROR to only show errors by default
-    format='%(asctime)s - %(levelname)s: %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout) # Log to console
-    ]
-)
+# --- Logging Setup (Initial - Manual Configuration for cli.py) ---
+# Get the root logger
+root_logger = logging.getLogger()
+# Remove any existing handlers to prevent duplicate output (e.g., from implicit basicConfig calls)
+# This loop is crucial to prevent duplicate messages if basicConfig was called elsewhere implicitly
+for handler in root_logger.handlers[:]:
+    if isinstance(handler, logging.StreamHandler) and handler.stream == sys.stdout:
+        root_logger.removeHandler(handler)
+
+# Add a StreamHandler to output to console (only one now)
+console_handler = logging.StreamHandler(sys.stdout)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s: %(message)s')
+console_handler.setFormatter(formatter)
+root_logger.addHandler(console_handler)
+
 # Suppress matplotlib font warnings, if any (often verbose)
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
-logger = logging.getLogger(__name__) # Logger for cli.py itself
+
+# Logger for cli.py itself (distinct from root_logger for finer control)
+cli_logger = logging.getLogger(__name__)
+cli_logger.setLevel(logging.WARNING) # Default for cli_logger itself, adjusted later
+
 
 # --- Module Imports with Fallback (Corrected paths based on your files) ---
 
@@ -31,7 +42,7 @@ logger = logging.getLogger(__name__) # Logger for cli.py itself
 _GYRE_MODULES_LOADED = False
 
 try:
-    logger.debug("Attempting to import core mesalab modules...")
+    cli_logger.debug("Attempting to import core mesalab modules...")
     
     from mesalab.analyzis.mesa_analyzer import perform_mesa_analysis as mesa_analyzer
     from mesalab.plotting.mesa_plotter import handle_heatmap_generation
@@ -41,10 +52,10 @@ try:
     # Corrected import: import the specific function directly
     from mesalab.gyretools.gyre_modules import run_gyre_workflow
     _GYRE_MODULES_LOADED = True
-    logger.debug("Successfully imported all core mesalab modules, including GYRE.")
+    cli_logger.debug("Successfully imported all core mesalab modules, including GYRE.")
 
 except ImportError as e:
-    logger.error(f"Failed to import core MESA/GYRE modules due to ImportError: {e}", exc_info=True)
+    cli_logger.error(f"Failed to import core MESA/GYRE modules due to ImportError: {e}", exc_info=True)
     print(f"FATAL ERROR: Failed to import critical mesalab/GYRE modules at startup. Please check installation and dependencies.", file=sys.stderr)
     print(f"Error details: {e}", file=sys.stderr)
     print("Full traceback (printed to stderr):", file=sys.stderr)
@@ -53,7 +64,7 @@ except ImportError as e:
     sys.exit(1)
 
 except Exception as e:
-    logger.critical(f"CRITICAL UNEXPECTED ERROR during initial module imports: {e}", exc_info=True)
+    cli_logger.critical(f"CRITICAL UNEXPECTED ERROR during initial module imports: {e}", exc_info=True)
     print(f"FATAL ERROR: An unexpected critical error occurred during initial module imports: {e}", file=sys.stderr)
     print("Full traceback (printed to stderr):", file=sys.stderr)
     import traceback
@@ -64,7 +75,7 @@ except Exception as e:
 class DummyModule:
     def __getattr__(self, name):
         def dummy_func(*args, **kwargs):
-            logger.warning(f"Function '{name}' from a missing/unavailable module was called. Skipping operation.")
+            cli_logger.warning(f"Function '{name}' from a missing/unavailable module was called. Skipping operation.")
             return None
         return dummy_func
         
@@ -72,7 +83,8 @@ if not _GYRE_MODULES_LOADED:
     # If GYRE modules failed to load, replace run_gyre_workflow with a dummy
     # This prevents NameError if GYRE is called later.
     run_gyre_workflow = DummyModule().dummy_func # Assign the specific dummy function
-    logger.warning("GYRE modules could not be loaded. GYRE workflow will be skipped.")
+    cli_logger.warning("GYRE modules could not be loaded. GYRE workflow will be skipped.")
+    # No need to set overall_workflow_success here, as main() will handle it if GYRE workflow is enabled and skipped.
 else:
     pass
 
@@ -87,6 +99,9 @@ def main():
     """
     
     # --- START OF RUN (using print for clear visibility) ---
+
+    overall_workflow_success = True 
+
     try:
         mesalab_version = pkg_resources.get_distribution('mesalab').version
     except pkg_resources.DistributionNotFound:
@@ -97,32 +112,26 @@ def main():
     print(f"### {'Version: ' + mesalab_version:^72} ###")
     print(f"{'#'*80}\n")
 
-    # Parse command line arguments and load config (twice? config_parser.parsing_options() is called twice, remove one)
+    # Parse command line arguments and load config
     config = config_parser.parsing_options()
-
 
     config_paths.set_environment_variables_for_executables(config)
 
-    logger.debug(f"Starting main application logic. Raw CLI arguments: {sys.argv[1:]}")
+    cli_logger.debug(f"Starting main application logic. Raw CLI arguments: {sys.argv[1:]}")
     
-    # config = config_parser.parsing_options() # This line is redundant, parsing_options() was called above
-
     # --- Final Logging Setup (based on parsed config) ---
     if config.general_settings.debug:
-        logging.getLogger().setLevel(logging.DEBUG)
-        logger.debug("Debug logging confirmed and enabled by final configuration.")
+        root_logger.setLevel(logging.DEBUG) # Set root logger to DEBUG
+        cli_logger.setLevel(logging.DEBUG)  # Set cli_logger to DEBUG
+        cli_logger.debug("Debug logging confirmed and enabled by final configuration.")
     else:
-        # If not debug, set the root logger level back to INFO or higher for normal operation,
-        # unless it's explicitly set to ERROR for `cli.py` itself as per initial setup.
-        # It's usually better to let sub-modules control their own logging.
-        # Here, we set the root logger to INFO for more general messages.
-        logging.getLogger().setLevel(logging.INFO) 
-        logger.info("Debug mode is OFF. General logging level is INFO.") # This message will now show
+        # If not debug, set the root logger level to WARNING for minimal output
+        cli_logger.setLevel(logging.WARNING) # cli_logger can still generate INFO, but root_logger filters it
+        # cli_logger.info("Debug mode is OFF. General logging level is INFO.") # Removed, as it won't show and is verbose
     
-    # For cli.py itself, we can keep it at ERROR if we only want critical messages from here.
-    # Otherwise, it should also be INFO or DEBUG. Let's keep it at INFO for this example.
-    logger.setLevel(logging.INFO) 
-    logger.info(f"Final resolved configuration being used by cli.py: {config}")
+    # This message is now debug-level, so it only shows if debug is true
+    cli_logger.debug(f"Final resolved configuration being used by cli.py: {config}")
+
 
     # --- Output Directory Setup ---
     # Ensure all output directories are absolute paths for clarity and reliability
@@ -133,13 +142,11 @@ def main():
     plots_output_dir = os.path.join(session_output_dir, 'plots')
     # The gyre_output_dir here might be slightly redundant as gyre_modules.py handles its own sub-dir
     # relative to global_output_base_dir. It's fine to keep it for consistency if desired.
-    gyre_output_dir_placeholder = os.path.join(session_output_dir, 'gyre_output') 
 
     os.makedirs(analysis_results_sub_dir, exist_ok=True)
     os.makedirs(detail_files_output_dir, exist_ok=True)
     os.makedirs(plots_output_dir, exist_ok=True)
-    os.makedirs(gyre_output_dir_placeholder, exist_ok=True) # Create this as a parent for GYRE output
-    logger.info(f"All primary outputs for this session will be saved in: '{session_output_dir}'")
+    cli_logger.info(f"All primary outputs for this session will be saved in: '{session_output_dir}'")
 
     # Initialize gyre_input_csv_path to None or a default if not generated by analysis
     gyre_input_csv_path = None
@@ -157,14 +164,16 @@ def main():
                 gyre_input_csv_name=config.gyre_workflow.filtered_profiles_csv_name
             )
         if summary_df.empty:
-            logger.info("No summary data generated from MESA analysis. Skipping subsequent steps.")
+            cli_logger.info("No summary data generated from MESA analysis. Skipping subsequent steps.")
+            overall_workflow_success = False # No data generated is a non-success
             # sys.exit(0) # Consider if this should be exit(0) or just a return to allow other workflows
             return # Exit main() gracefully if no data
         print(f"\n{'='*70}")
         print(f"  MESA Analysis Workflow Completed Successfully.")
         print(f"{'='*70}\n")
     except Exception as e:
-        logger.critical(f"Critical error during MESA Analysis workflow: {e}", exc_info=True)
+        cli_logger.critical(f"Critical error during MESA Analysis workflow: {e}", exc_info=True)
+        overall_workflow_success = False # MESA analysis failure is critical
         sys.exit(1)
 
 
@@ -202,7 +211,11 @@ def main():
             print(f"  Plotting Workflow Completed Successfully.")
             print(f"{'='*70}\n")
         except Exception as e:
-            logger.error(f"Error during plotting workflow: {e}", exc_info=True)
+            cli_logger.error(f"Error during plotting workflow: {e}", exc_info=True)
+            # Plotting error is not critical enough to stop the whole process as unsuccessful
+            # but you can change this if you want plotting failures to mark the run as failed.
+            # overall_workflow_success = False 
+            # sys.exit(1) 
     else:
         print(f"\n{'='*70}")
         print(f"  Plotting workflow is disabled in configuration (generate_plots=False).")
@@ -222,12 +235,13 @@ def main():
             # Check if filtered profiles are needed but not available
             if config.gyre_workflow.run_mode.upper() == 'FILTERED_PROFILES' and \
                 (not gyre_input_csv_path or not os.path.exists(gyre_input_csv_path)):
-                logger.warning(f"GYRE workflow enabled in 'FILTERED_PROFILES' mode, but the filtered profiles CSV ('{config.gyre_workflow.filtered_profiles_csv_name}') "
-                               f"was not generated or not found at '{gyre_input_csv_path}'. "
-                               "This is required for GYRE to run on filtered profiles. Skipping GYRE workflow.")
+                cli_logger.warning(f"GYRE workflow enabled in 'FILTERED_PROFILES' mode, but the filtered profiles CSV ('{config.gyre_workflow.filtered_profiles_csv_name}') "
+                                 f"was not generated or not found at '{gyre_input_csv_path}'. "
+                                 "This is required for GYRE to run on filtered profiles. Skipping GYRE workflow.")
                 print(f"\n{'='*70}")
                 print(f"  GYRE Workflow Skipped: Required input CSV not found.")
                 print(f"{'='*70}\n")
+                overall_workflow_success = False # GYRE skipped means not fully successful
             else:
                 try:
                     # Pass the entire config object directly to run_gyre_workflow
@@ -241,14 +255,17 @@ def main():
                     print(f"  GYRE Workflow Completed Successfully.")
                     print(f"{'='*70}\n")
                 except Exception as e:
-                    logger.critical(f"Critical error during GYRE workflow: {e}", exc_info=True)
+                    cli_logger.critical(f"Critical error during GYRE workflow: {e}", exc_info=True)
                     print(f"\n{'='*70}")
                     print(f"  GYRE Workflow Encountered an Error.")
                     print(f"{'='*70}\n")
+                    overall_workflow_success = False # GYRE runtime error means not fully successful
+                    # sys.exit(1) # Consider adding sys.exit(1) here if a GYRE runtime error should terminate immediately
         else:
             print(f"\n{'='*70}")
             print(f"  GYRE workflow is enabled in configuration, but GYRE modules failed to load at startup. Skipping GYRE workflow.")
             print(f"{'='*70}\n")
+            overall_workflow_success = False # GYRE module load failure means not fully successful
     else:
         print(f"\n{'='*70}")
         print(f"  GYRE workflow is disabled in configuration (run_gyre_workflow=False).")
@@ -256,7 +273,10 @@ def main():
 
     # --- END OF RUN (using print for clear visibility) ---
     print(f"\n{'#'*80}")
-    print(f"### {'mesalab Workflow Finished Successfully!':^72} ###")
+    if overall_workflow_success:
+        print(f"### {'mesalab Workflow Finished Successfully!':^72} ###")
+    else:
+        print(f"### {'mesalab Workflow Completed with Errors/Skipped Steps!':^72} ###")
     print(f"{'#'*80}\n")
 
 # --- Entry Point ---
