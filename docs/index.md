@@ -14,6 +14,15 @@ getting_started
 
 ```{toctree}
 :maxdepth: 3
+:caption: Using mesalab
+overview_workflows
+mesa_analysis_workflow
+plotting_workflow
+gyre_workflow
+```
+
+```{toctree}
+:maxdepth: 3
 :caption: Jupyter-notebook Tutorial
 tutorial
 ```
