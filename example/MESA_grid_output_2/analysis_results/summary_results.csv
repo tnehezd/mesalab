@@ -1,0 +1,5 @@
+initial_Z,initial_mass,run_dir_path,blue_loop_crossing_count,blue_loop_duration_yr,max_log_L,max_log_Teff,max_log_R,first_model_number,last_model_number,first_age_yr,last_age_yr,blue_loop_start_age,blue_loop_end_age,instability_start_age,instability_end_age,calculated_blue_loop_duration,calculated_instability_duration
+0.009,4.0,MESA_grid/run_4.0MSUN_z0.0090,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN
+0.01,4.0,MESA_grid/run_4.0MSUN_z0.0100,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN
+0.009,5.0,MESA_grid/run_5.0MSUN_z0.0090,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN
+0.01,5.0,MESA_grid/run_5.0MSUN_z0.0100,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN
