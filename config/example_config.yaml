@@ -29,6 +29,5 @@ gyre_workflow:
   num_gyre_threads: 1                         # Number of OpenMP threads for each individual GYRE run
   enable_parallel: true                       # Enable/disable parallel execution of multiple GYRE runs
   max_concurrent_gyre_runs: 4                 # Maximum number of concurrent GYRE runs if enable_parallel is true
-  filtered_profiles_csv_name: "sorted_mass_Z_min_max.csv" # Name of the CSV file for FILTERED_PROFILES mode
   mesa_profile_pattern: "profile*.data.GYRE"  # Wildcard pattern for MESA profile files (e.g., "profile*.data.GYRE")
   mesa_profile_base_dir_relative: "LOGS"      # Relative path from a MESA run directory to its LOGS folder (e.g., "LOGS")
