@@ -125,8 +125,9 @@ def main():
         cli_logger.setLevel(logging.DEBUG)  # Set cli_logger to DEBUG
         cli_logger.debug("Debug logging confirmed and enabled by final configuration.")
     else:
-        # If not debug, set the root logger level to WARNING for minimal output
-        cli_logger.setLevel(logging.WARNING) # cli_logger can still generate INFO, but root_logger filters it
+        # If not debug, set the root logger level to INFO for balanced output
+        root_logger.setLevel(logging.INFO) # Set root logger to INFO (for general pipeline messages)
+        cli_logger.setLevel(logging.WARNING) # cli_logger specific output can be less verbose
         # cli_logger.info("Debug mode is OFF. General logging level is INFO.") # Removed, as it won't show and is verbose
     
     # This message is now debug-level, so it only shows if debug is true
@@ -153,15 +154,31 @@ def main():
 
     # --- MESA Analysis Workflow ---
     print(f"\n{'='*70}")
-    print(f"  Starting MESA Analysis Workflow...")
+    print(f"    Starting MESA Analysis Workflow...")
     print(f"{'='*70}\n")
     try:
+        # Determine if gyre_input_csv_name should be passed to mesa_analyzer
+        # It should only be passed if GYRE workflow is enabled and in 'FILTERED_PROFILES' mode
+        gyre_cfg_exists = hasattr(config, 'gyre_workflow') and config.gyre_workflow is not None
+        gyre_workflow_enabled_for_analysis_csv = False
+        gyre_csv_name_to_pass = None
+
+        if gyre_cfg_exists and config.gyre_workflow.get('run_gyre_workflow', False):
+            if config.gyre_workflow.get('run_mode', '').upper() == 'FILTERED_PROFILES':
+                gyre_csv_name_to_pass = config.gyre_workflow.get('filtered_profiles_csv_name', None)
+                if gyre_csv_name_to_pass: # Only enable if name is actually provided
+                    gyre_workflow_enabled_for_analysis_csv = True
+                else:
+                    cli_logger.warning("GYRE workflow is enabled in FILTERED_PROFILES mode, but 'filtered_profiles_csv_name' is missing in config. Will not generate GYRE input CSV from analysis.")
+
+
         summary_df, combined_detail_data, full_history_data, gyre_input_csv_path = \
             mesa_analyzer(
                 args=config, # mesa_analyzer still takes 'args', which is your config object
                 analysis_results_sub_dir=analysis_results_sub_dir,
                 detail_files_output_dir=detail_files_output_dir,
-                gyre_input_csv_name=config.gyre_workflow.filtered_profiles_csv_name
+                # Pass gyre_csv_name_to_pass ONLY if GYRE workflow is correctly configured to use it for CSV generation
+                gyre_input_csv_name=gyre_csv_name_to_pass if gyre_workflow_enabled_for_analysis_csv else None
             )
         if summary_df.empty:
             cli_logger.info("No summary data generated from MESA analysis. Skipping subsequent steps.")
@@ -169,7 +186,7 @@ def main():
             # sys.exit(0) # Consider if this should be exit(0) or just a return to allow other workflows
             return # Exit main() gracefully if no data
         print(f"\n{'='*70}")
-        print(f"  MESA Analysis Workflow Completed Successfully.")
+        print(f"    MESA Analysis Workflow Completed Successfully.")
         print(f"{'='*70}\n")
     except Exception as e:
         cli_logger.critical(f"Critical error during MESA Analysis workflow: {e}", exc_info=True)
@@ -178,12 +195,20 @@ def main():
 
 
     # --- Plotting Workflow ---
-    if config.plotting_settings.generate_plots:
+    # Check if 'generate_plots' exists and is True, or if any specific plotting flag is True
+    # If plotting_settings section itself is missing, assume no plotting
+    plotting_enabled = getattr(config, 'plotting_settings', None) and \
+                       (config.plotting_settings.get('generate_plots', False) or \
+                        config.plotting_settings.get('generate_heatmaps', False) or \
+                        config.plotting_settings.get('generate_hr_diagrams', 'none') != 'none' or \
+                        config.plotting_settings.get('generate_blue_loop_plots_with_bc', False))
+
+    if plotting_enabled:
         print(f"\n{'='*70}")
-        print(f"  Starting Plotting Workflow...")
+        print(f"    Starting Plotting Workflow...")
         print(f"{'='*70}\n")
         try:
-            if config.plotting_settings.generate_heatmaps:
+            if config.plotting_settings.get('generate_heatmaps', False):
                 handle_heatmap_generation(
                     args=config,
                     summary_df_for_plotting=summary_df,
@@ -192,7 +217,7 @@ def main():
                     input_dir=config.general_settings.input_dir
                 )
             
-            if config.plotting_settings.generate_hr_diagrams != 'none':
+            if config.plotting_settings.get('generate_hr_diagrams', 'none') != 'none':
                 handle_hr_diagram_generation(
                     args=config,
                     plots_sub_dir=plots_output_dir,
@@ -200,7 +225,10 @@ def main():
                     drop_zams=(config.plotting_settings.generate_hr_diagrams == 'drop_zams')
                 )
             
-            if config.blue_loop_analysis.analyze_blue_loop:
+            # Only run blue loop plotting if blue_loop_analysis is enabled AND plotting for it is enabled
+            if getattr(config, 'blue_loop_analysis', None) and \
+               config.blue_loop_analysis.get('analyze_blue_loop', False) and \
+               config.plotting_settings.get('generate_blue_loop_plots_with_bc', False):
                 handle_blue_loop_bc_plotting(
                     args=config,
                     combined_detail_data_for_plotting=combined_detail_data,
@@ -208,7 +236,7 @@ def main():
                     detail_files_output_dir=detail_files_output_dir
                 )
             print(f"\n{'='*70}")
-            print(f"  Plotting Workflow Completed Successfully.")
+            print(f"    Plotting Workflow Completed Successfully.")
             print(f"{'='*70}\n")
         except Exception as e:
             cli_logger.error(f"Error during plotting workflow: {e}", exc_info=True)
@@ -218,28 +246,26 @@ def main():
             # sys.exit(1) 
     else:
         print(f"\n{'='*70}")
-        print(f"  Plotting workflow is disabled in configuration (generate_plots=False).")
+        print(f"    Plotting workflow is disabled in configuration.")
         print(f"{'='*70}\n")
 
 
     # --- GYRE Workflow ---
-    if config.gyre_workflow.run_gyre_workflow:
+    # Use .get() with a default to safely check if 'gyre_workflow' section exists and is enabled
+    if config.gyre_workflow.get('run_gyre_workflow', False): 
         if _GYRE_MODULES_LOADED:
             print(f"\n{'='*70}")
-            print(f"  Starting GYRE Workflow...")
+            print(f"    Starting GYRE Workflow...")
             print(f"{'='*70}\n")
             
-            # The 'gyre_config_full_path' variable is no longer needed here.
-            # The run_gyre_workflow function directly uses the template name from config.
-            
             # Check if filtered profiles are needed but not available
-            if config.gyre_workflow.run_mode.upper() == 'FILTERED_PROFILES' and \
+            if config.gyre_workflow.get('run_mode', '').upper() == 'FILTERED_PROFILES' and \
                 (not gyre_input_csv_path or not os.path.exists(gyre_input_csv_path)):
-                cli_logger.warning(f"GYRE workflow enabled in 'FILTERED_PROFILES' mode, but the filtered profiles CSV ('{config.gyre_workflow.filtered_profiles_csv_name}') "
-                                 f"was not generated or not found at '{gyre_input_csv_path}'. "
-                                 "This is required for GYRE to run on filtered profiles. Skipping GYRE workflow.")
+                cli_logger.warning(f"GYRE workflow enabled in 'FILTERED_PROFILES' mode, but the filtered profiles CSV ('{config.gyre_workflow.get('filtered_profiles_csv_name', 'N/A')}') "
+                                   f"was not generated or not found at '{gyre_input_csv_path}'. "
+                                   f"This is required for GYRE to run on filtered profiles. Skipping GYRE workflow.")
                 print(f"\n{'='*70}")
-                print(f"  GYRE Workflow Skipped: Required input CSV not found.")
+                print(f"    GYRE Workflow Skipped: Required input CSV not found.")
                 print(f"{'='*70}\n")
                 overall_workflow_success = False # GYRE skipped means not fully successful
             else:
@@ -252,23 +278,23 @@ def main():
                         debug_mode=config.general_settings.debug
                     )
                     print(f"\n{'='*70}")
-                    print(f"  GYRE Workflow Completed Successfully.")
+                    print(f"    GYRE Workflow Completed Successfully.")
                     print(f"{'='*70}\n")
                 except Exception as e:
                     cli_logger.critical(f"Critical error during GYRE workflow: {e}", exc_info=True)
                     print(f"\n{'='*70}")
-                    print(f"  GYRE Workflow Encountered an Error.")
+                    print(f"    GYRE Workflow Encountered an Error.")
                     print(f"{'='*70}\n")
                     overall_workflow_success = False # GYRE runtime error means not fully successful
                     # sys.exit(1) # Consider adding sys.exit(1) here if a GYRE runtime error should terminate immediately
         else:
             print(f"\n{'='*70}")
-            print(f"  GYRE workflow is enabled in configuration, but GYRE modules failed to load at startup. Skipping GYRE workflow.")
+            print(f"    GYRE workflow is enabled in configuration, but GYRE modules failed to load at startup. Skipping GYRE workflow.")
             print(f"{'='*70}\n")
             overall_workflow_success = False # GYRE module load failure means not fully successful
     else:
         print(f"\n{'='*70}")
-        print(f"  GYRE workflow is disabled in configuration (run_gyre_workflow=False).")
+        print(f"    GYRE workflow is disabled in configuration (run_gyre_workflow=False).")
         print(f"{'='*70}\n")
 
     # --- END OF RUN (using print for clear visibility) ---

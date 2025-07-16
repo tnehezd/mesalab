@@ -77,7 +77,7 @@ def analyze_mesa_grid_directory(grid_root_path,
 
 # --- Example of how to use it (for local testing of this module) ---
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s') # For independent testing
+    logging.basicConfig(level=logging.WARNING, format='%(levelname)s: %(message)s') # For independent testing
 
     # IMPORTANT: For this example to work, you NEED a mesa_tools/inlist_parser.py
     # with a working get_mesa_params_from_inlist function.

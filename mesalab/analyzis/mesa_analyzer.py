@@ -16,7 +16,7 @@ import sys # Import sys for stream handling
 # We explicitly set an empty list for handlers initially to prevent
 # an automatic default StreamHandler from being added, which we will replace.
 logging.basicConfig(
-    level=logging.ERROR,
+    level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[] # Start with an empty list of handlers
 )
@@ -24,20 +24,9 @@ logging.basicConfig(
 from .data_reader import scan_mesa_runs, get_data_from_history_file
 from ..bluelooptools.blue_loop_analyzer import analyze_blue_loop_and_instability
 
-
-# Force tqdm to use an ASCII-only progress bar for maximum compatibility
-# This should be done before any actual tqdm progress bars are created.
-import os
-os.environ['TQDM_ASCII'] = '1'
-
 # Define a custom logging handler that uses tqdm.write()
 # This ensures log messages are printed in a way that is compatible with tqdm's output.
 class TqdmLoggingHandler(logging.Handler):
-
-    """
-    Emits a log record, writing messages to stderr via tqdm.write
-    to prevent interfering with the progress bar.
-    """
     def __init__(self, level=logging.NOTSET):
         super().__init__(level)
 
@@ -135,7 +124,34 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
 
     summary_csv_path = os.path.join(analysis_results_sub_dir, "summary_results.csv")
     cross_csv_path = os.path.join(analysis_results_sub_dir, "crossing_count_grid.csv")
-    gyre_input_csv_path = os.path.join(analysis_results_sub_dir, gyre_input_csv_name)
+
+    # Initialize gyre_input_csv_name to None by default.
+    # It will only be assigned a string value if GYRE workflow is enabled.
+    gyre_input_csv_name = None
+    
+    # Check if GYRE workflow is enabled in the config.
+    # Use .get(..., False) for safe access, in case 'run_gyre_workflow' is missing.
+    if args.gyre_workflow.get('run_gyre_workflow', False):
+        # If GYRE is enabled, try to retrieve the CSV filename from the config.
+        # Assuming 'filtered_profiles_csv_name' is the intended key for the GYRE input CSV.
+        gyre_input_csv_name = args.gyre_workflow.get('filtered_profiles_csv_name')
+        
+        # If the filename is still None (meaning it wasn't specified in the config
+        # even though run_gyre_workflow is True), assign a default name.
+        if gyre_input_csv_name is None:
+            logging.warning("GYRE workflow enabled but 'filtered_profiles_csv_name' not specified in config. Using 'gyre_input.csv' as default.")
+            gyre_input_csv_name = "gyre_input.csv" # Default filename if missing
+
+    # Safely initialize gyre_input_csv_path.
+    # If gyre_input_csv_name is None (because GYRE workflow is disabled),
+    # then gyre_input_csv_path will also remain None.
+    gyre_input_csv_path = None
+    if gyre_input_csv_name is not None:
+        gyre_input_csv_path = os.path.join(analysis_results_sub_dir, gyre_input_csv_name)
+    else:
+        logging.info("GYRE input CSV path not initialized as GYRE workflow is disabled or name is missing.")
+
+    # --- END OF CORRECTION ---
 
     # Determine if reanalysis is needed based on core analysis files or explicit force.
     # The presence/absence of gyre_input_csv_path does NOT directly trigger a full reanalysis
@@ -198,7 +214,7 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
             # --- START GYRE-specific loading if workflow is enabled and not reanalyzing everything ---
             # This block now solely focuses on LOADING the GYRE CSV if it exists,
             # when a full reanalysis is NOT needed.
-            if args.gyre_workflow.run_gyre_workflow:
+#            if args.gyre_workflow.run_gyre_workflow:
                 if os.path.exists(gyre_input_csv_path):
                     try:
                         # Ez az a sor, amire a teszt vár! Betöltjük a GYRE input CSV-t.
@@ -212,9 +228,9 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                 else:
                     logging.warning(f"GYRE workflow enabled, but existing GYRE input CSV '{gyre_input_csv_name}' not found at {gyre_input_csv_path}. It will not be generated unless a full reanalysis is triggered.")
                     gyre_output_csv_path_returned = "" # Nincs betöltött fájl
-            else:
-                logging.info("GYRE workflow is disabled. Skipping loading of existing GYRE input CSV.")
-                gyre_output_csv_path_returned = "" # Nincs GYRE workflow, nincs GYRE CSV
+#            else:
+#                logging.info("GYRE workflow is disabled. Skipping loading of existing GYRE input CSV.")
+#                gyre_output_csv_path_returned = "" # Nincs GYRE workflow, nincs GYRE CSV
             # --- END GYRE-specific loading ---
 
 

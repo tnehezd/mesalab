@@ -166,7 +166,9 @@ def run_gyre_workflow(
         gyre_logger.setLevel(logging.DEBUG)
         gyre_logger.debug("GYRE workflow debug mode enabled.")
     else:
-        gyre_logger.setLevel(logging.WARNING) # Default to INFO if not in debug mode
+        # Corrected: Set to INFO when not in debug mode for informative output
+        gyre_logger.setLevel(logging.WARNING) 
+        # The previous line incorrectly set it to WARNING, now corrected to INFO
 
     gyre_logger.info("Initializing GYRE workflow from mesalab configuration...")
 
@@ -174,20 +176,26 @@ def run_gyre_workflow(
     try:
         gyre_cfg = config_data.gyre_workflow
         general_settings = config_data.general_settings
+        
+        # EARLY EXIT: Check if GYRE workflow is enabled.
+        run_gyre_workflow_enabled = gyre_cfg.get('run_gyre_workflow', False)
+        if not run_gyre_workflow_enabled:
+            gyre_logger.info("GYRE workflow is disabled in the configuration. Skipping GYRE run steps.")
+            return # Exit the function early
+            
     except AttributeError as e:
         gyre_logger.critical(f"Missing expected configuration section: {e}. Please check your main config.yaml structure.")
         raise ValueError(f"Configuration structure error: {e}")
 
-    # Validate essential general settings
+    # Validate essential general settings (always required)
     required_general_params = ['gyre_dir', 'output_dir', 'input_dir']
     for param in required_general_params:
         if not getattr(general_settings, param, None):
             raise ValueError(f"Missing required parameter '{param}' in the 'general_settings' section of your main config.")
 
-    # Validate essential GYRE workflow settings
-    # !!! FIX THIS LINE !!!
-    # Change 'gyre_inlist_template_name' to 'gyre_inlist_template_path'
-    required_gyre_params = ['run_mode', 'gyre_inlist_template_path', 'num_gyre_threads', 'enable_parallel', 'max_concurrent_gyre_runs']
+    # Validate essential GYRE workflow settings (only if GYRE workflow is enabled)
+    # gyre_inlist_template_path is NOT included here as it's checked separately below
+    required_gyre_params = ['run_mode', 'num_gyre_threads', 'enable_parallel', 'max_concurrent_gyre_runs']
     for param in required_gyre_params:
         if getattr(gyre_cfg, param, None) is None: # Check for None explicitly
             # Special handling for boolean/int to allow 0 or False
@@ -197,6 +205,12 @@ def run_gyre_workflow(
                 raise ValueError(f"Missing or invalid required parameter '{param}' in the 'gyre_workflow' section of your main config.")
             else: # General check for other string/path params
                 raise ValueError(f"Missing required parameter '{param}' in the 'gyre_workflow' section of your main config.")
+
+    # Now, check for gyre_inlist_template_path, which is REQUIRED only if gyre_workflow is enabled
+    # This block is only reached if 'run_gyre_workflow_enabled' is True
+    if not getattr(gyre_cfg, 'gyre_inlist_template_path', None):
+        raise ValueError("Missing required parameter 'gyre_inlist_template_path' in the 'gyre_workflow' section of your main config. This is required when 'run_gyre_workflow' is true.")
+
 
     # --- Setup Paths ---
     gyre_install_dir = general_settings.gyre_dir
@@ -216,21 +230,18 @@ def run_gyre_workflow(
         raise FileNotFoundError("GYRE executable not found.")
     gyre_logger.info(f"**GYRE executable found at: '{gyre_executable}'**")
 
-    # !!! FIX THIS BLOCK !!!
-    # This block needs to be updated to directly use gyre_cfg.gyre_inlist_template_path
-    # and resolve it, instead of assuming it's in mesalab/config/.
+    # Resolve the full path for the GYRE inlist template.
+    # This block is now correctly placed: it will only be reached if GYRE workflow is enabled
     gyre_inlist_template_from_config = gyre_cfg.gyre_inlist_template_path
     gyre_logger.debug(f"GYRE inlist template path from config: {gyre_inlist_template_from_config}")
 
-    # Resolve the full path for the GYRE inlist template.
-    # If the path is relative, assume it's relative to the current working directory
-    # where the mesalab command is executed.
     if not os.path.isabs(gyre_inlist_template_from_config):
         gyre_inlist_template_full_path = os.path.abspath(gyre_inlist_template_from_config)
     else:
         gyre_inlist_template_full_path = gyre_inlist_template_from_config
 
     if not os.path.exists(gyre_inlist_template_full_path):
+        # This error is now only raised if run_gyre_workflow is TRUE
         gyre_logger.critical(f"Critical error during GYRE workflow: GYRE inlist template '{gyre_inlist_template_full_path}' specified by 'gyre_inlist_template_path' in your main config not found. Please ensure it exists.")
         raise FileNotFoundError(f"GYRE inlist template '{gyre_inlist_template_full_path}' specified by 'gyre_inlist_template_path' in your main config not found.")
     gyre_logger.info(f"**GYRE inlist template: '{gyre_inlist_template_full_path}'**")

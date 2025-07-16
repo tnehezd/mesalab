@@ -1,5 +1,0 @@
-initial_mass,initial_Z,mesa_run_directory,min_model_number,max_model_number
-4.0,0.0090,MESA_grid/run_4.0MSUN_z0.0090,NaN,NaN
-4.0,0.0100,MESA_grid/run_4.0MSUN_z0.0100,NaN,NaN
-5.0,0.0090,MESA_grid/run_5.0MSUN_z0.0090,NaN,NaN
-5.0,0.0100,MESA_grid/run_5.0MSUN_z0.0100,NaN,NaN

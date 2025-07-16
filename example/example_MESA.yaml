@@ -99,11 +99,6 @@ gyre_workflow:
   # Adjust this based on your system's CPU core count and available RAM.
   max_concurrent_gyre_runs: 8 # Typically 1-2x your number of physical CPU cores
 
-  # The name of the CSV file that 'mesa_analyzer' generates containing the
-  # filtered MESA profiles (e.g., for blue loop analysis). This file is used
-  # as input for GYRE when 'run_mode' is set to 'FILTERED_PROFILES'.
-  filtered_profiles_csv_name: "sorted_mass_Z_min_max.csv"
-
   # --- Profile Matching and Generation Settings ---
   # These parameters define how MESA profile filenames are handled.
 
