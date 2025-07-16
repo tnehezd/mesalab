@@ -126,7 +126,7 @@ def main():
         cli_logger.debug("Debug logging confirmed and enabled by final configuration.")
     else:
         # If not debug, set the root logger level to INFO for balanced output
-        root_logger.setLevel(logging.INFO) # Set root logger to INFO (for general pipeline messages)
+        root_logger.setLevel(logging.WARNING) # Set root logger to INFO (for general pipeline messages)
         cli_logger.setLevel(logging.WARNING) # cli_logger specific output can be less verbose
         # cli_logger.info("Debug mode is OFF. General logging level is INFO.") # Removed, as it won't show and is verbose
     
