@@ -12,6 +12,7 @@ import re
 import logging
 import numpy as np
 import sys
+from datetime import datetime
 
 # Configure logging for this module.
 gyre_logger = logging.getLogger('GYRE_Pipeline')
@@ -43,7 +44,10 @@ def run_single_gyre_model(
     Returns:
         int: The exit code of the GYRE process. Zero means success.
     """
-    gyre_logger.info(f"Setting up GYRE run for profile: {os.path.basename(model_profile_path)}")
+
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Progress: Setting up run for profile: {os.path.basename(model_profile_path)}")
+
+    #gyre_logger.info(f"Setting up GYRE run for profile: {os.path.basename(model_profile_path)}")
     os.makedirs(output_dir, exist_ok=True)
 
     # 1. Generate the inlist file for the current run based on the template
@@ -92,7 +96,7 @@ def run_single_gyre_model(
     # meaning GYRE will look for the inlist by its name in the current working directory.
     command = [gyre_executable, os.path.basename(run_inlist_path)]
 
-    gyre_logger.info(f"**[{os.path.basename(output_dir)}]** Attempting to run GYRE with command: `{gyre_executable} {os.path.basename(run_inlist_path)}`")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Progress: **{os.path.basename(output_dir)} - SUCCESS**")
 
     try:
         # Important: cwd=output_dir, so GYRE reads the inlist and writes all its outputs (like .h5 files) there.
@@ -112,12 +116,15 @@ def run_single_gyre_model(
         gyre_logger.error(f"ERROR: GYRE executable not found at '{gyre_executable}'. Please check the path specified in your config.")
         raise
     except subprocess.CalledProcessError as e:
+
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Progress: **{os.path.basename(output_dir)} - FAILED with exit code {e.returncode}!**")
         gyre_logger.error(f"**[{os.path.basename(output_dir)}] ERROR: GYRE run FAILED**, exit code: **{e.returncode}**!")
         gyre_logger.error(f"Command executed: {' '.join(e.cmd)}")
         gyre_logger.error(f"GYRE stdout:\n{e.stdout}")
         gyre_logger.error(f"GYRE stderr:\n{e.stderr}")
         raise
     except Exception as e:
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Progress: **{os.path.basename(output_dir)} - UNEXPECTED ERROR!**")        
         gyre_logger.error(f"**[{os.path.basename(output_dir)}] UNEXPECTED ERROR occurred during GYRE run:** {e}", exc_info=True)
         gyre_logger.error("--- Error during run ---")
         raise
@@ -131,9 +138,9 @@ def run_single_gyre_model(
                 del os.environ['OMP_NUM_THREADS']
                 gyre_logger.debug("OMP_NUM_THREADS unset.")
         # Clean up the temporary inlist file
-        if run_inlist_path and os.path.exists(run_inlist_path):
-            os.remove(run_inlist_path)
-            gyre_logger.debug(f"Removed temporary GYRE inlist: {run_inlist_path}")
+#        if run_inlist_path and os.path.exists(run_inlist_path):
+#            os.remove(run_inlist_path)
+#            gyre_logger.debug(f"Removed temporary GYRE inlist: {run_inlist_path}")
 
 
 # --- Main GYRE Pipeline Management Function ---
@@ -170,7 +177,7 @@ def run_gyre_workflow(
         gyre_logger.setLevel(logging.WARNING) 
         # The previous line incorrectly set it to WARNING, now corrected to INFO
 
-    gyre_logger.info("Initializing GYRE workflow from mesalab configuration...")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Pipeline: Initializing GYRE workflow from mesalab configuration...")
 
     # Extract settings directly from the config_data object
     try:
@@ -340,8 +347,8 @@ def run_gyre_workflow(
             current_mesa_run_logs_dir = os.path.join(mesa_run_specific_dir, 'LOGS')
             current_profiles_index_path = os.path.join(current_mesa_run_logs_dir, 'profiles.index')
 
-            gyre_logger.info(f"\nProcessing M={mass}, Z={Z} from run directory: {os.path.basename(mesa_run_specific_dir)}")
-            gyre_logger.info(f"Searching profiles in: {current_mesa_run_logs_dir} within model range [{min_model}-{max_model}]")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Progress: Processing M={mass}, Z={Z} from run directory: {os.path.basename(mesa_run_specific_dir)}")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Progress: Searching profiles in: {current_mesa_run_logs_dir} within model range [{min_model}-{max_model}]")
 
             # Create a map from MESA model number to GYRE profile number using profiles.index
             model_to_profile_map = {}
@@ -429,7 +436,7 @@ def run_gyre_workflow(
 
     # --- Execute GYRE Tasks ---
     if not tasks:
-        gyre_logger.warning(f"**WARNING:** No GYRE tasks were prepared. Skipping GYRE runs.")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Pipeline: No GYRE tasks were prepared. Skipping GYRE runs.")
     else:
         max_concurrent_runs = gyre_cfg.max_concurrent_gyre_runs
 
@@ -444,9 +451,9 @@ def run_gyre_workflow(
             for task in tasks:
                 run_single_gyre_model(*task)
 
-        gyre_logger.info("\n--- GYRE Run Finished ---")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Pipeline: All GYRE runs completed.")
 
-    gyre_logger.info("\n**GYRE pipeline execution complete.**")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Pipeline: **GYRE pipeline execution complete.**")
 
 # --- Standalone execution for testing/debugging ---
 if __name__ == "__main__":
