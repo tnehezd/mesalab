@@ -36,13 +36,13 @@ $ pip install .
 
 To get started, you'll need to prepare a configuration file (e.g., `config.yaml`) that specifies your MESA input directories, output locations, and analysis preferences.
 
-You can run mesalab by providing your configuration file:
+You can run `mesalab` by providing your configuration file:
 
 ```console
 $ mesalab --config myconfig.yaml
 ```
 
-For more detailed information on configuration options, command-line arguments, and advanced usage, please consult the official mesalab documentation on [Read the Docs](https://mesalab.readthedocs.io/en/latest/index.html).
+For more detailed information on configuration options, command-line arguments, and advanced usage, please consult the official `mesalab` documentation on [Read the Docs](https://mesalab.readthedocs.io/en/latest/index.html).
 
 
 ----
