@@ -107,10 +107,11 @@ def main():
     except pkg_resources.DistributionNotFound:
         mesalab_version = "N/A (not installed as package)"
 
-    print(f"\n{'#'*80}")
-    print(f"### {'mesalab CLI - Starting Analysis Workflow':^72} ###")
-    print(f"### {'Version: ' + mesalab_version:^72} ###")
-    print(f"{'#'*80}\n")
+ 
+    print(f"\n{'='*80}")
+    print(f"{'mesalab CLI - Starting Analysis Workflow':^80}")
+    print(f"{'Version: ' + mesalab_version:^80}")
+    print(f"{'='*80}\n")
 
     # Parse command line arguments and load config
     config = config_parser.parsing_options()
@@ -298,12 +299,12 @@ def main():
         print(f"{'='*70}\n")
 
     # --- END OF RUN (using print for clear visibility) ---
-    print(f"\n{'#'*80}")
+    print(f"\n{'='*80}")
     if overall_workflow_success:
-        print(f"### {'mesalab Workflow Finished Successfully!':^72} ###")
+        print(f"║   {'mesalab Workflow Finished Successfully!':^72}   ║")
     else:
-        print(f"### {'mesalab Workflow Completed with Errors/Skipped Steps!':^72} ###")
-    print(f"{'#'*80}\n")
+        print(f"║   {'mesalab Workflow Completed with Errors/Skipped Steps!':^72}   ║")
+    print(f"{'='*80}\n")
 
 # --- Entry Point ---
 if __name__ == '__main__':
