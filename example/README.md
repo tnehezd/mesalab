@@ -1,6 +1,6 @@
 ---
 
-## Test Cases
+## Examples
 
 This directory contains various test cases for the ``mesalab`` program, each designed to demonstrate different aspects of its functionality.
 
@@ -10,7 +10,7 @@ This directory contains various test cases for the ``mesalab`` program, each des
 
 This folder hosts synthetic stellar evolution tracks obtained from the **MIST (MESA Isochrones & Stellar Tracks) website**: [http://waps.cfa.harvard.edu/MIST/](http://waps.cfa.harvard.edu/MIST/). This dataset is intentionally small and included directly in the repository to provide a **quick and efficient way to demonstrate ``mesalab``'s data pre-processing and basic analysis capabilities**, such as parsing input files and extracting fundamental stellar parameters.
 
-The data covers models with a rotational velocity ratio of **v/vcrit = 0**, stellar masses ranging from **2.1 to 12.6 solar masses ($M_{\odot}$)**, and metallicities ([Fe/H]) of **-1 and +0.5**. The metallicity [Fe/H] values can be converted to the MESA abundance $Z$ (the mass fraction of elements heavier than helium) using the following formula, typically with a solar reference $Z_{\odot}/X_{\odot} \approx 0.0207$ (for $Z_{\odot}=0.0142, X_{\odot}=0.7154$):
+The data covers models with a rotational velocity ratio of **v/vcrit = 0**, stellar masses ranging from **2.1 to 12.1 solar masses ($M_{\odot}$)**, and metallicities ([Fe/H]) of **-1, 0 and +0.5**. The metallicity [Fe/H] values can be converted to the MESA abundance $Z$ (the mass fraction of elements heavier than helium) using the following formula, typically with a solar reference $Z_{\odot}/X_{\odot} \approx 0.0207$ (for $Z_{\odot}=0.0142, X_{\odot}=0.7154$):
 
 $$ \frac{Z}{X} = \frac{Z_{\odot}}{X_{\odot}} \times 10^{[Fe/H]} $$
 
