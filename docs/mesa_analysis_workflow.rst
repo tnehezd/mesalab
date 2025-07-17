@@ -39,7 +39,7 @@ Output
 Upon successful completion, the MESA Run Analysis workflow generates several key output files within your session's ``analysis_results`` directory (which is typically located inside your main ``output_dir``). This directory serves as the direct input for the :doc:`plotting_workflow` and :doc:`gyre_workflow`.
 
 * ``summary_results.csv``: A comprehensive CSV file containing a row for each MESA run analyzed, summarizing all extracted history data, detected evolutionary events (like IS crossings, blue loop properties), and global parameters. This file is the primary input for the :doc:`plotting_workflow`.
-* ``sorted_mass_Z_min_max.csv``: This CSV file lists the paths to specific MESA runs (blue looper crossers, or optionally for the whole grid) along with their corresponding physical stellar parameters and ``model_numer`` paramters. This file serves as the direct input for the :doc:`gyre_workflow`.
+* ``sorted_blue_loop_profiles.csv``: This CSV file lists the paths to specific MESA runs (blue looper crossers, or optionally for the whole grid) along with their corresponding physical stellar parameters and ``model_numer`` paramters. This file serves as the direct input for the :doc:`gyre_workflow`.
 * ``crossing_count_grid.csv``: It lists the number of instabilty edge crossing along the blue loop phase. It serves as an input for the :doc:`plotting_workflow` for optionally plot a heatmap.
 * ``mesa_grid_time_differences.csv``: It summarizes the initial mass and metallicity for each MESA run, alongside the start age, end age, and calculated duration for detected blue loops and instability strip crossings.
 * ``processed_runs_overview.yaml``: This YAML file maps stellar metallicities (Z) and masses (M) to their corresponding MESA run directories and history file names, detailing the organized structure of processed MESA data.
@@ -49,7 +49,7 @@ Upon successful completion, the MESA Run Analysis workflow generates several key
 Configuration Parameters
 ------------------------
 
-MESA Run Analysis workflow is controlled by parameters within your ref:`Understanding the YAML configuration file :ref:<understanding_yaml_config>` file. These parameters are organized under different top-level sections, as shown in the provided ``example.yaml``:
+MESA Run Analysis workflow is controlled by parameters within your :ref:`YAML configuration <understanding_yaml_config>` file. These parameters are organized under different top-level sections, as shown in the provided ``example.yaml``:
 
 * `general_settings` section:
    * ``input_dir``: (String) **REQUIRED!**

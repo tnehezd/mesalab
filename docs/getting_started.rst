@@ -229,7 +229,7 @@ These files are produced when ``write_pulse_data_with_profile = .true.`` and ``p
  
     **Example**: ``mesalab --filtered-profiles-csv-name my_gyre_candidates.csv``
  
-    **Default**: ``sorted_mass_Z_min_max.csv`` (expected in ``output_dir/analyzis _results/``)
+    **Default**: ``sorted_blue_loop_profiles.csv`` (expected in ``output_dir/analyzis _results/``)
 
 ``--mesa-profile-pattern``
     **Description**: This pattern defines how MESA profile filenames are matched and expected. For example, ``"profile*.data.GYRE"`` will match files like ``"profile00042.data.GYRE"``. The ``*`` wildcard is used for discovery in ``ALL_PROFILES`` mode and will be automatically replaced with the appropriate profile number (e.g., ``'00042'``) when constructing filenames for ``FILTERED_PROFILES`` mode.
@@ -254,7 +254,7 @@ Understanding the YAML Configuration
 
 The base of the `mesalab` pipeline lies in its YAML configuration file. This file coordinates everything from input data locations to specific analyses, plotting options, and GYRE workflow settings. It uses a **nested structure** where settings are organized under logical headings, making it easy to read and manage.
 
-Below is a commented example of a typical `mesalab` configuration file (``my_config_settings.yaml``). Each parameter is explained inline to help you tailor it to your specific research needs.
+Below is a commented example of a typical `mesalab` configuration file (``my_config_settings.yaml``). Each parameter is explained inline to help you understand the structure of the file and the parameters.
 
 .. code-block:: yaml
 
@@ -288,6 +288,5 @@ Below is a commented example of a typical `mesalab` configuration file (``my_con
       num_gyre_threads: 4 # Number of OpenMP threads for each GYRE process.
       enable_parallel: true # Enable/disable parallel GYRE runs.
       max_concurrent_gyre_runs: 8 # Maximum concurrent GYRE processes.
-      filtered_profiles_csv_name: "sorted_mass_Z_min_max.csv" # CSV file listing filtered MESA profiles for GYRE.
       mesa_profile_pattern: "profile*.data.GYRE" # Pattern for MESA profile filenames (e.g., "profile*.data.GYRE").
       mesa_profile_base_dir_relative: "LOGS" # Relative path from MESA run's top directory to its 'LOGS' folder.

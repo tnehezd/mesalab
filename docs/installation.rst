@@ -55,7 +55,7 @@ To install `mesalab` with pip:
 
 .. code-block:: console
 
-   $ pip install seismolab
+   $ pip install mesalab
 
 ----
 

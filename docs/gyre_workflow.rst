@@ -32,7 +32,7 @@ The :code:`gyre_inlist_template_path` parameter, typically set to :code:`config/
 **MESA Profile Selection** (:code:`run_mode`)
 The :code:`gyre_workflow.run_mode` parameter in the configuration YAML file sets how MESA stellar profiles are selected for GYRE analysis. Profiles are located by matching the :code:`mesa_profile_pattern` (e.g., :code:`profile*.data.GYRE`) within the :code:`mesa_profile_base_dir_relative` (e.g., :code:`LOGS`) directory of each discovered MESA run.
 
-* :code:`FILTERED_PROFILES`: In this mode, `mesalab` expects the ``sorted_mass_Z_min_max.csv`` file to be present in the ``analysis_results`` directory (generated in the previus steps). Only profiles listed in this file will be processed.
+* :code:`FILTERED_PROFILES`: In this mode, `mesalab` expects the ``sorted_blue_loop_profiles.csv`` file to be present in the ``analysis_results`` directory (generated in the previus steps). Only profiles listed in this file will be processed.
 * :code:`ALL_PROFILES`: When set to :code:`ALL_PROFILES`, `mesalab` will process every MESA profile file it finds that matches the configured :code:`mesa_profile_pattern` within the specified :code:`mesa_profile_base_dir_relative` for each discovered MESA run directory.
 
 A typical GYRE template inlist should follow the conventional GYRE 7.0 setup, like::
@@ -42,45 +42,60 @@ A typical GYRE template inlist should follow the conventional GYRE 7.0 setup, li
 
     &model
         model_type = 'EVOL'
-        file = 'dcep.mesa'
+        file = 'profile10.data.GYRE'
         file_format = 'MESA'
     /
 
+
     &mode
         l = 0
+        n_pg_max = 20
     /
 
+
     &osc
-        inner_bound = 'ZERO_R'
+        outer_bound = 'JCD'
     /
 
     &rot
     /
 
     &num
-        diff_scheme = 'MAGNUS_GL2'
-    /
+        diff_scheme = 'COLLOC_GL4' ! 4th-order collocation scheme for difference equations
+    /   
 
     &scan
         grid_type = 'LINEAR'
-        freq_min = 1.0
-        freq_max = 10.0
-        n_freq = 50
+        freq_min = 0.2
+        freq_max = 1
+        n_freq = 100
+        freq_units = 'ACOUSTIC_CUTOFF'
     /
 
     &grid
-        x_i = 0.0015
-        w_osc = 10
-        w_exp = 2
+        w_osc = 10 
+        w_exp = 2 
+        w_ctr = 10 
+    /
+
+    &tides_output
     /
 
     &ad_output
-        summary_file = 'summary.h5'
-        summary_item_list = 'l,n_pg,n_p,n_g,omega'
-    /   
+        summary_file = 'summary.h5'               
+        summary_item_list = 'l,n_p,n_g,n_pg,freq,omega,E_norm,eta' ! Items to appear in summary file
+        detail_file_format = 'TXT'
+        detail_template = 'detail.l%l.n%n.TXT'     
+        detail_item_list = 'id,l,n_pg,omega,x,xi_r,xi_h,eta,freq,W,dW_dx,kap_T,kap_rho,P,rho,T,Gamma_1'
+        freq_units = 'CYC_PER_DAY'
+    /
 
     &nad_output
     /
+
+
+.. note::
+    The provided example ``gyre.in`` template is based on practices and examples demonstrated during the MESA Summer School 2022, led by Earl Bellinger. You can find more details at the `Asteroseismology Across the HRD <https://earlbellinger.com/mesa-summer-school-2022/index.html>`_ tutorial.
 
 
 You can read more details about GYRE inlists on the `official documentation <https://gyre.readthedocs.io/>`_.
@@ -266,4 +281,4 @@ Then, execute mesalab as usual:
 
     $ mesalab --config path/to/your_config_settings.yaml
 
-`mesalab` will look for the necessary MESA profile input (e.g., ``analysis_results/sorted_mass_Z_min_max.csv``) in the analysis_results directory relative to your specified ``output_dir`` from the previous analysis run.
+`mesalab` will look for the necessary MESA profile input (e.g., ``analysis_results/sorted_blue_loop_profiles.csv``) in the analysis_results directory relative to your specified ``output_dir`` from the previous analysis run.
