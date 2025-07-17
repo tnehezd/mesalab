@@ -85,7 +85,7 @@ If the problem persists after correcting your ``locale`` settings, your terminal
 
 .. _tqdm: https://github.com/tqdm/tqdm
 
----
+----
 
 Missing Optional Dependencies (Holoviews, PyMultiNest)
 ------------------------------------------------------
@@ -123,7 +123,9 @@ After running the appropriate `pip install` command(s), run your `mesalab` progr
 **Important Note on Python Environments:**
 If you use a **virtual environment** (like `venv` or `conda`), ensure you activate that environment *before* running the `pip install` commands. This guarantees the packages are installed into the correct environment that `mesalab` uses.
 
----
+----
+
+.. _trouble_shooting_gyre:
 
 GYRE Workflow Skipped or Failed
 -------------------------------
@@ -150,9 +152,10 @@ The GYRE workflow is critical for pulsation analysis. `mesalab` will only attemp
     This indicates a problem with the Python dependencies required by `mesalab`'s own GYRE integration.
     * **Check `mesalab`'s installation:** Ensure your `mesalab` installation is complete and all its direct dependencies are met.
     * **Consult `mesalab`'s `requirements.txt`:** Look for any specific GYRE-related Python dependencies listed there (e.g., `h5py` for HDF5 support, which GYRE often uses). Install any missing ones:
-        .. code-block:: bash
+        
+    .. code-block:: bash
 
-            pip install <missing_package_name>
+        $pip install <missing_package_name>
 
 2.  **If "GYRE Workflow Skipped: Required input CSV not found.":**
     This means `mesalab` couldn't find the input profiles for GYRE when in `FILTERED_PROFILES` mode.

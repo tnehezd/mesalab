@@ -247,6 +247,8 @@ These files are produced when ``write_pulse_data_with_profile = .true.`` and ``p
 
 ----
 
+.. _understanding_yaml_config:
+
 Understanding the YAML Configuration
 ------------------------------------
 

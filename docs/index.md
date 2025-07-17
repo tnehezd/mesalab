@@ -23,8 +23,9 @@ gyre_workflow
 
 ```{toctree}
 :maxdepth: 3
-:caption: Jupyter-notebook Tutorial
-tutorial
+:caption: Tutorials
+tutorial_1
+tutorial_2
 ```
 
 

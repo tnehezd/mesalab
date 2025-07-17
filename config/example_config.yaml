@@ -17,7 +17,6 @@ plotting_settings:
   generate_heatmaps: false                    # Generate heatmaps from cross-grid data
   generate_hr_diagrams: "none"                # Controls HR diagram generation: "none", "all", or "drop_zams"
   generate_blue_loop_plots_with_bc: false     # Generate blue loop plots including bolometric corrections
-  # generate_plots: false                     # This is an internal flag derived from other plotting settings, do not set here
 
 gyre_workflow:
   run_gyre_workflow: true                     # Execute the full GYRE workflow

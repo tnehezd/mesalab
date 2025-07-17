@@ -1,5 +1,5 @@
-Tutorial: Running an Example Analysis in Google Colab
-=====================================================
+Tutorial 2: Running an Example Analysis in Google Colab
+=======================================================
 
 This tutorial will guide you through running a full ``mesalab`` analysis within a `Google Colab <https://colab.research.google.com/>`_ notebook environment. By following these steps, you will learn how to:
 
