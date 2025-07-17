@@ -1,0 +1,3 @@
+initial_Z,initial_mass,blue_loop_crossing_count,blue_loop_duration_yr,blue_loop_start_age,blue_loop_end_age,instability_start_age,instability_end_age,calculated_blue_loop_duration,calculated_instability_duration,run_dir_path
+0.009,5.0,2,4748977.982742533,110254506.3940746,115003484.37681714,110254506.3940746,115003484.37681714,4748977.982742533,4748977.982742533,MESA_grid/run_5.0MSUN_z0.0090
+0.01,5.0,2,4795348.27878803,112315314.43879415,117110662.71758218,112315314.43879415,117110662.71758218,4795348.27878803,4795348.27878803,MESA_grid/run_5.0MSUN_z0.0100

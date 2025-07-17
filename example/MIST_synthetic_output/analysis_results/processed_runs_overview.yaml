@@ -1,0 +1,66 @@
+Z_0.0014:
+    M_2.1:
+        run_directory: run_2.1MSUN_fe-1
+        history_file: history.data
+    M_4.6:
+        run_directory: run_4.6MSUN_fe-1
+        history_file: history.data
+    M_6.1:
+        run_directory: run_6.1MSUN_fe-1
+        history_file: history.data
+    M_7.6:
+        run_directory: run_7.6MSUN_fe-1
+        history_file: history.data
+    M_9.1:
+        run_directory: run_9.1MSUN_fe-1
+        history_file: history.data
+    M_10.6:
+        run_directory: run_10.6MSUN_fe-1
+        history_file: history.data
+    M_12.1:
+        run_directory: run_12.1MSUN_fe-1
+        history_file: history.data
+Z_0.0142:
+    M_2.1:
+        run_directory: run_2.1MSUN_fe0
+        history_file: history.data
+    M_4.6:
+        run_directory: run_4.6MSUN_fe0
+        history_file: history.data
+    M_6.1:
+        run_directory: run_6.1MSUN_fe0
+        history_file: history.data
+    M_7.6:
+        run_directory: run_7.6MSUN_fe0
+        history_file: history.data
+    M_9.1:
+        run_directory: run_9.1MSUN_fe0
+        history_file: history.data
+    M_10.6:
+        run_directory: run_10.6MSUN_fe0
+        history_file: history.data
+    M_12.1:
+        run_directory: run_12.1MSUN_fe0
+        history_file: history.data
+Z_0.0449:
+    M_2.1:
+        run_directory: run_2.1MSUN_fe0.5
+        history_file: history.data
+    M_4.6:
+        run_directory: run_4.6MSUN_fe0.5
+        history_file: history.data
+    M_6.1:
+        run_directory: run_6.1MSUN_fe0.5
+        history_file: history.data
+    M_7.6:
+        run_directory: run_7.6MSUN_fe0.5
+        history_file: history.data
+    M_9.1:
+        run_directory: run_9.1MSUN_fe0.5
+        history_file: history.data
+    M_10.6:
+        run_directory: run_10.6MSUN_fe0.5
+        history_file: history.data
+    M_12.1:
+        run_directory: run_12.1MSUN_fe0.5
+        history_file: history.data
