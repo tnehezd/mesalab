@@ -116,5 +116,5 @@ gyre_workflow:
 
 
 rsp_workflow:
-  run_rsp_workflow: False, # Default to disabled
+  run_rsp_workflow: False # Default to disabled
   

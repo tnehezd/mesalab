@@ -25,7 +25,7 @@ general_settings:
 
   # Set to 'true' for highly verbose logging output (DEBUG level) suitable for development and troubleshooting.
   # Set to 'false' to reduce log verbosity, showing only INFO, WARNING, ERROR, and CRITICAL messages for regular operation.
-  debug: False
+  debug: True
 
   # --- Optional: MESA SDK and GYRE Installation Paths ---
   # These can also be set via environment variables (MESASDK_ROOT and GYRE_DIR).
@@ -72,6 +72,6 @@ gyre_workflow:
 
 
 rsp_workflow:
-  run_rsp_workflow: True, # Default to disabled
+  run_rsp_workflow: True # Default to disabled
   rsp_inlist_template_path: "../config/rsp.inlist_template" # Example path
   rsp_mesa_output_base_dir: "./rsp_mesa_profiles" # Example output directory
