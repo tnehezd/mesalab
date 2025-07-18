@@ -22,8 +22,8 @@ def run_mesa_rsp_single(inlist_path: str, mesa_binary_dir: str) -> dict:
     """
     run_dir = os.path.dirname(inlist_path) # The directory of the inlist file will be the run directory
     
-    # Construct the full path to the MESA 'rn' executable
-    mesa_exe_path = os.path.join(mesa_binary_dir, 'rn')
+    # Construct the full path to the MESA 'star' executable
+    mesa_exe_path = os.path.join(mesa_binary_dir, 'star')
 
     # Validate that the executable actually exists at the constructed path
     if not os.path.exists(mesa_exe_path):
