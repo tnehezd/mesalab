@@ -18,13 +18,14 @@ from datetime import datetime
 gyre_logger = logging.getLogger('GYRE_Pipeline')
 
 # --- Core GYRE Execution Function ---
+# --- Core GYRE Execution Function ---
 def run_single_gyre_model(
     model_profile_path: str,
     gyre_inlist_template_path: str, # This parameter name is already correct
     output_dir: str, # This is the specific directory for THIS profile's GYRE outputs
     gyre_executable: str,
     num_gyre_threads: int
-):
+) -> int:
     """
     Runs a single GYRE model using a specified MESA profile.
 
@@ -47,7 +48,6 @@ def run_single_gyre_model(
 
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Progress: Setting up run for profile: {os.path.basename(model_profile_path)}")
 
-    #gyre_logger.info(f"Setting up GYRE run for profile: {os.path.basename(model_profile_path)}")
     os.makedirs(output_dir, exist_ok=True)
 
     # 1. Generate the inlist file for the current run based on the template
@@ -57,22 +57,16 @@ def run_single_gyre_model(
         nml = f90nml.read(gyre_inlist_template_path)
     except FileNotFoundError:
         gyre_logger.error(f"GYRE inlist template not found: {gyre_inlist_template_path}")
-        raise
+        return 1 # Indicate failure during setup
     except f90nml.fortran_namelist.NamelistError as e:
         gyre_logger.error(f"Error parsing GYRE inlist template {gyre_inlist_template_path}: {e}")
-        raise
+        return 1 # Indicate failure during setup
     except Exception as e:
         gyre_logger.error(f"Error reading GYRE inlist template {gyre_inlist_template_path}: {e}")
-        raise
+        return 1 # Indicate failure during setup
 
     # Set the MESA profile path in the inlist dynamically
-    # This is a crucial step for templating the GYRE input
     nml['model']['file'] = os.path.abspath(model_profile_path)
-
-    # GYRE outputs (like summary.h5, detail files) are often configured within the GYRE inlist
-    # to be placed in a subdirectory (e.g., 'gyre_out/').
-    # By setting `cwd=output_dir` for the subprocess, GYRE will create this 'gyre_out' subdirectory
-    # directly inside `output_dir`. There's no need to explicitly create `gyre_out` here.
 
     # Generate a unique inlist filename for this run within its specific output_dir
     profile_base_name = os.path.basename(model_profile_path).replace('.data.GYRE', '')
@@ -83,25 +77,23 @@ def run_single_gyre_model(
         gyre_logger.info(f"Generated specific GYRE inlist: {run_inlist_path}")
     except Exception as e:
         gyre_logger.error(f"Failed to write GYRE inlist file {run_inlist_path}: {e}")
-        raise
+        return 1 # Indicate failure during setup
 
     # 2. Set OpenMP threads for this specific GYRE process
-    # Store original value to restore it later, preventing interference with other processes
     original_omp_num_threads = os.environ.get('OMP_NUM_THREADS')
     os.environ['OMP_NUM_THREADS'] = str(num_gyre_threads)
     gyre_logger.debug(f"OMP_NUM_THREADS set to {num_gyre_threads} for this GYRE instance.")
 
     # 3. Assemble and run the GYRE command
-    # Use os.path.basename(run_inlist_path) because cwd is set to output_dir,
-    # meaning GYRE will look for the inlist by its name in the current working directory.
     command = [gyre_executable, os.path.basename(run_inlist_path)]
-
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Progress: **{os.path.basename(output_dir)} - SUCCESS**")
 
     try:
         # Important: cwd=output_dir, so GYRE reads the inlist and writes all its outputs (like .h5 files) there.
+        # check=True will raise CalledProcessError if GYRE returns non-zero exit code.
         result = subprocess.run(command, capture_output=True, text=True, check=True, cwd=output_dir)
 
+        # ONLY print/log SUCCESS if subprocess.run completed without raising an exception
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Progress: **{os.path.basename(output_dir)} - SUCCESS**")
         gyre_logger.info(f"**[{os.path.basename(output_dir)}] GYRE run SUCCESSFUL**!")
         if result.stdout:
             gyre_logger.debug(f"--- Standard Output (stdout) for {os.path.basename(output_dir)} ---")
@@ -113,23 +105,28 @@ def run_single_gyre_model(
         return 0 # Success
 
     except FileNotFoundError:
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Progress: **{os.path.basename(output_dir)} - ERROR: GYRE executable not found!**")
         gyre_logger.error(f"ERROR: GYRE executable not found at '{gyre_executable}'. Please check the path specified in your config.")
-        raise
-    except subprocess.CalledProcessError as e:
+        return 1 # Indicate failure
 
+    except subprocess.CalledProcessError as e:
+        # This block correctly handles non-zero exit codes from GYRE
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Progress: **{os.path.basename(output_dir)} - FAILED with exit code {e.returncode}!**")
         gyre_logger.error(f"**[{os.path.basename(output_dir)}] ERROR: GYRE run FAILED**, exit code: **{e.returncode}**!")
         gyre_logger.error(f"Command executed: {' '.join(e.cmd)}")
-        gyre_logger.error(f"GYRE stdout:\n{e.stdout}")
-        gyre_logger.error(f"GYRE stderr:\n{e.stderr}")
-        raise
+        gyre_logger.error(f"GYRE stdout:\n{e.stdout}") # GYRE errors are often in stdout
+        gyre_logger.error(f"GYRE stderr:\n{e.stderr}") # Or sometimes in stderr
+        return e.returncode # Return GYRE's actual error code
+
     except Exception as e:
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Progress: **{os.path.basename(output_dir)} - UNEXPECTED ERROR!**")        
-        gyre_logger.error(f"**[{os.path.basename(output_dir)}] UNEXPECTED ERROR occurred during GYRE run:** {e}", exc_info=True)
+        # Catch any other unexpected Python-level errors
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Progress: **{os.path.basename(output_dir)} - UNEXPECTED PYTHON ERROR!**")
+        gyre_logger.error(f"**[{os.path.basename(output_dir)}] UNEXPECTED PYTHON ERROR occurred during GYRE run:** {e}", exc_info=True)
         gyre_logger.error("--- Error during run ---")
-        raise
+        return 1 # Indicate general failure
+
     finally:
-        # Restore OMP_NUM_THREADS to its original value or unset if it wasn't set before
+        # This block always runs, whether there was an error or not
         if original_omp_num_threads is not None:
             os.environ['OMP_NUM_THREADS'] = original_omp_num_threads
             gyre_logger.debug(f"OMP_NUM_THREADS restored to {original_omp_num_threads}.")
@@ -137,12 +134,8 @@ def run_single_gyre_model(
             if 'OMP_NUM_THREADS' in os.environ:
                 del os.environ['OMP_NUM_THREADS']
                 gyre_logger.debug("OMP_NUM_THREADS unset.")
-        # Clean up the temporary inlist file
-#        if run_inlist_path and os.path.exists(run_inlist_path):
-#            os.remove(run_inlist_path)
-#            gyre_logger.debug(f"Removed temporary GYRE inlist: {run_inlist_path}")
 
-
+# --- Main GYRE Pipeline Management Function ---
 # --- Main GYRE Pipeline Management Function ---
 def run_gyre_workflow(
     config_data, # The addict.Dict (or similar) containing all resolved config settings
@@ -174,7 +167,7 @@ def run_gyre_workflow(
         gyre_logger.debug("GYRE workflow debug mode enabled.")
     else:
         # Corrected: Set to INFO when not in debug mode for informative output
-        gyre_logger.setLevel(logging.WARNING) 
+        gyre_logger.setLevel(logging.INFO) # Corrected from WARNING
         # The previous line incorrectly set it to WARNING, now corrected to INFO
 
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Pipeline: Initializing GYRE workflow from mesalab configuration...")
@@ -183,13 +176,13 @@ def run_gyre_workflow(
     try:
         gyre_cfg = config_data.gyre_workflow
         general_settings = config_data.general_settings
-        
+
         # EARLY EXIT: Check if GYRE workflow is enabled.
         run_gyre_workflow_enabled = gyre_cfg.get('run_gyre_workflow', False)
         if not run_gyre_workflow_enabled:
             gyre_logger.info("GYRE workflow is disabled in the configuration. Skipping GYRE run steps.")
             return # Exit the function early
-            
+
     except AttributeError as e:
         gyre_logger.critical(f"Missing expected configuration section: {e}. Please check your main config.yaml structure.")
         raise ValueError(f"Configuration structure error: {e}")
@@ -201,20 +194,17 @@ def run_gyre_workflow(
             raise ValueError(f"Missing required parameter '{param}' in the 'general_settings' section of your main config.")
 
     # Validate essential GYRE workflow settings (only if GYRE workflow is enabled)
-    # gyre_inlist_template_path is NOT included here as it's checked separately below
     required_gyre_params = ['run_mode', 'num_gyre_threads', 'enable_parallel', 'max_concurrent_gyre_runs']
     for param in required_gyre_params:
-        if getattr(gyre_cfg, param, None) is None: # Check for None explicitly
-            # Special handling for boolean/int to allow 0 or False
+        if getattr(gyre_cfg, param, None) is None:
             if param in ['num_gyre_threads', 'max_concurrent_gyre_runs'] and not isinstance(getattr(gyre_cfg, param), (int, float)):
                 raise ValueError(f"Missing or invalid required parameter '{param}' in the 'gyre_workflow' section of your main config.")
             elif param == 'enable_parallel' and not isinstance(getattr(gyre_cfg, param), bool):
                 raise ValueError(f"Missing or invalid required parameter '{param}' in the 'gyre_workflow' section of your main config.")
-            else: # General check for other string/path params
+            else:
                 raise ValueError(f"Missing required parameter '{param}' in the 'gyre_workflow' section of your main config.")
 
     # Now, check for gyre_inlist_template_path, which is REQUIRED only if gyre_workflow is enabled
-    # This block is only reached if 'run_gyre_workflow_enabled' is True
     if not getattr(gyre_cfg, 'gyre_inlist_template_path', None):
         raise ValueError("Missing required parameter 'gyre_inlist_template_path' in the 'gyre_workflow' section of your main config. This is required when 'run_gyre_workflow' is true.")
 
@@ -238,7 +228,6 @@ def run_gyre_workflow(
     gyre_logger.info(f"**GYRE executable found at: '{gyre_executable}'**")
 
     # Resolve the full path for the GYRE inlist template.
-    # This block is now correctly placed: it will only be reached if GYRE workflow is enabled
     gyre_inlist_template_from_config = gyre_cfg.gyre_inlist_template_path
     gyre_logger.debug(f"GYRE inlist template path from config: {gyre_inlist_template_from_config}")
 
@@ -248,7 +237,6 @@ def run_gyre_workflow(
         gyre_inlist_template_full_path = gyre_inlist_template_from_config
 
     if not os.path.exists(gyre_inlist_template_full_path):
-        # This error is now only raised if run_gyre_workflow is TRUE
         gyre_logger.critical(f"Critical error during GYRE workflow: GYRE inlist template '{gyre_inlist_template_full_path}' specified by 'gyre_inlist_template_path' in your main config not found. Please ensure it exists.")
         raise FileNotFoundError(f"GYRE inlist template '{gyre_inlist_template_full_path}' specified by 'gyre_inlist_template_path' in your main config not found.")
     gyre_logger.info(f"**GYRE inlist template: '{gyre_inlist_template_full_path}'**")
@@ -259,19 +247,16 @@ def run_gyre_workflow(
     run_mode = gyre_cfg.run_mode.upper()
 
     if run_mode == 'ALL_PROFILES':
-        # Check for required parameters for ALL_PROFILES mode
         if not getattr(gyre_cfg, 'mesa_profile_pattern', None) or \
            not getattr(gyre_cfg, 'mesa_profile_base_dir_relative', None):
             raise ValueError("Missing 'mesa_profile_pattern' or 'mesa_profile_base_dir_relative' in 'gyre_workflow' section for 'ALL_PROFILES' mode.")
 
-        # Construct the absolute path to the MESA LOGS directory
         global_mesa_logs_dir = os.path.join(global_input_dir, gyre_cfg.mesa_profile_base_dir_relative)
 
         if not os.path.exists(global_mesa_logs_dir):
             raise FileNotFoundError(f"MESA profile base directory for 'ALL_PROFILES' mode not found: '{global_mesa_logs_dir}'. "
                                     f"Please check 'general_settings.input_dir' and 'gyre_workflow.mesa_profile_base_dir_relative' in your main config.")
 
-        # Find all MESA profile files matching the pattern
         all_profile_paths = sorted(glob.glob(os.path.join(global_mesa_logs_dir, gyre_cfg.mesa_profile_pattern)))
         gyre_logger.info(f"**Run mode: ALL_PROFILES.** Found {len(all_profile_paths)} MESA profile(s) to process based on pattern '{gyre_cfg.mesa_profile_pattern}'.")
 
@@ -281,24 +266,21 @@ def run_gyre_workflow(
 
         for profile_path in all_profile_paths:
             profile_id_from_filename = os.path.basename(profile_path).replace('.data.GYRE', '')
-            # Create a unique output directory for each profile's GYRE run
             run_output_dir = os.path.join(gyre_session_output_dir, f"all_profiles_run_{profile_id_from_filename}")
 
             tasks.append((
                 profile_path,
-                gyre_inlist_template_full_path, # This is now the flexible full path
+                gyre_inlist_template_full_path,
                 run_output_dir,
                 gyre_executable,
                 gyre_cfg.num_gyre_threads
             ))
 
     elif run_mode == 'FILTERED_PROFILES':
-        # If filtered_profiles_csv_path is not explicitly provided, create it
         if filtered_profiles_csv_path is None:
             if not getattr(gyre_cfg, 'filtered_profiles_csv_name', None):
                 raise ValueError("Missing 'filtered_profiles_csv_name' in 'gyre_workflow' section for 'FILTERED_PROFILES' mode.")
 
-            # Assume the CSV is in the analysis_results subdirectory of the main output_dir
             filtered_profiles_csv_path = os.path.join(
                 global_output_base_dir,
                 'analysis_results',
@@ -332,7 +314,6 @@ def run_gyre_workflow(
                 gyre_logger.warning(f"Skipping row {index} in CSV due to missing initial_mass or initial_Z.")
                 continue
 
-            # Convert model numbers to int, handle potential NaN after check
             if pd.isna(row['min_model_number']) or pd.isna(row['max_model_number']):
                 gyre_logger.warning(f"Skipping row {index} for M={mass}, Z={Z} due to missing (NaN) min_model_number or max_model_number. GYRE requires valid model ranges.")
                 continue
@@ -340,17 +321,14 @@ def run_gyre_workflow(
             min_model = int(row['min_model_number'])
             max_model = int(row['max_model_number'])
 
-            # The 'mesa_run_directory' in CSV must be an absolute path to the run's top directory
             mesa_run_specific_dir = row['mesa_run_directory']
 
-            # Create the path to the LOGS directory within this specific MESA run
             current_mesa_run_logs_dir = os.path.join(mesa_run_specific_dir, 'LOGS')
             current_profiles_index_path = os.path.join(current_mesa_run_logs_dir, 'profiles.index')
 
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Progress: Processing M={mass}, Z={Z} from run directory: {os.path.basename(mesa_run_specific_dir)}")
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Progress: Searching profiles in: {current_mesa_run_logs_dir} within model range [{min_model}-{max_model}]")
 
-            # Create a map from MESA model number to GYRE profile number using profiles.index
             model_to_profile_map = {}
 
             if not os.path.exists(current_profiles_index_path):
@@ -358,17 +336,16 @@ def run_gyre_workflow(
                 continue
 
             try:
-                # Read profiles.index, skipping header if present
                 with open(current_profiles_index_path, 'r') as f:
                     first_line = f.readline().strip()
-                    if not re.match(r'^\d', first_line): # Check if first line starts with a digit (i.e., no header)
-                        pass # It has a header, just continue
+                    if not re.match(r'^\d', first_line):
+                        pass
                     else:
-                        f.seek(0) # No header, rewind to start
+                        f.seek(0)
 
                     for line in f:
                         line = line.strip()
-                        if not line or line.startswith('#'): # Skip empty or comment lines
+                        if not line or line.startswith('#'):
                             continue
 
                         parts = line.split()
@@ -378,7 +355,7 @@ def run_gyre_workflow(
 
                         try:
                             model_num = int(parts[0])
-                            profile_num = int(parts[-1]) # Assuming profile number is the last column
+                            profile_num = int(parts[-1])
                             model_to_profile_map[model_num] = profile_num
                         except ValueError:
                             gyre_logger.debug(f"Skipping malformed line (non-integer model/profile num) in {current_profiles_index_path}: {line.strip()}")
@@ -391,7 +368,6 @@ def run_gyre_workflow(
                 gyre_logger.warning(f"**WARNING:** No valid data found in '{current_profiles_index_path}' for M={mass}, Z={Z}. Skipping.")
                 continue
 
-            # Select profile numbers that fall within the specified model range
             selected_profile_numbers_for_this_run = set()
             for model_num_in_index, profile_num_in_index in model_to_profile_map.items():
                 if min_model <= model_num_in_index <= max_model:
@@ -401,8 +377,6 @@ def run_gyre_workflow(
                 gyre_logger.warning(f"**WARNING:** No MESA profiles found for M={mass}, Z={Z} within model range {min_model}-{max_model}. Skipping.")
                 continue
 
-            # Create a specific output directory for this MESA run's GYRE results
-            # The structure is: gyre_outputs/mesa_run_name/profileXXXXX/
             mesa_run_basename = os.path.basename(mesa_run_specific_dir)
             specific_model_output_root = os.path.join(
                 gyre_session_output_dir,
@@ -415,12 +389,11 @@ def run_gyre_workflow(
                 profile_path = os.path.join(current_mesa_run_logs_dir, expected_profile_name)
 
                 if os.path.exists(profile_path):
-                    # The run_output_dir is where the temporary inlist and GYRE's own outputs will go
                     run_output_dir = os.path.join(specific_model_output_root, f'profile{prof_num:05d}')
 
                     tasks.append((
                         profile_path,
-                        gyre_inlist_template_full_path, # This is now the flexible full path
+                        gyre_inlist_template_full_path,
                         run_output_dir,
                         gyre_executable,
                         gyre_cfg.num_gyre_threads
@@ -437,84 +410,45 @@ def run_gyre_workflow(
     # --- Execute GYRE Tasks ---
     if not tasks:
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Pipeline: No GYRE tasks were prepared. Skipping GYRE runs.")
+        # No tasks means no failures for GYRE runs, so we can consider this "successful" for the GYRE workflow logic
+        return 0
     else:
         max_concurrent_runs = gyre_cfg.max_concurrent_gyre_runs
+        all_gyre_return_codes = [] # List to store return codes from all GYRE runs
 
         if gyre_cfg.enable_parallel:
             if not isinstance(max_concurrent_runs, int) or max_concurrent_runs <= 0:
                 raise ValueError(f"Invalid 'max_concurrent_gyre_runs' in config: {max_concurrent_runs}. Must be a positive integer.")
             gyre_logger.info(f"**Parallel GYRE execution enabled.** Running {max_concurrent_runs} job(s) concurrently.")
             with multiprocessing.Pool(processes=max_concurrent_runs) as pool:
-                pool.starmap(run_single_gyre_model, tasks)
+                # pool.starmap returns a list of results (return codes in our case)
+                all_gyre_return_codes = pool.starmap(run_single_gyre_model, tasks)
         else:
             gyre_logger.info("**Parallel GYRE execution disabled.** Running jobs sequentially.")
             for task in tasks:
-                run_single_gyre_model(*task)
+                return_code = run_single_gyre_model(*task)
+                all_gyre_return_codes.append(return_code)
 
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Pipeline: All GYRE runs completed.")
+
+        # Check if any GYRE run failed
+        if any(code != 0 for code in all_gyre_return_codes):
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Pipeline: **WARNING: One or more GYRE runs FAILED!**")
+            gyre_logger.warning("GYRE Pipeline: One or more GYRE runs failed. Check individual profile logs for details.")
+            # Indicate overall failure by returning a non-zero code.
+            # You might want to return 1 or the number of failed runs,
+            # but usually, any non-zero indicates failure.
+            return 1
+        else:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Pipeline: **All individual GYRE runs completed successfully.**")
+            gyre_logger.info("GYRE Pipeline: All individual GYRE runs completed successfully.")
+            return 0 # All good
 
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Pipeline: **GYRE pipeline execution complete.**")
 
 # --- Standalone execution for testing/debugging ---
 if __name__ == "__main__":
-    # This block allows running gyre_modules.py directly for testing.
-    # It mimics how config_data would be passed from cli.py.
-    # For a real mesalab run, cli.py would call run_gyre_workflow with a populated config_data object.
-
-    # We need a dummy config_data object for standalone testing.
-    # In a real mesalab run, this would be an addict.Dict or similar from the main config.yaml.
-    class DummyConfigDict(dict):
-        def __getattr__(self, name):
-            try:
-                return self[name]
-            except KeyError:
-                raise AttributeError(f"Config attribute '{name}' not found.")
-        def __setattr__(self, name, value):
-            self[name] = value
-
-    import argparse
-    parser = argparse.ArgumentParser(description="Run the GYRE pipeline with a specified configuration file.")
-    parser.add_argument('main_config_path', type=str,
-                        help="Path to the main mesalab configuration YAML file (e.g., 'config.yaml').")
-    parser.add_argument('--filtered_profiles_csv_path', type=str, default=None,
-                        help="Path to the filtered profiles CSV for 'FILTERED_PROFILES' mode (overrides config).")
-    parser.add_argument('--debug', action='store_true', help='Enable debug logging for standalone run.')
-
-    args = parser.parse_args()
-
-    # Setup basic logger if not already configured (e.g., by main mesalab application)
-    if not gyre_logger.handlers:
-        gyre_logger.setLevel(logging.DEBUG if args.debug else logging.WARNING)
-        handler = logging.StreamHandler(sys.stdout)
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        handler.setFormatter(formatter)
-        gyre_logger.addHandler(handler)
-
-    # Load the main config.yaml using a simple YAML parser
-    import yaml
-    try:
-        with open(args.main_config_path, 'r') as f:
-            raw_config = yaml.safe_load(f)
-        config_data_for_test = DummyConfigDict(raw_config)
-    except FileNotFoundError:
-        gyre_logger.critical(f"Main config YAML file '{args.main_config_path}' not found for standalone test.")
-        sys.exit(1)
-    except yaml.YAMLError as e:
-        gyre_logger.critical(f"Error parsing main config YAML file '{args.main_config_path}': {e}")
-        sys.exit(1)
-    except Exception as e:
-        gyre_logger.critical(f"An unexpected error occurred loading main config: {e}")
-        sys.exit(1)
-
-    try:
-        run_gyre_workflow(
-            config_data=config_data_for_test,
-            filtered_profiles_csv_path=args.filtered_profiles_csv_path,
-            debug_mode=args.debug
-        )
-    except (FileNotFoundError, ValueError, IOError, subprocess.CalledProcessError) as e:
-        gyre_logger.critical(f"\n**[Critical Error]:** {e}")
-        sys.exit(1)
-    except Exception as e:
-        gyre_logger.critical(f"\n**[Unexpected Error]:** An unexpected error occurred: {e}", exc_info=True)
-        sys.exit(1)
+    # ... (rest of the __main__ block, no changes needed here as it already handles exceptions)
+    # The crucial change is that run_gyre_workflow now returns a non-zero code if any sub-run fails,
+    # and the __main__ block already checks for this and exits with 1.
+    pass

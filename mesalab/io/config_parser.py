@@ -87,7 +87,17 @@ def parsing_options():
     gyre_group.add_argument('--gyre-max-concurrent', type=int,
                             help='Override gyre_workflow.max_concurrent_gyre_runs. Maximum number of concurrent GYRE runs.')
     gyre_group.add_argument('--gyre-inlist-template-path', type=str,
-                        help='Override gyre_workflow.gyre_inlist_template_path. Full or relative path to the GYRE inlist template file.')
+                            help='Override gyre_workflow.gyre_inlist_template_path. Full or relative path to the GYRE inlist template file.')
+
+    # --- ÚJ: RSP Workflow Settings ---
+    rsp_group = parser.add_argument_group('RSP Workflow Settings')
+    rsp_group.add_argument('--run-rsp-workflow', action='store_true',
+                           help='Override rsp_workflow.run_rsp_workflow. Execute the full RSP workflow.')
+    rsp_group.add_argument('--rsp-inlist-template-path', type=str,
+                           help='Override rsp_workflow.rsp_inlist_template_path. Full or relative path to the RSP inlist template file.')
+    rsp_group.add_argument('--rsp-mesa-output-base-dir', type=str,
+                           help='Override rsp_workflow.rsp_mesa_output_base_dir. Base directory for RSP MESA output files.')
+    # --- VÉGE: RSP Workflow Settings ---
 
 
     # Parse arguments from the command line.
@@ -131,8 +141,15 @@ def parsing_options():
             'num_gyre_threads': 1, # Default to 1 thread
             'enable_parallel': False, # Default to sequential
             'max_concurrent_gyre_runs': 4, # Default max concurrent runs for parallel mode
-            'filtered_profiles_csv_name': 'sorted_mass_Z_min_max.csv'
+            'filtered_profiles_csv_name': 'sorted_blue_loop_profiles.csv'
+        },
+        # --- ÚJ: RSP Workflow Defaults ---
+        'rsp_workflow': {
+            'run_rsp_workflow': False, # Default to disabled
+            'rsp_inlist_template_path': 'config/rsp.inlist_template', # Example path
+            'rsp_mesa_output_base_dir': './rsp_mesa_profiles' # Example output directory
         }
+        # --- VÉGE: RSP Workflow Defaults ---
     }
 
     # Convert default_config to an Addict Dict for easier manipulation
@@ -229,6 +246,14 @@ def parsing_options():
             elif arg_name == 'gyre_inlist_template_path':
                 final_config_dict.gyre_workflow.gyre_inlist_template_path = cli_value
             # --- END MODIFIED GYRE ---
+            # --- ÚJ: RSP CLI MAPPINGS ---
+            elif arg_name == 'run_rsp_workflow':
+                final_config_dict.rsp_workflow.run_rsp_workflow = cli_value
+            elif arg_name == 'rsp_inlist_template_path':
+                final_config_dict.rsp_workflow.rsp_inlist_template_path = cli_value
+            elif arg_name == 'rsp_mesa_output_base_dir':
+                final_config_dict.rsp_workflow.rsp_mesa_output_base_dir = cli_value
+            # --- VÉGE: RSP CLI MAPPINGS ---
             else:
                 logger.debug(f"CLI argument '{arg_name}' with value '{cli_value}' was provided but not explicitly mapped to a config setting. It will be ignored.")
 
@@ -274,9 +299,7 @@ def parsing_options():
             if param in ['num_gyre_threads', 'max_concurrent_gyre_runs'] and final_config_dict.gyre_workflow[param] <= 0:
                 logger.critical(f"GYRE workflow parameter 'gyre_workflow.{param}' must be a positive integer.")
                 sys.exit(1)
-        
-        # This block was the source of the persistent error!
-        # It's now correctly nested within the 'if final_config_dict.gyre_workflow.get('run_gyre_workflow', False):' check
+            
         gyre_template_path_to_check = final_config_dict.gyre_workflow.gyre_inlist_template_path
         if not os.path.isabs(gyre_template_path_to_check):
                 # If it's a relative path, assume it's relative to the CWD where mesalab is run
@@ -286,6 +309,40 @@ def parsing_options():
             logger.critical(f"GYRE inlist template file not found at: '{gyre_template_path_to_check}'. Please ensure the path is correct in your config or via CLI.")
             sys.exit(1)
     # --- END NEW GYRE VALIDATION ---
+
+    # --- ÚJ: Final validation for RSP workflow if enabled ---
+    if final_config_dict.rsp_workflow.get('run_rsp_workflow', False):
+        logger.debug("RSP workflow enabled. Performing final validation of RSP parameters.")
+        required_rsp_params = ['rsp_inlist_template_path', 'rsp_mesa_output_base_dir']
+        for param in required_rsp_params:
+            if getattr(final_config_dict.rsp_workflow, param, None) is None:
+                logger.critical(f"Missing required RSP workflow parameter: 'rsp_workflow.{param}'. Please check config.yaml or CLI arguments.")
+                sys.exit(1)
+        
+        rsp_template_path_to_check = final_config_dict.rsp_workflow.rsp_inlist_template_path
+        if not os.path.isabs(rsp_template_path_to_check):
+            rsp_template_path_to_check = os.path.abspath(rsp_template_path_to_check)
+
+        if not os.path.exists(rsp_template_path_to_check):
+            logger.critical(f"RSP inlist template file not found at: '{rsp_template_path_to_check}'. Please ensure the path is correct in your config or via CLI.")
+            sys.exit(1)
+        
+        # Ensure rsp_mesa_output_base_dir is a valid path (even if it doesn't exist yet, parent should be writable)
+        rsp_output_base_dir = final_config_dict.rsp_workflow.rsp_mesa_output_base_dir
+        if not os.path.isabs(rsp_output_base_dir):
+            rsp_output_base_dir = os.path.abspath(rsp_output_base_dir)
+        
+        # We don't check for existence of the output dir itself, but ensure its parent is writable
+        parent_dir_rsp = os.path.dirname(rsp_output_base_dir)
+        if not os.path.exists(parent_dir_rsp):
+            logger.critical(f"Parent directory for RSP MESA output base directory does not exist: '{parent_dir_rsp}'. Please create it or provide a valid path.")
+            sys.exit(1)
+        if not os.access(parent_dir_rsp, os.W_OK):
+            logger.critical(f"Parent directory for RSP MESA output base directory is not writable: '{parent_dir_rsp}'. Please check permissions.")
+            sys.exit(1)
+
+    # --- VÉGE: RSP Validation ---
+
 
     # 6. Return the final configuration (which is already an Addict Dict)
     # The conversion to argparse.Namespace is no longer needed if using Addict's Dict
@@ -331,6 +388,9 @@ if __name__ == '__main__':
         print(f"GYRE Parallel: {parsed_config.gyre_workflow.enable_parallel}")
         print(f"GYRE Max Concurrent: {parsed_config.gyre_workflow.max_concurrent_gyre_runs}")
         print(f"GYRE Inlist Template Name: {parsed_config.gyre_workflow.gyre_inlist_template_path}")
+        print(f"Run RSP Workflow: {parsed_config.rsp_workflow.run_rsp_workflow}")
+        print(f"RSP Inlist Template Path: {parsed_config.rsp_workflow.rsp_inlist_template_path}")
+        print(f"RSP MESA Output Base Dir: {parsed_config.rsp_workflow.rsp_mesa_output_base_dir}")
         print(f"Generate Plots (internal): {parsed_config.plotting_settings.generate_plots}")
         print("\n--- Test complete ---")
     except Exception as e:

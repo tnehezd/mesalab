@@ -1,4 +1,3 @@
-# mesalab/bluelooptools/blue_loop_analyzer.py
 import pandas as pd
 import numpy as np
 from matplotlib.path import Path
@@ -49,7 +48,7 @@ def is_in_instability_strip(log_Teff, log_L):
     """
     return instability_path.contains_point((log_Teff, log_L))
 
-def analyze_blue_loop_and_instability(history_df: pd.DataFrame, initial_mass: float, initial_Z: float):
+def analyze_blue_loop_and_instability(history_df: pd.DataFrame, initial_mass: float, initial_Z: float, initial_Y: float):
     """
     Analyzes MESA history data for blue loop characteristics and Instability Strip crossings,
     applying physical criteria to differentiate true blue loops from other IS crossings.
@@ -60,6 +59,7 @@ def analyze_blue_loop_and_instability(history_df: pd.DataFrame, initial_mass: fl
                                    'model_number', 'log_g', 'center_he4'.
         initial_mass (float): Initial mass of the star.
         initial_Z (float): Initial metallicity (Z) of the star.
+        initial_Y (float): Initial helium abundance (Y) of the star. # ADDED THIS ARGUMENT
 
     Returns:
         dict: A dictionary containing analysis results, including:
@@ -85,10 +85,11 @@ def analyze_blue_loop_and_instability(history_df: pd.DataFrame, initial_mass: fl
         ...     'center_he4': np.concatenate([np.zeros(50), np.linspace(0.9, 0.0001, 50)]),
         ... }
         >>> dummy_df = pd.DataFrame(dummy_data)
-        >>> initial_mass = 5.0  # solar masses
+        >>> initial_mass = 5.0   # solar masses
         >>> initial_Z = 0.006
+        >>> initial_Y = 0.28    # ADDED DUMMY INITIAL_Y
         >>>
-        >>> result = analyze_blue_loop_and_instability(dummy_df, initial_mass, initial_Z)
+        >>> result = analyze_blue_loop_and_instability(dummy_df, initial_mass, initial_Z, initial_Y)
         >>> print(f"Crossing count: {result['crossing_count']}")
     """
     # Initialize results. 'crossing_count' defaults to NaN for fundamental errors, 0 for 'no loop' scenarios.
@@ -114,6 +115,7 @@ def analyze_blue_loop_and_instability(history_df: pd.DataFrame, initial_mass: fl
 
     history_df['initial_mass'] = initial_mass
     history_df['initial_Z'] = initial_Z
+    history_df['initial_Y'] = initial_Y # ADDED THIS LINE!
 
     required_columns = ['log_Teff', 'log_L', 'center_h1', 'star_age', 'model_number', 'log_g', 'center_he4']
 
@@ -293,7 +295,7 @@ def analyze_blue_loop_and_instability(history_df: pd.DataFrame, initial_mass: fl
     if pd.notna(analysis_results['state_times'].get('instability_start_age')) and \
        pd.notna(analysis_results['state_times'].get('instability_end_age')):
         analysis_results['calculated_instability_duration'] = analysis_results['state_times']['instability_end_age'] - \
-                                                              analysis_results['state_times']['instability_start_age']
+                                                               analysis_results['state_times']['instability_start_age']
 
     # Populate detailed metrics (max_log_L, etc.) and blue_loop_detail_df
     red_edge_y_coords = np.array([INSTABILITY_STRIP_VERTICES[2][1], INSTABILITY_STRIP_VERTICES[3][1]])

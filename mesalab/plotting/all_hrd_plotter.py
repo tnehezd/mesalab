@@ -1,4 +1,4 @@
-#mesalab/plotting/all_hrd_plotter.py
+# mesalab/plotting/all_hrd_plotter.py
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,31 +10,32 @@ import logging
 import pandas as pd # Ensure pandas is imported as it's used for DataFrames
 
 # Configure logging for better feedback during execution
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message:s)')
 
-def generate_all_hr_diagrams(data_by_metallicity: dict, model_name: str, output_dir: str,
+def generate_all_hr_diagrams(all_history_data_flat: list, model_name: str, output_dir: str,
                              logT_blue_edge: list, logL_blue_edge: list,
                              logT_red_edge: list, logL_red_edge: list,
-                             drop_zams: bool = False): 
+                             drop_zams: bool = False):
     """
     Generates Hertzsprung-Russell (HR) diagrams for pre-loaded MESA run data,
     grouping plots by metallicity and saving each metallicity's plots
-    as a single image. 
+    as a single image.
 
     The pre-main sequence (pre-MS) phase can be excluded from the plots
     if 'drop_zams' is True.
-    
-    Plots are sorted by initial mass within each metallicity group, the subplot layout is 
-    fixed to 4 columns. 
+
+    Plots are sorted by initial mass within each metallicity group; the subplot layout is
+    fixed to 4 columns.
 
     If data is insufficient after trimming (and 'drop_zams' is True), the specific subplot
-    for that run is skipped and a warning is logged.
+    for that run is skipped, and a warning is logged.
 
     Args:
-        data_by_metallicity (dict): A dictionary where keys are metallicities (Z)
-                                    and values are lists of full, untrimmed
-                                    history DataFrames for each MESA run.
-                                    (This is the 'full_history_data_for_plotting' from mesa_analyzer).
+        all_history_data_flat (list): A flat list of full, untrimmed history DataFrames
+                                      for all MESA runs. Each DataFrame is expected
+                                      to have 'initial_Z' and 'initial_mass' columns.
+                                      (This is the 'flattened_full_history_data_for_plotting'
+                                      from mesa_analyzer).
         model_name (str): The name of the MESA model, used for constructing
                           file paths and plot titles (e.g., 'nad_convos').
         output_dir (str): The directory where the generated HR diagram images
@@ -52,7 +53,7 @@ def generate_all_hr_diagrams(data_by_metallicity: dict, model_name: str, output_
                                     the 'center_h1' drop criterion (or 'log_L' minimum as fallback).
                                     Defaults to False (i.e., full track is plotted).
 
-    Returns: 
+    Returns:
         None
     """
     logging.info(f"Starting HR diagram generation for model '{model_name}'.")
@@ -61,7 +62,19 @@ def generate_all_hr_diagrams(data_by_metallicity: dict, model_name: str, output_
         os.makedirs(output_dir)
         logging.info(f"Created output directory: {output_dir}")
 
-    # The data is already grouped by metallicity, so we just sort the keys
+    # Group the flat list of DataFrames by metallicity
+    # This recreates the dict structure that the rest of the function expects
+    data_by_metallicity = {}
+    for df in all_history_data_flat:
+        if 'initial_Z' in df.columns and not df.empty:
+            z_value = df['initial_Z'].iloc[0]
+            if z_value not in data_by_metallicity:
+                data_by_metallicity[z_value] = []
+            data_by_metallicity[z_value].append(df)
+        else:
+            logging.warning("Skipping a DataFrame in HRD plotting due to missing 'initial_Z' or being empty.")
+
+    # The data is now grouped by metallicity, so we just sort the keys
     sorted_metallicities = sorted(data_by_metallicity.keys())
 
     for z_value in sorted_metallicities:
@@ -191,8 +204,8 @@ def generate_all_hr_diagrams(data_by_metallicity: dict, model_name: str, output_
         if num_plots > 0:
             start_idx_to_hide = i + 1
         else:
-            start_idx_to_hide = 0 
-        
+            start_idx_to_hide = 0
+            
         for j in range(start_idx_to_hide, len(axes)):
             fig.delaxes(axes[j])
 
@@ -224,4 +237,4 @@ def generate_all_hr_diagrams(data_by_metallicity: dict, model_name: str, output_
         plt.close(fig)
         logging.info(f"✔ Saved HR diagram: {filename}")
 
-    logging.info("✅ All HR diagram generation complete.")
+    logging.info("✔  All HR diagram generation complete.")

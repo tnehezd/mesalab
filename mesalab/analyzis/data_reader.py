@@ -1,17 +1,14 @@
-#mesalab/analyzis/data_reader.py
-
 import pandas as pd
-import numpy as np # Import numpy for genfromtxt
+import numpy as np
 import re
 import os
 import logging
-# from mesalab.io.inlist_parser import get_mesa_params_from_inlist # This might be used if 'extract_params_from_inlist' is replaced
 
-logger = logging.getLogger(__name__) # Use a logger specific to this module
+logger = logging.getLogger(__name__)
 
 def extract_params_from_inlist(inlist_path):
     """
-    Extract `initial_mass` and `initial_Z` values from a MESA inlist file.
+    Extract `initial_mass`, `initial_Z`, and `initial_Y` values from a MESA inlist file.
 
     Handles Fortran-style scientific notation (e.g., `1.0d-2`, `2.5D+1`) by
     converting it to Python-compatible form. Returns `None` for missing values,
@@ -21,51 +18,55 @@ def extract_params_from_inlist(inlist_path):
         inlist_path (str): Absolute path to the MESA inlist file.
 
     Returns:
-        tuple: A tuple (mass, z) where both elements are floats or `None`
+        tuple: A tuple (mass, z, y) where elements are floats or `None`
                if the corresponding parameter is not found.
 
     Example:
-        >>> from mesalab.analyzis import extract_params_from_inlist
-        >>> extract_params_from_inlist("mesa_runs/z0.006_m3.0/inlist_project")
-        (3.0, 0.006)
-
-        >>> extract_params_from_inlist("inlist_with_missing_z")
-        (2.5, None)
+        Assuming 'my_run/inlist_project' contains:
+        initial_mass = 1.0
+        initial_Z = 0.014
+        initial_Y = 0.28
+        >>> extract_params_from_inlist("my_run/inlist_project")
+        (1.0, 0.014, 0.28)
     """
     mass = None
     z = None
+    y = None
 
     try:
         with open(inlist_path, 'r') as f:
             content = f.read()
 
             # Regex for initial_mass: allows integers, floats, and scientific notation (e or d)
-            # Example: initial_mass = 1.0, initial_mass = 1.0d0, initial_mass = 20.5e-1
-            # Using re.MULTILINE to match '^' at the start of each line
-            # Using re.IGNORECASE for case-insensitivity (initial_mass vs initial_Mass)
             mass_match = re.search(r'^\s*initial_mass\s*=\s*(\d+\.?\d*(?:[deDE][+\-]?\d+)?)\s*(?:!.*)?$', content, re.MULTILINE | re.IGNORECASE)
             if mass_match:
-                # Replace 'd' or 'D' with 'e' before converting to float to handle Fortran-style notation
                 mass = float(mass_match.group(1).replace('d', 'e').replace('D', 'E'))
 
             # Regex for initial_Z: allows integers, floats, and scientific notation (e or d)
-            # Example: initial_Z = 0.02, initial_Z = 2.0d-2, initial_Z = 1.0e-4
             z_match = re.search(r'^\s*initial_Z\s*=\s*(\d+\.?\d*(?:[deDE][+\-]?\d+)?)\s*(?:!.*)?$', content, re.MULTILINE | re.IGNORECASE)
             if z_match:
                 z = float(z_match.group(1).replace('d', 'e').replace('D', 'E'))
+
+            # Regex for initial_Y: allows integers, floats, and scientific notation (e or d)
+            y_match = re.search(r'^\s*initial_Y\s*=\s*(\d+\.?\d*(?:[deDE][+\-]?\d+)?)\s*(?:!.*)?$', content, re.MULTILINE | re.IGNORECASE)
+            if y_match:
+                y_value_str = y_match.group(1).replace('d', 'e').replace('D', 'E')
+                y = float(y_value_str)
+            else:
+                logger.warning(f"Could not find 'initial_Y' in {inlist_path}. Setting to None for this run's parsing.")
 
     except FileNotFoundError:
         logger.error(f"Inlist file not found: {inlist_path}")
     except Exception as e:
         logger.error(f"Error reading inlist file {inlist_path}: {e}")
 
-    # Log warnings if parameters are not found, even if no file error occurred
+    # Log warnings if mass or Z parameters are not found
     if mass is None:
         logger.warning(f"Could not find 'initial_mass' in {inlist_path}.")
     if z is None:
         logger.warning(f"Could not find 'initial_Z' in {inlist_path}.")
 
-    return mass, z
+    return mass, z, y
 
 
 def scan_mesa_runs(input_dir, inlist_name):
@@ -77,8 +78,8 @@ def scan_mesa_runs(input_dir, inlist_name):
       - Contain the specified `inlist_name` file
       - Contain a LOGS/history.data file
 
-    The function attempts to extract `initial_mass` and `initial_Z` from each inlist file.
-    Only runs with both values present are included in the output.
+    The function attempts to extract `initial_mass`, `initial_Z`, and `initial_Y` from each inlist file.
+    Only runs with both `mass` and `z` values present are included in the output.
 
     Args:
         input_dir (str): Absolute path to the main directory containing MESA run subdirectories.
@@ -90,24 +91,37 @@ def scan_mesa_runs(input_dir, inlist_name):
             - 'run_dir_path' (str): Full path to the MESA run directory
             - 'mass' (float): Extracted initial_mass
             - 'z' (float): Extracted initial_Z
+            - 'y' (float or None): Extracted initial_Y
 
         Returns an empty list if no valid runs are found.
 
     Example:
-        >>> from mesalab.analyzis import scan_mesa_runs 
-        >>> scan_mesa_runs("/home/user/mesa_runs", "inlist_project")
+        Given a directory structure like:
+        /path/to/mesa_grid/
+        ├── run_M1.0_Z0.014_Y0.28
+        │   ├── inlist_project
+        │   └── LOGS
+        │       └── history.data
+        └── run_M2.0_Z0.006_Y0.25
+            ├── inlist_project
+            └── LOGS
+                └── history.data
+
+        >>> scan_mesa_runs("/path/to/mesa_grid", "inlist_project")
         [
             {
-                'history_file_path': '/home/user/mesa_runs/z0.006_m3.0/LOGS/history.data',
-                'run_dir_path': '/home/user/mesa_runs/z0.006_m3.0',
-                'mass': 3.0,
-                'z': 0.006
+                'history_file_path': '/path/to/mesa_grid/run_M1.0_Z0.014_Y0.28/LOGS/history.data',
+                'run_dir_path': '/path/to/mesa_grid/run_M1.0_Z0.014_Y0.28',
+                'mass': 1.0,
+                'z': 0.014,
+                'y': 0.28
             },
             {
-                'history_file_path': '/home/user/mesa_runs/z0.014_m2.5/LOGS/history.data',
-                'run_dir_path': '/home/user/mesa_runs/z0.014_m2.5',
-                'mass': 2.5,
-                'z': 0.014
+                'history_file_path': '/path/to/mesa_grid/run_M2.0_Z0.006_Y0.25/LOGS/history.data',
+                'run_dir_path': '/path/to/mesa_grid/run_M2.0_Z0.006_Y0.25',
+                'mass': 2.0,
+                'z': 0.006,
+                'y': 0.25
             }
         ]
     """
@@ -120,7 +134,7 @@ def scan_mesa_runs(input_dir, inlist_name):
 
     if not potential_run_dir_names:
         logger.warning(f"No non-hidden subdirectories found directly in '{input_dir}'. "
-                        "Ensure your MESA runs are in individual folders within this input directory.")
+                       "Ensure your MESA runs are in individual folders within this input directory.")
         return []
 
     logger.info(f"Scanning '{input_dir}' for MESA run directories...")
@@ -132,13 +146,14 @@ def scan_mesa_runs(input_dir, inlist_name):
 
         # Check for existence of both inlist and history.data
         if os.path.exists(inlist_path) and os.path.exists(history_file_path):
-            mass, z = extract_params_from_inlist(inlist_path) # Using the internal function here
+            mass, z, y = extract_params_from_inlist(inlist_path)
             if mass is not None and z is not None:
                 mesa_run_infos.append({
                     'history_file_path': history_file_path,
                     'run_dir_path': run_dir_path,
                     'mass': mass,
-                    'z': z
+                    'z': z,
+                    'y': y
                 })
             else:
                 logger.warning(f"Could not extract mass/Z from inlist '{inlist_path}'. Skipping this run.")
@@ -170,13 +185,12 @@ def get_data_from_history_file(history_file_path):
         pandas.DataFrame: A DataFrame containing the parsed history data.
                           Returns an empty DataFrame if the file is missing or cannot be parsed.
 
-    
-    Exception: 
+    Exception:
         If there's an error loading or processing the file, it is logged and an empty DataFrame is returned instead.
 
     Example:
-        >>> from mesalab.analyzis import data_reader
-        >>> df = data_reader.get_data_from_history_file('/path/to/LOGS/history.data')
+        Assuming a valid 'history.data' file exists at the given path:
+        >>> df = get_data_from_history_file('/path/to/some_mesa_run/LOGS/history.data')
         >>> if not df.empty:
         ...     print(df.head())
         ...     print(f"Total models: {len(df)}")
@@ -186,38 +200,22 @@ def get_data_from_history_file(history_file_path):
     """
     if not os.path.exists(history_file_path):
         logger.error(f"History file not found: {history_file_path}")
-        return pd.DataFrame() # Return empty DataFrame on file not found
+        return pd.DataFrame()
 
     try:
-        # Use np.genfromtxt for robust parsing of MESA history files.
-        # names=True reads column headers from the file.
-        # comments='#' ignores lines starting with #.
-        # skip_header=5 skips initial descriptive lines before headers.
-        # dtype=None infers data types.
-        # encoding='utf-8' for universal compatibility.
         data = np.genfromtxt(history_file_path, names=True, comments="#", skip_header=5,
                              dtype=None, encoding='utf-8')
 
-        # Handle edge case where genfromtxt reads a single row as a 0-D array
         if data.ndim == 0:
-            # If a single row, genfromtxt returns a 0-D array; convert to list of lists for DataFrame
             df = pd.DataFrame([data.tolist()], columns=data.dtype.names)
         else:
             df = pd.DataFrame(data)
 
-        # Convert all columns to numeric, coercing unconvertible values to NaN.
-        # This is a robust way to ensure numerical operations don't fail on mixed data.
         for col in df.columns:
-            # Check if column contains any non-numeric data before conversion to avoid warnings on already numeric columns
-            # Also, some columns might be strings representing specific flags, converting them to numeric may not be desired.
-            # However, for MESA history, most columns are expected to be numeric.
             df[col] = pd.to_numeric(df[col], errors='coerce')
 
-        # Ensure 'model_number' is an integer type if present and valid.
         if 'model_number' in df.columns:
-            # Drop rows where model_number might be NaN (e.g., due to parsing errors or missing values)
             df.dropna(subset=['model_number'], inplace=True)
-            # Convert to integer type only if no NaNs remain after dropping, otherwise it raises an error
             if not df['model_number'].isnull().any():
                 df['model_number'] = df['model_number'].astype(int)
 
@@ -225,4 +223,4 @@ def get_data_from_history_file(history_file_path):
 
     except Exception as e:
         logger.error(f"Error loading or processing {history_file_path} using np.genfromtxt: {e}")
-        return pd.DataFrame() # Return empty DataFrame on error
+        return pd.DataFrame()

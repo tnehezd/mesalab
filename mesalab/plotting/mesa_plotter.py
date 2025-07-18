@@ -1,4 +1,4 @@
-# mesalab/plotting/mesa_plotter.py (formerly plot_handlers.py)
+# mesalab/plotting/mesa_plotter.py
 
 import os
 import logging
@@ -98,7 +98,7 @@ def handle_blue_loop_bc_plotting(args, combined_detail_data_for_plotting, blue_l
     Plot blue loop tracks in the color–magnitude diagram with bolometric corrections.
 
     Reads preprocessed detail CSV files and bolometric correction data (e.g., for Gaia bands),
-    then plots the evolutionary tracks during the blue loop phase on CMDs. 
+    then plots the evolutionary tracks during the blue loop phase on CMDs.
     Used for visualizing where and how models populate the instability strip.
 
     Args:
@@ -154,7 +154,9 @@ def handle_hr_diagram_generation(args, plots_sub_dir, full_history_data_for_plot
     Args:
         args (argparse.Namespace): Command-line arguments including force overwrite, limits.
         plots_sub_dir (str): Output directory for saving HR diagrams.
-        full_history_data_for_plotting (dict): Dictionary of DataFrames keyed by Z values.
+        full_history_data_for_plotting (list): List of DataFrames, each representing
+                                                a full history for a single MESA run.
+                                                (Updated from dict to list to match all_hrd_plotter.py)
         drop_zams (bool): Whether to skip points before the zero-age main sequence.
 
     Returns:
@@ -162,7 +164,7 @@ def handle_hr_diagram_generation(args, plots_sub_dir, full_history_data_for_plot
 
     Example:
         >>> from mesalab.plotting import handle_hr_diagram_generation
-        >>> data = {0.004: df_z004, 0.014: df_z014}
+        >>> data = [df_z004_m1, df_z004_m2, df_z014_m1] # Example: list of DataFrames
         >>> output_dir = "results/plots/hr"
         >>> handle_hr_diagram_generation(args, output_dir, data, drop_zams=True)
         HR diagrams saved to results/plots/hr for each metallicity.
@@ -191,14 +193,14 @@ def handle_hr_diagram_generation(args, plots_sub_dir, full_history_data_for_plot
         logging.info(f"Preparing to generate HR diagrams with drop_zams={drop_zams}.")
 
         generate_all_hr_diagrams(
-            data_by_metallicity=full_history_data_for_plotting,
+            all_history_data_flat=full_history_data_for_plotting, # <--- THIS IS THE CORRECTED LINE!
             model_name=model_name,
             output_dir=plots_sub_dir,
             logT_blue_edge=logT_blue_edge,
             logL_blue_edge=logL_blue_edge,
             logT_red_edge=logT_red_edge,
             logL_red_edge=logL_red_edge,
-            drop_zams=drop_zams 
+            drop_zams=drop_zams
         )
         logging.info("HR diagrams generated successfully.")
     except Exception as e:

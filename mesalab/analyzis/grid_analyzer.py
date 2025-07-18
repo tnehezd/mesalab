@@ -65,11 +65,28 @@ def analyze_mesa_grid_directory(grid_root_path,
             params = get_mesa_params_from_inlist(current_run_path, inlist_filename, inlist_alternatives)
             
             if params and 'initial_mass' in params and 'initial_z' in params:
+                # Add initial_y to the dictionary if it's found in params, otherwise use None or a default
+                initial_y_val = params.get('initial_y') # .get() allows a default if key not present
+
                 found_runs.append({
                     'path': current_run_path,
                     'mass': params['initial_mass'],
-                    'z': params['initial_z']
+                    'z': params['initial_z'],
+                    'initial_y': initial_y_val
                 })
+
+
+                # --- ADD THESE LINES TO DEBUG THE EXTRACTED PARAMS ---
+                logging.debug(f"DEBUGGING GRID_ANALYZER: Parameters for run '{item_name}':")
+                logging.debug(f"  Path: {current_run_path}")
+                logging.debug(f"  Mass: {params.get('initial_mass', 'N/A')}")
+                logging.debug(f"  Z: {params.get('initial_z', 'N/A')}")
+                logging.debug(f"  Initial Y: {params.get('initial_y', 'N/A')}")
+                # --- END OF ADDED LINES ---
+
+
+
+
             else:
                 logging.warning(f"Could not extract 'initial_mass' or 'initial_z' from inlist in '{current_run_path}'. Skipping.")
 
