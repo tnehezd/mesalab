@@ -1,5 +1,3 @@
-# mesalab/io/config_parser.py
-
 import os
 import argparse
 import yaml
@@ -7,36 +5,27 @@ import sys
 import logging
 from datetime import datetime
 
-# To handle nested configuration as attributes (e.g., config.general_settings.input_dir)
-# If addict is not installed, you might need to 'pip install addict'
 try:
     from addict import Dict
 except ImportError:
     print("Error: 'addict' library not found. Please install it using 'pip install addict'.", file=sys.stderr)
     sys.exit(1)
 
-
-# Initialize logging for this module
-# This basic configuration ensures logs appear even before the main app's setup.
 logger = logging.getLogger(__name__)
 
 def parsing_options():
     """
-    Parses command-line arguments, loads settings from a YAML configuration file,
-    and merges them into a final configuration object.
-    CLI arguments take precedence over YAML settings, which take precedence over environment variables,
-    which take precedence over defaults.
-
-    Returns:
-        addict.Dict: A nested Dict object containing the final resolved configuration.
+    Parses command-line arguments and loads configuration from a YAML file.
+    It combines default settings, YAML file settings, environment variables,
+    and command-line arguments in order of increasing priority.
+    Performs initial validation of critical paths.
     """
-    # 1. Define command-line arguments. These arguments can override YAML settings.
+    # 1. Define command-line arguments.
     parser = argparse.ArgumentParser(
         description="Analyze MESA stellar evolution grid runs and generate GYRE input files.",
-        add_help=False # Let the main cli.py script handle the overall help display
+        add_help=False # We'll add help manually if needed later, or let default help work
     )
 
-    # CLI argument for the config file path itself
     parser.add_argument("--config", type=str, default="config.yaml",
                         help="Path to a YAML configuration file.")
 
@@ -52,76 +41,62 @@ def parsing_options():
     parser.add_argument("--debug", action="store_true",
                         help="Override general_settings.debug. Enable debug mode for more verbose logging output.")
 
-    # --- NEW/MODIFIED: CLI arguments for MESASDK_ROOT and GYRE_DIR ---
+    # Explicit CLI arguments for MESA/GYRE paths
     parser.add_argument('--mesasdk-root', type=str,
-                        help='Override MESASDK_ROOT path. (Environment variable MESASDK_ROOT or config.yaml).')
+                        help='Override MESASDK_ROOT path. (CLI > Env Var > config.yaml).')
+    parser.add_argument('--mesa-dir', type=str,
+                        help='Override MESA_DIR (specific MESA release) path. (CLI > Env Var > config.yaml).')
+    # NEW: Added CLI arg for mesa_binary_dir
+    parser.add_argument('--mesa-binary-dir', type=str,
+                        help='Override MESA_BINARY_DIR path (where `rn` and `star` executables are). (CLI > Env Var > config.yaml).')
     parser.add_argument('--gyre-dir', type=str,
-                        help='Override GYRE_DIR path. (Environment variable GYRE_DIR or config.yaml).')
-    # --- END NEW/MODIFIED ---
+                        help='Override GYRE_DIR path. (CLI > Env Var > config.yaml).')
 
-    # Blue Loop Analysis Settings (can be overridden by CLI)
-    parser.add_argument("--analyze-blue-loop", action="store_true",
-                        help="Override blue_loop_analysis.analyze_blue_loop. Perform blue loop analysis.")
-    parser.add_argument("--blue-loop-output-type", choices=['summary', 'all'],
-                        help="Override blue_loop_analysis.blue_loop_output_type. Blue loop output type for detail files.")
+    # Blue Loop Analysis Settings (remain the same)
+    parser.add_argument("--analyze-blue-loop", action="store_true", help="Override blue_loop_analysis.analyze_blue_loop. Perform blue loop analysis.")
+    parser.add_argument("--blue-loop-output-type", choices=['summary', 'all'], help="Override blue_loop_analysis.blue_loop_output_type. Blue loop output type for detail files.")
 
-    # Plotting Settings (can be overridden by CLI)
-    # The --no-plots flag is derived internally, so we don't need a direct CLI arg for 'generate_plots'
-    parser.add_argument("--generate-heatmaps", action="store_true",
-                        help="Override plotting_settings.generate_heatmaps. Generate heatmaps from cross-grid data.")
-    parser.add_argument("--generate-hr-diagrams", type=str, choices=['none', 'all', 'drop_zams'],
-                        help='Override plotting_settings.generate_hr_diagrams. Control HR diagram generation.')
-    parser.add_argument("--generate-blue-loop-plots-with-bc", action="store_true",
-                        help="Override plotting_settings.generate_blue_loop_plots_with_bc. Generate blue loop plots including bolometric corrections.")
+    # Plotting Settings (remain the same)
+    parser.add_argument("--generate-heatmaps", action="store_true", help="Override plotting_settings.generate_heatmaps. Generate heatmaps from cross-grid data.")
+    parser.add_argument("--generate-hr-diagrams", type=str, choices=['none', 'all', 'drop_zams'], help='Override plotting_settings.generate_hr_diagrams. Control HR diagram generation.')
+    parser.add_argument("--generate-blue-loop-plots-with-bc", action="store_true", help="Override plotting_settings.generate_blue_loop_plots_with_bc. Generate blue loop plots including bolometric corrections.")
 
+    # GYRE Workflow Settings (remain the same)
     gyre_group = parser.add_argument_group('GYRE Workflow Settings')
-    gyre_group.add_argument('--run-gyre-workflow', action='store_true',
-                            help='Override gyre_workflow.run_gyre_workflow. Execute the full GYRE workflow.')
-    gyre_group.add_argument('--gyre-run-mode', type=str, choices=['ALL_PROFILES', 'FILTERED_PROFILES'],
-                            help='Override gyre_workflow.run_mode. Set the GYRE run mode.')
-    gyre_group.add_argument('--gyre-threads', type=int,
-                            help='Override gyre_workflow.num_gyre_threads. Number of OpenMP threads for each GYRE run.')
-    # Using type=str and then converting manually for booleans, as argparse's bool parsing can be tricky
-    gyre_group.add_argument('--gyre-parallel', type=str, choices=['True', 'False'],
-                            help='Override gyre_workflow.enable_parallel. Enable/disable parallel GYRE runs (True/False).')
-    gyre_group.add_argument('--gyre-max-concurrent', type=int,
-                            help='Override gyre_workflow.max_concurrent_gyre_runs. Maximum number of concurrent GYRE runs.')
-    gyre_group.add_argument('--gyre-inlist-template-path', type=str,
-                            help='Override gyre_workflow.gyre_inlist_template_path. Full or relative path to the GYRE inlist template file.')
+    gyre_group.add_argument('--run-gyre-workflow', action='store_true', help='Override gyre_workflow.run_gyre_workflow. Execute the full GYRE workflow.')
+    gyre_group.add_argument('--gyre-run-mode', type=str, choices=['ALL_PROFILES', 'FILTERED_PROFILES'], help='Override gyre_workflow.run_mode. Set the GYRE run mode.')
+    gyre_group.add_argument('--gyre-threads', type=int, help='Override gyre_workflow.num_gyre_threads. Number of OpenMP threads for each GYRE run.')
+    gyre_group.add_argument('--gyre-parallel', type=str, choices=['True', 'False'], help='Override gyre_workflow.enable_parallel. Enable/disable parallel GYRE runs (True/False).')
+    gyre_group.add_argument('--gyre-max-concurrent', type=int, help='Override gyre_workflow.max_concurrent_gyre_runs. Maximum number of concurrent GYRE runs.')
+    gyre_group.add_argument('--gyre-inlist-template-path', type=str, help='Override gyre_workflow.gyre_inlist_template_path. Full or relative path to the GYRE inlist template file.')
 
-    # --- ÚJ: RSP Workflow Settings ---
+    # RSP Workflow Settings (remain the same)
     rsp_group = parser.add_argument_group('RSP Workflow Settings')
-    rsp_group.add_argument('--run-rsp-workflow', action='store_true',
-                           help='Override rsp_workflow.run_rsp_workflow. Execute the full RSP workflow.')
-    rsp_group.add_argument('--rsp-inlist-template-path', type=str,
-                           help='Override rsp_workflow.rsp_inlist_template_path. Full or relative path to the RSP inlist template file.')
-    rsp_group.add_argument('--rsp-mesa-output-base-dir', type=str,
-                           help='Override rsp_workflow.rsp_mesa_output_base_dir. Base directory for RSP MESA output files.')
-    # --- VÉGE: RSP Workflow Settings ---
+    rsp_group.add_argument('--run-rsp-workflow', action='store_true', help='Override rsp_workflow.run_rsp_workflow. Execute the full RSP workflow.')
+    rsp_group.add_argument('--rsp-inlist-template-path', type=str, help='Override rsp_workflow.rsp_inlist_template_path. Full or relative path to the RSP inlist template file.')
+    rsp_group.add_argument('--rsp-mesa-output-base-dir', type=str, help='Override rsp_workflow.rsp_mesa_output_base_dir. Base directory for RSP MESA output files.')
 
-
-    # Parse arguments from the command line.
     cli_args, unknown_args = parser.parse_known_args()
 
-    # Immediately set logging based on CLI debug flag. This is crucial for early debugging.
-    # Set root logger level to capture all messages from now on
+    # Early debug logging setup
     if cli_args.debug:
         logging.getLogger().setLevel(logging.DEBUG)
         logger.debug("Debug logging enabled via CLI in config_parser (early stage).")
     else:
-        # Keep original logic if debug is false for early stage
+        logging.getLogger().setLevel(logging.INFO)
         logger.info("Default logging level is INFO (early stage).")
 
-
-    # 2. Define default configuration values with the desired nested structure
+    # 2. Define default configuration values
     default_config = {
         'general_settings': {
-            'input_dir': None, # This will be explicitly validated later as required
+            'input_dir': None,
             'output_dir': './mesalab_output',
             'inlist_name': 'inlist_project',
             'force_reanalysis': False,
             'debug': False,
-            'mesasdk_root': None,
+            'mesasdk_root': None,    # e.g., /Applications/mesasdk
+            'mesa_dir': None,        # e.g., /Users/tnehezd/Documents/Munka/MESA230501/mesa-r23.05.01
+            'mesa_binary_dir': None, # NEW: Where 'rn' and 'star' executables are found (e.g., star/work/)
             'gyre_dir': None
         },
         'blue_loop_analysis': {
@@ -130,36 +105,31 @@ def parsing_options():
         },
         'plotting_settings': {
             'generate_heatmaps': False,
-            'generate_hr_diagrams': 'none', # Default HR diagram generation
+            'generate_hr_diagrams': 'none',
             'generate_blue_loop_plots_with_bc': False,
-            'generate_plots': False # This will be derived later, not directly set by user
+            'generate_plots': False # This is an internal flag derived from other plotting settings
         },
         'gyre_workflow': {
             'run_gyre_workflow': True,
-            'gyre_inlist_template_path': 'config/gyre.in', # This will be replaced by a path
-            'run_mode': 'ALL_PROFILES', # Default mode
-            'num_gyre_threads': 1, # Default to 1 thread
-            'enable_parallel': False, # Default to sequential
-            'max_concurrent_gyre_runs': 4, # Default max concurrent runs for parallel mode
+            'gyre_inlist_template_path': 'config/gyre.in',
+            'run_mode': 'ALL_PROFILES',
+            'num_gyre_threads': 1,
+            'enable_parallel': False,
+            'max_concurrent_gyre_runs': 4,
             'filtered_profiles_csv_name': 'sorted_blue_loop_profiles.csv'
         },
-        # --- ÚJ: RSP Workflow Defaults ---
         'rsp_workflow': {
-            'run_rsp_workflow': False, # Default to disabled
-            'rsp_inlist_template_path': 'config/rsp.inlist_template', # Example path
-            'rsp_mesa_output_base_dir': './rsp_mesa_profiles' # Example output directory
+            'run_rsp_workflow': False,
+            'rsp_inlist_template_path': 'config/rsp.inlist_template',
+            'rsp_mesa_output_base_dir': './rsp_mesa_profiles'
         }
-        # --- VÉGE: RSP Workflow Defaults ---
     }
 
-    # Convert default_config to an Addict Dict for easier manipulation
-    final_config_dict = Dict(default_config)
+    final_config_dict = Dict(default_config) # Use addict.Dict for easy access
 
     # 3. Load user-provided YAML configuration
     user_yaml_config = {}
-    config_file_path = cli_args.config # Get the YAML path from CLI arguments
-    
-    # Resolve config file path relative to current working directory
+    config_file_path = cli_args.config
     resolved_config_file_path = os.path.abspath(config_file_path)
 
     if os.path.exists(resolved_config_file_path):
@@ -178,87 +148,99 @@ def parsing_options():
     else:
         logger.warning(f"Configuration file '{resolved_config_file_path}' not found. Using default settings and CLI arguments.")
 
-    # Apply YAML settings over defaults (deep merge if needed, but addict handles nested dicts naturally)
-    # Using addict's update method for deep merge-like behavior if structure matches
+    # Merge YAML config into final_config_dict (YAML overrides defaults)
     final_config_dict.update(user_yaml_config)
 
+    # --- Apply Environment Variables (Override YAML, but overridden by CLI) ---
 
-    # --- NEW/MODIFIED: Apply Environment Variables as an intermediate layer ---
-    # These override defaults but are themselves overridden by CLI args
+    # MESASDK_ROOT (SDK installation dir)
     env_mesasdk_root = os.getenv('MESASDK_ROOT')
-    if env_mesasdk_root:
-        final_config_dict.general_settings.mesasdk_root = env_mesasdk_root
-        logger.debug(f"MESASDK_ROOT set from environment variable: {env_mesasdk_root}")
+    if env_mesasdk_root and os.path.isdir(env_mesasdk_root):
+        # Only update if different to avoid redundant logging/setting
+        if final_config_dict.general_settings.mesasdk_root != env_mesasdk_root:
+            logger.info(f"MESASDK_ROOT set from $MESASDK_ROOT environment variable: {env_mesasdk_root} (overriding YAML if present).")
+            final_config_dict.general_settings.mesasdk_root = env_mesasdk_root
     
-    env_gyre_dir = os.getenv('GYRE_DIR')
-    if env_gyre_dir:
-        final_config_dict.general_settings.gyre_dir = env_gyre_dir
-        logger.debug(f"GYRE_DIR set from environment variable: {env_gyre_dir}")
-    # --- END NEW/MODIFIED ---
+    # MESA_DIR (specific MESA release dir)
+    env_mesa_dir = os.getenv('MESA_DIR')
+    if env_mesa_dir and os.path.isdir(env_mesa_dir):
+        if final_config_dict.general_settings.mesa_dir != env_mesa_dir:
+            logger.info(f"MESA_DIR set from $MESA_DIR environment variable: {env_mesa_dir} (overriding YAML if present).")
+            final_config_dict.general_settings.mesa_dir = env_mesa_dir
 
-    # 4. Apply CLI arguments, overriding YAML, Environment Variables, and defaults
-    # Iterate through all CLI arguments and apply them to the final_config_dict
+    # MESA_BINARY_DIR (new env var check)
+    env_mesa_binary_dir = os.getenv('MESA_BINARY_DIR')
+    if env_mesa_binary_dir and os.path.isdir(env_mesa_binary_dir):
+        if final_config_dict.general_settings.mesa_binary_dir != env_mesa_binary_dir:
+            logger.info(f"MESA_BINARY_DIR set from $MESA_BINARY_DIR environment variable: {env_mesa_binary_dir} (overriding YAML if present).")
+            final_config_dict.general_settings.mesa_binary_dir = env_mesa_binary_dir
+
+    # GYRE_DIR
+    env_gyre_dir = os.getenv('GYRE_DIR')
+    if env_gyre_dir and os.path.isdir(env_gyre_dir):
+        if final_config_dict.general_settings.gyre_dir != env_gyre_dir:
+            logger.info(f"GYRE_DIR set from $GYRE_DIR environment variable: {env_gyre_dir} (overriding YAML if present).")
+            final_config_dict.general_settings.gyre_dir = env_gyre_dir
+    elif final_config_dict.general_settings.gyre_dir and not os.path.isdir(final_config_dict.general_settings.gyre_dir):
+        # Log error if GYRE_DIR was in YAML but is invalid
+        logger.error(f"GYRE_DIR set in config to '{final_config_dict.general_settings.gyre_dir}' but it's not a valid directory. GYRE dependent tasks might fail.")
+    else:
+        logger.debug("GYRE_DIR not explicitly set in config and $GYRE_DIR not found or not valid.")
+    # --- END Environment Variable Application ---
+
+
+    # 4. Apply CLI arguments, overriding everything else
     for arg_action in parser._actions:
         arg_name = arg_action.dest
         cli_value = getattr(cli_args, arg_name, None)
 
-        if arg_name == 'config':
-            continue # Skip the config file path itself
+        if arg_name == 'config': # Skip the config file argument itself
+            continue
 
-        # Determine if CLI argument was explicitly provided by the user.
-        # This logic is crucial to distinguish between 'None' (not set) and False/default values.
-        # For store_true/store_false actions, if cli_value is NOT the action's default, it was explicitly set.
-        # For other types, if cli_value is not None and not the action's default, it was explicitly set.
+        # Check if the CLI argument was explicitly provided/set by the user
         cli_set_explicitly = False
-        if isinstance(arg_action, argparse._StoreTrueAction) or isinstance(arg_action, argparse._StoreFalseAction):
-            # For action='store_true', default is False. If it's True, it was set.
-            # For action='store_false', default is True. If it's False, it was set.
-            if cli_value is not None: # Means it was present in CLI args
-                # If the current CLI value is different from its argparse default, it was explicitly provided
+        if isinstance(arg_action, (argparse._StoreTrueAction, argparse._StoreFalseAction)):
+            # For boolean flags, check if the value is different from its default
+            if cli_value is not None:
                 if cli_value != arg_action.default:
                     cli_set_explicitly = True
         else:
-            # For other argument types, if cli_value is not None and not the parser's default, it was explicitly set.
-            # Note: arg_action.default is argparse's default, not our 'default_config'.
+            # For other arguments, check if a value was provided and it's not the default
             if cli_value is not None and cli_value != arg_action.default:
                 cli_set_explicitly = True
 
         if cli_set_explicitly:
             logger.debug(f"Applying CLI override: --{arg_name} = {cli_value}")
+            # Map CLI arguments to their corresponding config paths
             if arg_name in ['input_dir', 'output_dir', 'inlist_name', 'force_reanalysis', 'debug',
-                            'mesasdk_root', 'gyre_dir']:
+                            'mesasdk_root', 'mesa_dir', 'mesa_binary_dir', 'gyre_dir']: # Added mesa_binary_dir here
                 final_config_dict.general_settings[arg_name] = cli_value
             elif arg_name in ['analyze_blue_loop', 'blue_loop_output_type']:
                 final_config_dict.blue_loop_analysis[arg_name] = cli_value
             elif arg_name in ['generate_heatmaps', 'generate_hr_diagrams', 'generate_blue_loop_plots_with_bc']:
                 final_config_dict.plotting_settings[arg_name] = cli_value
-            # --- MODIFIED: GYRE CLI MAPPINGS ---
             elif arg_name == 'run_gyre_workflow':
                 final_config_dict.gyre_workflow.run_gyre_workflow = cli_value
             elif arg_name == 'gyre_run_mode':
                 final_config_dict.gyre_workflow.run_mode = cli_value
             elif arg_name == 'gyre_threads':
                 final_config_dict.gyre_workflow.num_gyre_threads = cli_value
-            elif arg_name == 'gyre_parallel': # Custom handling for boolean string
+            elif arg_name == 'gyre_parallel':
                 final_config_dict.gyre_workflow.enable_parallel = (cli_value.lower() == 'true')
             elif arg_name == 'gyre_max_concurrent':
                 final_config_dict.gyre_workflow.max_concurrent_gyre_runs = cli_value
             elif arg_name == 'gyre_inlist_template_path':
                 final_config_dict.gyre_workflow.gyre_inlist_template_path = cli_value
-            # --- END MODIFIED GYRE ---
-            # --- ÚJ: RSP CLI MAPPINGS ---
             elif arg_name == 'run_rsp_workflow':
                 final_config_dict.rsp_workflow.run_rsp_workflow = cli_value
             elif arg_name == 'rsp_inlist_template_path':
                 final_config_dict.rsp_workflow.rsp_inlist_template_path = cli_value
             elif arg_name == 'rsp_mesa_output_base_dir':
                 final_config_dict.rsp_workflow.rsp_mesa_output_base_dir = cli_value
-            # --- VÉGE: RSP CLI MAPPINGS ---
             else:
                 logger.debug(f"CLI argument '{arg_name}' with value '{cli_value}' was provided but not explicitly mapped to a config setting. It will be ignored.")
 
-    # --- NEW LOGIC START ---
-    # Dynamically set 'generate_plots' based on whether any specific plotting option is enabled.
+    # Set internal flag for plotting based on other plotting settings
     final_config_dict.plotting_settings.generate_plots = (
         final_config_dict.plotting_settings.generate_heatmaps or
         final_config_dict.plotting_settings.generate_hr_diagrams != 'none' or
@@ -266,51 +248,98 @@ def parsing_options():
     )
     if final_config_dict.plotting_settings.generate_plots:
         logger.debug("Internal 'generate_plots' flag set to True as a specific plotting option is enabled.")
-    # --- NEW LOGIC END ---
 
-    # 5. Final validation for required arguments
+    # 5. Final validation for required arguments and paths
+    # Input directory is always required
     if final_config_dict.general_settings.input_dir is None:
         logger.critical("ERROR: 'input_dir' must be specified either via command-line (--input-dir) or in the config file.")
         sys.exit(1)
 
-    # --- NEW: Final validation for GYRE workflow if enabled ---
-    # ONLY perform GYRE specific validations if run_gyre_workflow is True
-    if final_config_dict.gyre_workflow.get('run_gyre_workflow', False): # Use .get for safety
+    # Validate MESASDK_ROOT
+    if final_config_dict.general_settings.mesasdk_root:
+        if not os.path.isdir(final_config_dict.general_settings.mesasdk_root):
+            logger.critical(f"ERROR: Resolved MESASDK_ROOT path is not a valid directory: '{final_config_dict.general_settings.mesasdk_root}'. Please ensure your $MESASDK_ROOT environment variable or config.yaml setting is correct.")
+            sys.exit(1)
+        logger.info(f"Validated MESASDK_ROOT: {final_config_dict.general_settings.mesasdk_root}")
+    else:
+        logger.warning("MESASDK_ROOT not set. Some MESA-related tools might not be found if they are part of the SDK.")
+
+
+    # Validate MESA_DIR (the specific MESA release directory, e.g., mesa-r23.05.01)
+    if final_config_dict.general_settings.mesa_dir:
+        if not os.path.isdir(final_config_dict.general_settings.mesa_dir):
+            logger.critical(f"ERROR: Resolved MESA_DIR (specific MESA release) path is not a valid directory: '{final_config_dict.general_settings.mesa_dir}'. Please ensure your $MESA_DIR environment variable or config.yaml setting is correct.")
+            sys.exit(1)
+        logger.info(f"Validated MESA_DIR (specific release): {final_config_dict.general_settings.mesa_dir}")
+    else:
+        # If MESA_DIR is not set by any means, try to infer it from MESASDK_ROOT if MESASDK_ROOT is known.
+        # This is a fallback if user only set MESASDK_ROOT and didn't set MESA_DIR
+        if final_config_dict.general_settings.mesasdk_root:
+            logger.info(f"MESA_DIR not set. Attempting to auto-select the latest MESA release within MESASDK_ROOT: {final_config_dict.general_settings.mesasdk_root}")
+            latest_mesa_release = None
+            latest_version_num = 0
+            # Iterate through items in MESASDK_ROOT to find mesa-rYYYY.MM.DD directories
+            for item in os.listdir(final_config_dict.general_settings.mesasdk_root):
+                if item.startswith('mesa-r') and os.path.isdir(os.path.join(final_config_dict.general_settings.mesasdk_root, item)):
+                    try:
+                        # Extract version number (e.g., '230501' from 'mesa-r23.05.01')
+                        version_str = item.replace('mesa-r', '').replace('.', '')
+                        version_num = int(version_str)
+                        if version_num > latest_version_num:
+                            latest_version_num = version_num
+                            latest_mesa_release = os.path.join(final_config_dict.general_settings.mesasdk_root, item)
+                    except ValueError:
+                        continue # Ignore directories not matching mesa-rXXXX.XX pattern
+            
+            if latest_mesa_release:
+                final_config_dict.general_settings.mesa_dir = latest_mesa_release
+                logger.info(f"Auto-selected MESA_DIR (specific release) as the latest found within MESASDK_ROOT: {latest_mesa_release}")
+            else:
+                logger.critical(f"ERROR: MESA_DIR (specific release, e.g., mesa-r23.05.01) could not be determined within MESASDK_ROOT: '{final_config_dict.general_settings.mesasdk_root}'. Please ensure your MESA installation is correct.")
+                sys.exit(1)
+        else:
+            logger.critical("ERROR: Neither MESA_DIR nor MESASDK_ROOT are set or could be determined. MESA-dependent workflows cannot proceed without at least one of them being valid.")
+            sys.exit(1)
+
+    # Validate GYRE_DIR
+    if final_config_dict.general_settings.gyre_dir:
+        if not os.path.isdir(final_config_dict.general_settings.gyre_dir):
+            logger.critical(f"ERROR: Resolved GYRE_DIR path is not a valid directory: '{final_config_dict.general_settings.gyre_dir}'. Please ensure your $GYRE_DIR environment variable or config.yaml setting is correct.")
+            sys.exit(1)
+        logger.info(f"Validated GYRE_DIR: {final_config_dict.general_settings.gyre_dir}")
+    # Else: GYRE_DIR is not strictly required if run_gyre_workflow is False. Validation happens later if workflow enabled.
+
+    # GYRE Workflow validations
+    if final_config_dict.gyre_workflow.get('run_gyre_workflow', False):
         logger.debug("GYRE workflow enabled. Performing final validation of GYRE parameters.")
         required_gyre_params = [
             'run_mode', 'gyre_inlist_template_path', 'num_gyre_threads',
             'enable_parallel', 'max_concurrent_gyre_runs'
         ]
         for param in required_gyre_params:
-            # Using getattr with a default of None to safely check for existence
             if getattr(final_config_dict.gyre_workflow, param, None) is None:
-                # Special check for 'enable_parallel' and 'max_concurrent_gyre_runs'
-                # where a default of 0 or False might be intended, but None is an error.
                 if param in ['num_gyre_threads', 'max_concurrent_gyre_runs'] and not isinstance(final_config_dict.gyre_workflow.get(param), (int, float)):
                     logger.critical(f"Missing or invalid required GYRE workflow parameter: 'gyre_workflow.{param}'. Please check config.yaml or CLI arguments.")
                     sys.exit(1)
                 elif param == 'enable_parallel' and not isinstance(final_config_dict.gyre_workflow.get(param), bool):
                     logger.critical(f"Missing or invalid required GYRE workflow parameter: 'gyre_workflow.{param}'. Please check config.yaml or CLI arguments.")
                     sys.exit(1)
-                else: # For other string/path params
+                else:
                     logger.critical(f"Missing required GYRE workflow parameter: 'gyre_workflow.{param}'. Please check config.yaml or CLI arguments.")
                     sys.exit(1)
-            # Additional validation for positive integers where applicable
             if param in ['num_gyre_threads', 'max_concurrent_gyre_runs'] and final_config_dict.gyre_workflow[param] <= 0:
                 logger.critical(f"GYRE workflow parameter 'gyre_workflow.{param}' must be a positive integer.")
                 sys.exit(1)
-            
-        gyre_template_path_to_check = final_config_dict.gyre_workflow.gyre_inlist_template_path
-        if not os.path.isabs(gyre_template_path_to_check):
-                # If it's a relative path, assume it's relative to the CWD where mesalab is run
-            gyre_template_path_to_check = os.path.abspath(gyre_template_path_to_check)
 
+        gyre_template_path_to_check = final_config_dict.gyre_workflow.gyre_inlist_template_path
+        # Resolve relative paths
+        if not os.path.isabs(gyre_template_path_to_check):
+            gyre_template_path_to_check = os.path.abspath(gyre_template_path_to_check)
         if not os.path.exists(gyre_template_path_to_check):
             logger.critical(f"GYRE inlist template file not found at: '{gyre_template_path_to_check}'. Please ensure the path is correct in your config or via CLI.")
             sys.exit(1)
-    # --- END NEW GYRE VALIDATION ---
 
-    # --- ÚJ: Final validation for RSP workflow if enabled ---
+    # RSP Workflow validations
     if final_config_dict.rsp_workflow.get('run_rsp_workflow', False):
         logger.debug("RSP workflow enabled. Performing final validation of RSP parameters.")
         required_rsp_params = ['rsp_inlist_template_path', 'rsp_mesa_output_base_dir']
@@ -318,22 +347,19 @@ def parsing_options():
             if getattr(final_config_dict.rsp_workflow, param, None) is None:
                 logger.critical(f"Missing required RSP workflow parameter: 'rsp_workflow.{param}'. Please check config.yaml or CLI arguments.")
                 sys.exit(1)
-        
+
         rsp_template_path_to_check = final_config_dict.rsp_workflow.rsp_inlist_template_path
         if not os.path.isabs(rsp_template_path_to_check):
             rsp_template_path_to_check = os.path.abspath(rsp_template_path_to_check)
-
         if not os.path.exists(rsp_template_path_to_check):
             logger.critical(f"RSP inlist template file not found at: '{rsp_template_path_to_check}'. Please ensure the path is correct in your config or via CLI.")
             sys.exit(1)
-        
-        # Ensure rsp_mesa_output_base_dir is a valid path (even if it doesn't exist yet, parent should be writable)
+
         rsp_output_base_dir = final_config_dict.rsp_workflow.rsp_mesa_output_base_dir
         if not os.path.isabs(rsp_output_base_dir):
             rsp_output_base_dir = os.path.abspath(rsp_output_base_dir)
-        
-        # We don't check for existence of the output dir itself, but ensure its parent is writable
         parent_dir_rsp = os.path.dirname(rsp_output_base_dir)
+        # Ensure parent directory exists and is writable for the base output directory
         if not os.path.exists(parent_dir_rsp):
             logger.critical(f"Parent directory for RSP MESA output base directory does not exist: '{parent_dir_rsp}'. Please create it or provide a valid path.")
             sys.exit(1)
@@ -341,58 +367,78 @@ def parsing_options():
             logger.critical(f"Parent directory for RSP MESA output base directory is not writable: '{parent_dir_rsp}'. Please check permissions.")
             sys.exit(1)
 
-    # --- VÉGE: RSP Validation ---
-
-
-    # 6. Return the final configuration (which is already an Addict Dict)
-    # The conversion to argparse.Namespace is no longer needed if using Addict's Dict
-    # The cli.py expects an object with attribute access, which Dict provides.
-    
-    # Ensure debug setting is applied to root logger and this module's logger after all config is merged
+    # Adjust logging level one final time after all config has been processed
     if final_config_dict.general_settings.debug:
         logging.root.setLevel(logging.DEBUG)
         logger.setLevel(logging.DEBUG)
         logger.debug("Debug mode enabled after full config merge in config_parser.")
     else:
-        # ORIGINAL LOGIC HERE: If not debug, set the root logger level back to INFO or higher for normal operation.
-        # This will affect all loggers unless they have a more specific level set.
-        # Ensure that this module's logger also respects the desired level for non-debug mode.
-        # Based on your last request "NE VÁLTOZTASS DEBUG LEVELT!", leaving it as it was before my previous change.
-        logger.info("Default logging level is INFO after full config merge in config_parser.") # This will show
+        logging.root.setLevel(logging.INFO)
+        logger.info("Default logging level is INFO after full config merge in config_parser.")
 
     logger.info(f"Final resolved configuration: {final_config_dict}")
     return final_config_dict
 
-# This block is for testing the config_parser.py module itself
 if __name__ == '__main__':
-    # Set up a basic console handler for standalone testing
-    if not logging.getLogger().handlers:
-        handler = logging.StreamHandler(sys.stdout)
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s: %(message)s')
-        handler.setFormatter(formatter)
-        logging.getLogger().addHandler(handler)
-        logging.getLogger().setLevel(logging.DEBUG) # Default to DEBUG for standalone testing
+    # Example usage when running this file directly for testing config parsing
+    print("Running config_parser.py directly for testing purposes.")
+    print("You can try: python -m mesalab.io.config_parser --input-dir /tmp/test --debug --run-rsp-workflow")
+    print("Or with a config file: python -m mesalab.io.config_parser --config your_config.yaml")
 
-    print("--- Testing config_parser.py ---")
+    # Create a dummy config.yaml for testing
+    dummy_config_content = """
+    general_settings:
+      input_dir: /path/to/your/mesa_runs
+      output_dir: ./mesalab_output_test
+      mesasdk_root: /Applications/mesasdk_test
+      mesa_dir: /Users/tnehezd/Documents/Munka/MESA230501/mesa-r23.05.01_test
+      mesa_binary_dir: /Users/tnehezd/Documents/Munka/MESA230501/mesa-r23.05.01_test/star/work
+      gyre_dir: /path/to/gyre_test
+      debug: false
+    rsp_workflow:
+      run_rsp_workflow: true
+      rsp_inlist_template_path: config/rsp.inlist_template_test
+      rsp_mesa_output_base_dir: ./rsp_mesa_profiles_test
+    """
+    with open("test_config.yaml", "w") as f:
+        f.write(dummy_config_content)
+    
+    # Try parsing with the dummy config
     try:
+        # Simulate command line args
+        sys.argv = ['config_parser.py', '--config', 'test_config.yaml', '--input-dir', '/tmp/cli_input', '--force-reanalysis']
+        # Remove --debug from here if you want to test default logging
+        # sys.argv = ['config_parser.py', '--config', 'test_config.yaml', '--input-dir', '/tmp/cli_input', '--debug']
+
+        # Temporarily set environment variables for testing
+        os.environ['MESA_DIR'] = '/env/mesa/dir'
+        os.environ['MESASDK_ROOT'] = '/env/mesasdk/root'
+        os.environ['MESA_BINARY_DIR'] = '/env/mesa/binary/dir' # New env var
+        os.environ['GYRE_DIR'] = '/env/gyre/dir'
+
         parsed_config = parsing_options()
-        print("\n--- Parsed Config (Addict Dict) ---")
+        print("\n--- Parsed Configuration (from __main__ block) ---")
         print(parsed_config)
-        print(f"Input Directory: {parsed_config.general_settings.input_dir}")
-        print(f"MESASDK Root: {parsed_config.general_settings.mesasdk_root}")
-        print(f"GYRE Directory: {parsed_config.general_settings.gyre_dir}")
-        print(f"Analyze Blue Loop: {parsed_config.blue_loop_analysis.analyze_blue_loop}")
-        print(f"Run GYRE Workflow: {parsed_config.gyre_workflow.run_gyre_workflow}")
-        print(f"GYRE Run Mode: {parsed_config.gyre_workflow.run_mode}")
-        print(f"GYRE Threads: {parsed_config.gyre_workflow.num_gyre_threads}")
-        print(f"GYRE Parallel: {parsed_config.gyre_workflow.enable_parallel}")
-        print(f"GYRE Max Concurrent: {parsed_config.gyre_workflow.max_concurrent_gyre_runs}")
-        print(f"GYRE Inlist Template Name: {parsed_config.gyre_workflow.gyre_inlist_template_path}")
-        print(f"Run RSP Workflow: {parsed_config.rsp_workflow.run_rsp_workflow}")
-        print(f"RSP Inlist Template Path: {parsed_config.rsp_workflow.rsp_inlist_template_path}")
-        print(f"RSP MESA Output Base Dir: {parsed_config.rsp_workflow.rsp_mesa_output_base_dir}")
-        print(f"Generate Plots (internal): {parsed_config.plotting_settings.generate_plots}")
-        print("\n--- Test complete ---")
-    except Exception as e:
-        logger.exception(f"Error during config_parser test: {e}")
-        sys.exit(1)
+        print(f"Input Dir: {parsed_config.general_settings.input_dir}")
+        print(f"MESA SDK Root: {parsed_config.general_settings.mesasdk_root}")
+        print(f"MESA Dir: {parsed_config.general_settings.mesa_dir}")
+        print(f"MESA Binary Dir: {parsed_config.general_settings.mesa_binary_dir}") # Check this
+        print(f"GYRE Dir: {parsed_config.general_settings.gyre_dir}")
+        print(f"Force Reanalysis: {parsed_config.general_settings.force_reanalysis}")
+        print(f"RSP workflow enabled: {parsed_config.rsp_workflow.run_rsp_workflow}")
+
+    except SystemExit as e:
+        print(f"Parsing exited with code: {e.code}")
+    finally:
+        # Clean up dummy config and env vars
+        if os.path.exists("test_config.yaml"):
+            os.remove("test_config.yaml")
+        if 'MESA_DIR' in os.environ:
+            del os.environ['MESA_DIR']
+        if 'MESASDK_ROOT' in os.environ:
+            del os.environ['MESASDK_ROOT']
+        if 'MESA_BINARY_DIR' in os.environ:
+            del os.environ['MESA_BINARY_DIR']
+        if 'GYRE_DIR' in os.environ:
+            del os.environ['GYRE_DIR']
+        sys.argv = [sys.argv[0]] # Reset sys.argv
