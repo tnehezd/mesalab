@@ -1,0 +1,69 @@
+# example_MESA_base.yaml
+# Configuration for mesalab - Example Analysis Workflow for analyzing blue loop crossings.
+
+# --- Required Input/Output Paths ---
+# These are essential for mesalab to find your MESA data and save results.
+# IMPORTANT: Replace these with your actual paths!
+# This setup does not need the installation of MESASDK or GYRE.
+
+# --- General Settings ---
+general_settings:
+  # The base directory containing your MESA run subdirectories (e.g., '1.0M_solar/Z0.01/'),
+  # each with its 'LOGS' and 'profiles.data' files.
+  input_dir: MESA_grid
+
+  # The base directory where all mesalab outputs (analysis results, plots) will be saved.
+  output_dir: MESA_grid_base_output
+
+  # The common part of the MESA inlist filename (i.e., 'inlist_project' in this case).
+  inlist_name: "inlist_project"
+
+  # If you've run a full analysis before and the 'detail_z*.csv' files exist,
+  # set this to 'false' to skip re-processing the detailed MESA profiles, speeding things up.
+  # Set to 'true' to force a complete reanalysis from scratch, recalculating all derived quantities.
+  force_reanalysis: True
+
+  # Set to 'true' for highly verbose logging output (DEBUG level) suitable for development and troubleshooting.
+  # Set to 'false' to reduce log verbosity, showing only INFO, WARNING, ERROR, and CRITICAL messages for regular operation.
+  debug: False
+
+# --- Analysis Options ---
+blue_loop_analysis:
+  # This is CRITICAL for blue loop analyzis and plotting. Setting this to 'true' ensures
+  # the detailed blue loop analysis data is generated and processed.
+  analyze_blue_loop: True
+
+  # Defines the columns saved in the detailed blue loop CSV files.
+  # 'all' saves all relevant columns from the blue loop phase.
+  # 'summary' saves only a condensed set of key columns (e.g., star_age, log_Teff, log_L).
+  blue_loop_output_type: "summary"
+
+# --- Plotting Specific Settings ---
+plotting_settings:
+  # Set to 'true' to enable heatmap generation for cross-grid data (if applicable).
+  generate_heatmaps: True
+
+  # This controls the generation of the main HR diagrams for your MESA tracks.
+  # Options:
+  #   - 'none': (or omit this line entirely) Does NOT generate HR diagrams.
+  #   - 'all': Generates standard HRDs with full evolutionary tracks (including pre-main sequence).
+  #   - 'drop_zams': Generates HRDs where the pre-main sequence (ZAMS) phase is trimmed,
+  #                  focusing on the post-ZAMS evolution.
+  generate_hr_diagrams: "all"
+
+  # Set to 'true' to generate specific blue loop HRD/CMD/logg-L plots
+  # that include bolometric corrections, providing detailed visual analysis
+  # of the blue loop phase. Requires 'analyze_blue_loop: True'.
+  generate_blue_loop_plots_with_bc: True
+
+
+# --- GYRE Workflow Specific Settings ---
+# This section controls the execution of the GYRE pulsation analysis.
+gyre_workflow:
+  # Set to 'false', all other GYRE settings in this section will be ignored.
+  run_gyre_workflow: False
+
+# --- RSP Workflow Specific Settings ---
+rsp_workflow:
+  # Set to 'false', all other RSP settings in this section will be ignored.
+  run_rsp_workflow: False
