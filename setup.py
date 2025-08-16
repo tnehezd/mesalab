@@ -67,5 +67,5 @@ setup(
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Science/Research",
     ],
-    python_requires='>=3.7',
+    python_requires='>=3.9',
 )
