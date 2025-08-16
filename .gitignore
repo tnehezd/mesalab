@@ -27,6 +27,7 @@ env/
 output/
 my_settings.yaml
 
+
 *.h5
 detail*.*
 
@@ -35,3 +36,5 @@ docs/_build/
 plot_loop.py
 
 example/MESA_grid/output/
+nad_conv_high_output/
+nad_conv_mid_output/
