@@ -45,7 +45,7 @@ extensions = [
     'sphinx.ext.mathjax',     # For rendering LaTeX math equations
     'sphinx.ext.intersphinx', # For linking to other Sphinx docs (e.g., NumPy, Pandas)
     'myst_parser', 
-#    'sphinx.ext.autosummary',
+    'nbsphinx',
 ]
 
 myst_enable_extensions = [

@@ -30,7 +30,7 @@ In your Colab notebook, you will use shell commands (prefixed with ``!``) to pre
 
 First, clone the ``mesalab`` repository from GitHub. This will give you access to the source code and the ``example/`` directory containing the sample MESA data and configuration files.
 
-.. code-block:: ipython
+.. code-block:: jupyter
 
     # Clone the mesalab repository from GitHub
     !git clone https://github.com/YOUR_USERNAME/mesalab.git # <--- REPLACE WITH YOUR REPO URL
@@ -44,7 +44,7 @@ You should now see the ``mesalab`` directory as your current working directory i
 
 Now, install ``mesalab`` and all its required Python packages.
 
-.. code-block:: ipython
+.. code-block:: jupyter
 
     # Install mesalab in "editable" mode along with its dependencies
     !pip install -e .
@@ -92,7 +92,7 @@ Pay attention to these key settings:
 
 Now, let's execute ``mesalab`` using the provided example configuration. We need to run the command from the directory where ``example_config.yaml`` is located.
 
-.. code-block:: ipython
+.. code-block:: jupyter
 
     # Change directory to the example folder where the config file and LOGS are
     %cd example
@@ -113,7 +113,7 @@ Once ``mesalab`` completes its run, all generated results will be saved into the
 
 You can navigate to the output directory to explore the generated files:
 
-.. code-block:: ipython
+.. code-block:: jupyter
 
     # Navigate to the output directory
     %cd mesalab_example_output
@@ -122,7 +122,7 @@ You can navigate to the output directory to explore the generated files:
 
 You can list the contents of the directory:
 
-.. code-block:: ipython
+.. code-block:: jupyter
 
     !ls -lh
 
@@ -137,7 +137,7 @@ You will typically find:
 
 You can display generated image files directly within your Colab notebook. For example, to view an HR diagram:
 
-.. code-block:: ipython
+.. code-block:: jupyter
 
     # Assuming an HR diagram named 'HRD_all_blue_loop_data.png' was generated in the 'plots' subfolder
     from IPython.display import Image, display

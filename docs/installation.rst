@@ -31,6 +31,8 @@ If you have Conda (Miniconda or Anaconda) installed, you can create a dedicated 
     .. code-block:: bash
 
         conda create -n mesalab-env python=3.9 # Or your preferred Python version, above 3.7
+        conda install -c conda-forge numpy pandas matplotlib scipy pyyaml tqdm numba swifter dask pyarrow h5py astropy
+
 
     This command creates an environment named ``mesalab-env`` with the specified Python version.
 
