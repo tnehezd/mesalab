@@ -16,18 +16,28 @@ The primary goal of this pipeline is to take your MESA outputs and automatically
 To install `mesalab` with pip:
 
 ```console
-$ pip install seismolab
+$ pip install mesalab
 ```
 ----
 
-### Building from source
+Building from Source (Recommended for Developers)
 
-You can also install the current development version of `mesalab` with cloning the GitHub repository and install the code with pip:
+For scientific packages with complex dependencies like mesalab, we highly recommend using a conda environment to build from source. This ensures all binary dependencies are handled correctly, avoiding common compiler errors.
 
+Step 1: Set up the conda environment
+Create a dedicated environment with all the necessary scientific packages. The conda-forge channel is required for some dependencies.
+```console
+$ conda create --name mesalab_env python=3.11
+$ conda activate mesalab_env
+$ conda install -c conda-forge numpy pandas matplotlib scipy pyyaml tqdm numba swifter dask pyarrow h5py astropy
+```
+
+Step 2: Install mesalab from source
+Clone the repository and install the project in "editable" mode.
 ```console
 $ git clone https://github.com/konkolyseismolab/mesalab
 $ cd mesalab
-$ pip install .
+$ pip install -e .
 ```
 
 ---- 
