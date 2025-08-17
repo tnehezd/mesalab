@@ -10,7 +10,7 @@ import logging
 import pandas as pd # Ensure pandas is imported as it's used for DataFrames
 
 # Configure logging for better feedback during execution
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message:s)')
+logging.basicConfig(level=logging.WARNING, format='%(levelname)s: %(message:s)')
 
 def generate_all_hr_diagrams(all_history_data_flat: list, model_name: str, output_dir: str,
                              logT_blue_edge: list, logL_blue_edge: list,

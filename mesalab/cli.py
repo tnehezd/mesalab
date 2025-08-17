@@ -38,7 +38,7 @@ logging.getLogger('numba').setLevel(logging.WARNING)
 # Logger for cli.py itself (distinct from root_logger for finer control).
 cli_logger = logging.getLogger(__name__)
 # Set cli_logger to DEBUG initially to capture early debug messages specific to cli.py.
-cli_logger.setLevel(logging.DEBUG)
+cli_logger.setLevel(logging.WARNING)
 
 
 class DummyModule:
@@ -136,7 +136,7 @@ def main():
     
     # --- Final Logging Setup (based on parsed config) ---
     if not config.general_settings.get('debug', False):
-        root_logger.setLevel(logging.INFO)
+        root_logger.setLevel(logging.WARNING)
         cli_logger.setLevel(logging.WARNING)
         cli_logger.info("Debug mode is OFF. General logging level is INFO.")
     else:

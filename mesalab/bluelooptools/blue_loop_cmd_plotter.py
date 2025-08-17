@@ -16,7 +16,7 @@ import logging # Import the logging module
 # This ensures that if the module is run directly, it has a basic logging setup.
 # When run via cli.py, the root logger configured in cli.py will take precedence.
 logging.basicConfig(
-    level=logging.INFO, # Default for this module if run standalone; cli.py will override
+    level=logging.WARNING, # Default for this module if run standalone; cli.py will override
     format='%(asctime)s - %(levelname)s - %(name)s: %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout)
