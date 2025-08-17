@@ -1,6 +1,7 @@
 &controls
   initial_mass = 9.1
   initial_Z = 0.0449043 
+  initial_Y = 0.256d0
 / ! end of controls namelist
 
 ! Dummy inlist file for MIST data.
