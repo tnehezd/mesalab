@@ -1,153 +1,191 @@
 Tutorial 2: Running an Example Analysis in Google Colab
 =======================================================
 
-This tutorial will guide you through running a full ``mesalab`` analysis within a `Google Colab <https://colab.research.google.com/>`_ notebook environment. By following these steps, you will learn how to:
 
-* Set up ``mesalab`` in Colab.
-* Access and utilize the provided example MESA data.
-* Configure ``mesalab`` using a YAML file within the Colab environment.
-* Execute the analysis pipeline.
-* Inspect and visualize the generated output directly in Colab.
+.. include:: colab_notebooks/mesalab_mesa_grid_base_tutorial.ipynb
+   :start-after: Introduction
 
----
+This is the conclusion of my page, written after the notebook content.
 
-1.  Open a New Google Colab Notebook
-------------------------------------
 
-First, open your web browser and navigate to `Google Colab <https://colab.research.google.com/>`_.
 
-* Sign in with your Google account.
-* Click on **"File" -> "New notebook"** to create a fresh notebook.
 
----
+2) MESA Grid: ``example/MESA_grid``
+-----------------------------------
 
-2.  Set up ``mesalab`` and Get Example Data
--------------------------------------------
+This set of runs are **actual MESA stellar evolution outputs**, providing standard ``profile``, ``history``, and ``inlist`` files for demonstrating the analysis.
 
-In your Colab notebook, you will use shell commands (prefixed with ``!``) to prepare the environment.
+* **Grid Structure & Parameters:** It contains a **2x2 grid** of models with initial masses of **4 and 5 solar masses** and metallicities (Z) of **0.0090 and 0.0100**.
 
-**2.1 Clone the ``mesalab`` repository**
+* **Evolutionary Coverage:** Simulations cover stellar evolution from the **pre-main sequence (pre-MS)** through to **after the blue loop phase**.
 
-First, clone the ``mesalab`` repository from GitHub. This will give you access to the source code and the ``example/`` directory containing the sample MESA data and configuration files.
+* **Blue Loop Behavior:** A key feature is the differing blue loop behavior: **5 Msun models exhibit blue loop crossings**, while **4 Msun models do not**. This highlights `mesalab`'s capability to identify and filter profiles based on evolutionary characteristics.
 
-.. code-block:: jupyter
+* **Location:** These models are found in the ``example/MESA_grid`` directory.
 
-    # Clone the mesalab repository from GitHub
-    !git clone https://github.com/YOUR_USERNAME/mesalab.git # <--- REPLACE WITH YOUR REPO URL
+* **YAML Configuration File:** The corresponding ``example_MESA.yaml`` configuration file set up is responsible to identify blue loops, generate plots, and run GYRE on the relevant stellar profiles.
 
-    # Navigate into the cloned directory
-    %cd mesalab
+----
 
-You should now see the ``mesalab`` directory as your current working directory in Colab's file explorer (left sidebar).
+Run MESA grid example
+~~~~~~~~~~~~~~~~~~~~~
 
-**2.2 Install ``mesalab`` and its dependencies**
+You can easily run your first example by executing `mesalab` with the provided configuration file:
 
-Now, install ``mesalab`` and all its required Python packages.
+.. code-block:: console
 
-.. code-block:: jupyter
+    $ mesalab --config example/example_MESA.yaml
 
-    # Install mesalab in "editable" mode along with its dependencies
-    !pip install -e .
 
-    # If you also need specific development or visualization dependencies:
-    # !pip install -r requirements.txt # Or specific packages like holoviews, pymultinest if needed
-    # (Optional: If holoviews/PyMultiNest warnings persist and you need them, install them here)
-    # !pip install holoviews pymultinest # Adjust based on actual needs
+Upon execution, you'll see terminal output similar to this:
 
-You might see messages about Holoviews or PyMultiNest not being imported if they are not specifically listed in your `requirements.txt` or installed separately. Install them if you intend to use the features that rely on them.
+.. code-block:: console
 
----
+    ================================================================================
+                       mesalab CLI - Starting Analysis Workflow
+                                  Version: 1.0.0.
+    ================================================================================
 
-3.  Examine the Example Data and Configuration
-----------------------------------------------
+    ======================================================================
+        Starting MESA Analysis Workflow...
+    ======================================================================
 
-The ``example/`` directory, now located at ``mesalab/example/`` within your Colab environment, contains the necessary files for this walkthrough.
+    Performing MESA Run Analysis: 100%|███████████████████████████████████| 4/4 [00:03<00:00,  1.15it/s]
 
-**3.1 Understand the Example Data Structure**
+    ======================================================================
+        MESA Analysis Workflow Completed Successfully.
+    ======================================================================
 
-The ``example/`` directory contains:
+    ======================================================================
+        Starting Plotting Workflow...
+    ======================================================================
 
-* ``LOGS/``: A simplified directory structure of MESA output, including ``history.data`` files and potentially ``profileX.data`` files.
-* ``mesa_inlists/``: (Optional) May contain MESA ``inlist_project`` files.
-* ``gyre_config.in``: An example GYRE configuration file.
-* ``example_config.yaml``: A pre-configured ``mesalab`` YAML file specifically for this example data.
+    ======================================================================
+        Full Instability Strip Crossings Matrix (for Heatmap):
+    ======================================================================
+                4.0  5.0
+    initial_Z
+    0.009       0.0  2.0
+    0.010       0.0  2.0
+    ======================================================================
 
-You can explore these files using Colab's file browser on the left sidebar.
+    Calculating BCs serially: 100%|█████████████████████████████████████████████| 373/373 [00:04<00:00, 88.77it/s]
 
-**3.2 Inspect ``example_config.yaml``**
+    ======================================================================
+        Plotting Workflow Completed Successfully.
+    ======================================================================
 
-Open ``example_config.yaml`` (located at ``mesalab/example/example_config.yaml``) in a text editor (e.g., by clicking on it in the Colab file browser) and review its contents. This file dictates how ``mesalab`` will process the example data.
+    ======================================================================
+        Starting GYRE Workflow...
+    ======================================================================
 
-Pay attention to these key settings:
+    [2025-07-17 01:41:30] GYRE Pipeline: Initializing GYRE workflow from mesalab configuration...
+    [2025-07-17 01:41:30] GYRE Progress: Processing M=5.0, Z=0.009 from run directory: run_5.0MSUN_z0.0090
+    [2025-07-17 01:41:30] GYRE Progress: Searching profiles in: MESA_grid/run_5.0MSUN_z0.0090/LOGS within model range [2073-2246]
+    # ... (GYRE processing details for individual profiles will appear here, showing progress) ...
+    [2025-07-17 01:41:37] GYRE Progress: **profile00012 - SUCCESS**
+    [2025-07-17 01:41:37] GYRE Progress: **profile00014 - SUCCESS**
+    # ... (more profile successes and other GYRE messages) ...
+    [2025-07-17 01:42:05] GYRE Pipeline: All GYRE runs completed.
+    [2025-07-17 01:42:05] GYRE Pipeline: **GYRE pipeline execution complete.**
 
-* ``general_settings:``:
-    * ``input_dir: ./LOGS``: This tells ``mesalab`` where the MESA output is, relative to the ``example_config.yaml`` file.
-    * ``output_dir: ./mesalab_example_output``: Where ``mesalab`` will save all results.
-* ``blue_loop_analysis:``, ``gyre_workflow:``, ``plotting_settings:``: These sections control which analyses and plots are enabled for the example run.
+    ======================================================================
+        GYRE Workflow Completed Successfully.
+    ======================================================================
 
----
+    ================================================================================
+    ║                  mesalab Workflow Finished Successfully!                     ║
+    ================================================================================
 
-4.  Running the Analysis
-------------------------
 
-Now, let's execute ``mesalab`` using the provided example configuration. We need to run the command from the directory where ``example_config.yaml`` is located.
 
-.. code-block:: jupyter
 
-    # Change directory to the example folder where the config file and LOGS are
-    %cd example
+After the workflow completes, you will find the generated plots in the `example/MESA_grid_output/plots` directory. Here are some examples of the plots generated for this grid:
 
-    # Run mesalab with the example configuration file
-    !mesalab --config example_config.yaml
+.. figure:: figs/example_2_CMD.png
+   :alt: Example Gaia Color-Magnitude Diagram for the blue loop crossers
+   :align: center
+   :width: 600px
 
-You will see ``mesalab``'s log messages and progress bars directly in the Colab output cell. Depending on the example data size, this may take a few moments.
+   Gaia Color-Magnitude Diagram (CMD) for the 5 Msun models that undergo blue loop evolution. This plot specifically focuses on models that are currently within the blue loop phase and have crossed the red (cool) boundary of the Instability Strip (IS), indicating evolutionary stages relevant for pulsating stars.
 
----
+.. figure:: figs/example_2_heatmap.png
+   :alt: Example Heatmap of Instability Strip Crossings
+   :align: center
+   :width: 600px
 
-5.  Inspecting and Visualizing the Output
------------------------------------------
+   Heatmap visualizing the number of instability strip crossings for different initial masses and metallicities.
 
-Once ``mesalab`` completes its run, all generated results will be saved into the output directory specified in ``example_config.yaml`` (e.g., ``./mesalab_example_output``, relative to the ``example/`` directory).
 
-**5.1 Navigate to the Output Directory**
+----
 
-You can navigate to the output directory to explore the generated files:
 
-.. code-block:: jupyter
+Understanding GYRE Output
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    # Navigate to the output directory
-    %cd mesalab_example_output
+After the GYRE workflow completes, you can explore its output. For each MESA run that underwent GYRE pulsation analysis, a dedicated ``gyre_output`` directory will be created within its respective run folder.
 
-**5.2 View Generated Files**
+The typical structure within each MESA run directory will look like this:
 
-You can list the contents of the directory:
+.. code-block::
 
-.. code-block:: jupyter
+    example/MESA_grid_output/
+    └── run_5.0MSUN_z0.0100/ # Example MESA run directory for profile00030
+        └── gyre_output/
+            ├── summary.h5
+            └── detail.l<l>.n<n>.TXT  # Multiple detail files, one per mode
 
-    !ls -lh
 
-You will typically find:
+The ``gyre_output`` directory contains:
 
-* ``summary_metrics.csv``: A comprehensive CSV summary for each MESA run.
-* ``detail_files/``: Detailed CSVs for identified blue loops (if enabled).
-* ``plots/``: Generated image files (HR diagrams, heatmaps, etc.).
-* ``gyre_inputs/``: GYRE input files (if the workflow was enabled).
+* ``summary.h5``: This is a binary HDF5 file containing an overview of all calculated pulsation modes for a *specific stellar profile*. It's data should look like this:
 
-**5.3 Display Plots Directly in the Notebook (Optional)**
+    .. code-block:: text
 
-You can display generated image files directly within your Colab notebook. For example, to view an HR diagram:
+                E_norm         eta           freq           l  n_g n_p n_pg          omega         
+        ---------------------- --- ----------------------- --- --- --- ---- -----------------------
+        7.716313969427929e-06  0.0 (0.3288290815023021+0j)   0   0   2    2 (4.1285738058857735+0j)
+        4.977767116023725e-06  0.0 (0.4253575871382588+0j)   0   0   3    3  (5.340525796473679+0j)
+        3.5467134221115035e-06 0.0 (0.5281812006857637+0j)   0   0   4    4  (6.631515253912462+0j)
+        2.8337113271118767e-06 0.0 (0.635019445275698+0j)    0   0   5    5  (7.972909926383766+0j)
+        2.4590763873617003e-06 0.0 (0.7390031628616821+0j)   0   0   6    6  (9.278464929921713+0j)
+        2.6585877070418085e-06 0.0 (0.8449905263159454+0j)   0   0   7    7 (10.609176467091832+0j)
+        3.5417203213359843e-06 0.0 (0.9541649016993462+0j)   0   0   8    8 (11.979902147504905+0j)
+        4.947878175758324e-06  0.0 (1.0683611742967478+0j)   0   0   9    9 (13.413679651676546+0j)
+        7.228378461640029e-06  0.0 (1.1830569761877034+0j)   0   0  10   10 (14.853728935543636+0j)
+* ``detail.l<l>.n<n>.TXT``: These are plain text files, each containing detailed information about the eigenfunction (e.g., displacement, velocity, luminosity perturbations) of a specific pulsation mode in the star's interior. The filename indicates the spherical harmonic degree (`l`) and the radial order (`n`). For example, inspecting a ``detail.l0.n+10.TXT`` file (for a 5 Msun, Z=0.0100 model at a specific evolutionary stage) you should see:
 
-.. code-block:: jupyter
+    .. code-block:: text
 
-    # Assuming an HR diagram named 'HRD_all_blue_loop_data.png' was generated in the 'plots' subfolder
-    from IPython.display import Image, display
-    display(Image(filename='plots/HRD_all_blue_loop_data.png')) # Adjust filename as per your generated plots
+             Gamma_1                P                   T         dW_dx ...          rho                    x           xi_h             xi_r           
+        ----------------- --------------------- ----------------- ----- ... --------------------- --------------------- ---- ---------------------------
+        1.606969163191305 4.521157801068377e+19 147308873.3222435   0.0 ...      5315.50896647388                   0.0   0j                          0j
+        1.606971014744742 4.520751437574627e+19 147304132.5888782   0.0 ...     5315.215595668408 1.208472088924861e-05   0j (-2.981450615162198e-08+0j)
+        1.606972222965719 4.520489787509158e+19 147301039.0453129   0.0 ...     5315.024158263152 1.522589262621941e-05   0j (-3.756430947851294e-08+0j)
+        1.606974103631016 4.520082534000535e+19 147296223.7726631   0.0 ...     5314.726179017575 1.918363197076153e-05   0j  (-4.73289618981165e-08+0j)
+        # ... (approximately 1240 more rows) ...
+        1.476818050225248      1131.83485879053  6028.82736586096  -0.0 ... 2.834199661473333e-09    0.9999996951714716   0j      (371.9168322490516+0j)
+        1.476826592953945     1131.761019649602 6028.778110862875  -0.0 ... 2.834038079040092e-09    0.9999998013548269   0j      (371.9271310542792+0j)
+        1.476830863819082     1131.724100088799 6028.753484881346  -0.0 ... 2.833957286079444e-09     0.999999854448763   0j      (371.9322807595553+0j)
+        1.476835134309931     1131.687180535459 6028.728860071846  -0.0 ... 2.833876491880485e-09     0.999999907544212   0j      (371.9374306673092+0j)
+        1.476837724407599     1131.664786712097 6028.713924351446  -0.0 ... 2.833827484927481e-09     0.999999939750376   0j      (371.9405544796087+0j)
+        1.476839019409059     1131.653589801338 6028.706456636452  -0.0 ... 2.833802981287909e-09    0.9999999558536716   0j      (371.9421164141642+0j)
+        1.476840314376306     1131.642392891255 6028.698989028436  -0.0 ... 2.833778477534831e-09    0.9999999719571027   0j      (371.9436783669861+0j)
+        1.476841158114899     1131.635097354881 6028.694123442688  -0.0 ... 2.833762511636029e-09    0.9999999824496407   0j      (371.9446960938195+0j)
+        1.476842001837285     1131.627801818827 6028.689257907953  -0.0 ... 2.833746545684138e-09    0.9999999929422394   0j      (371.9457138287099+0j)
 
-    # You can also view CSV files directly
-    import pandas as pd
-    summary_df = pd.read_csv('summary_metrics.csv')
-    print(summary_df.head())
 
----
+.. tip::
 
-This concludes the walkthrough of using ``mesalab`` with example data in Google Colab. You are now equipped to adapt these steps for your own MESA simulation grids and integrate ``mesalab`` into your Colab-based workflows.
+    You can access the data of GYRE output files using various tools. For Python users, the ``pygyre`` `library <https://pygyre.readthedocs.io/en/stable/index.html>`_ is one of the most convenient options. 
+
+
+For instance, to load the ``summary.h5`` file shown above into a Python object, you would use:
+
+.. code-block:: python
+
+    >>> import pygyre
+    >>> import numpy
+    >>> s = pygyre.read_output('example/MESA_grid_output/run_5.0MSUN_z0.0100/profile00030/summary.h5')
+    >>> print(s) 
+
