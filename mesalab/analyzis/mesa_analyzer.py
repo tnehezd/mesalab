@@ -509,7 +509,8 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                         cross_data_matrix_for_y = pd.DataFrame(np.nan, index=unique_zs, columns=unique_masses)
 
                     # Construct a new filename including the Y value
-                    cross_csv_path_for_y = f"{base_cross_csv_path}_Y{y_val:.3f}.csv" # Example: crossing_count_grid_Y0.256.csv
+#                    cross_csv_path_for_y = f"{base_cross_csv_path}_Y{y_val:.3f}.csv" # Example: crossing_count_grid_Y0.256.csv
+                    cross_csv_path_for_y = f"{base_cross_csv_path}.csv"
                     
                     cross_data_matrix_for_y.to_csv(cross_csv_path_for_y, na_rep='NaN')
                     generated_cross_csv_paths.append(cross_csv_path_for_y)

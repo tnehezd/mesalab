@@ -4,13 +4,12 @@ import os
 import logging
 import pandas as pd
 import numpy as np
+import re
 
 # Import the actual plot generation functions from their respective modules
 from .heatmap_generator import generate_heatmaps_and_time_diff_csv
 from ..bluelooptools.blue_loop_cmd_plotter import generate_blue_loop_plots_with_bc, load_and_group_data
-from .all_hrd_plotter import generate_all_hr_diagrams # Import the HR diagram generator
-# Removed analyze_mesa_grid_directory as it's not used within this file.
-# from ..analyzis.grid_analyzer import analyze_mesa_grid_directory
+from .all_hrd_plotter import generate_all_hr_diagrams
 
 def handle_heatmap_generation(args, summary_df_for_plotting, plots_sub_dir, analysis_results_sub_dir, input_dir):
     """
@@ -18,7 +17,9 @@ def handle_heatmap_generation(args, summary_df_for_plotting, plots_sub_dir, anal
 
     This function processes the YAML or CSV summary files from a previous analysis
     to create Z-M (metallicity-mass) heatmaps of instability strip crossing counts.
-    It saves the figures in a subdirectory and labels them with the model grid name.
+    It now handles cases where the grid is split by Y value, generating a separate
+    heatmap for each Y value found. It saves the figures in a subdirectory and labels
+    them with the model grid name and the initial Y value.
 
     Args:
         args (argparse.Namespace): Runtime arguments (e.g., plot options).
@@ -29,69 +30,70 @@ def handle_heatmap_generation(args, summary_df_for_plotting, plots_sub_dir, anal
 
     Returns:
         None
-
-    Example:
-        >>> from mesalab.plotting import handle_heatmap_generation
-        >>> summary_dir = "results/summary"
-        >>> plot_dir = "results/plots"
-        >>> handle_heatmap_generation(args, None, plot_dir, summary_dir, input_dir="grid_z001")
-        Heatmaps saved to results/plots showing crossing frequencies by Z and M.
     """
-    # FIX 1: Access generate_heatmaps from plotting_settings
     if not args.plotting_settings.generate_heatmaps:
         logging.debug("Heatmap generation not requested. Skipping.")
         return
 
     logging.info("Attempting to generate heatmaps...")
-    try:
-        # --- MODIFICATION START ---
-        # Load the cross_data_matrix directly from the saved CSV.
-        # This CSV is generated from summary_df_raw (which includes 0 crossings).
-        cross_csv_path = os.path.join(analysis_results_sub_dir, "crossing_count_grid.csv")
-        
-        if not os.path.exists(cross_csv_path):
-            logging.warning(f"'{cross_csv_path}' not found. Cannot generate heatmaps. Please ensure analysis has been run successfully.")
-            return
+    
+    # Use a regex pattern to find all cross-grid CSV files, including those split by Y.
+    file_pattern = re.compile(r'crossing_count_grid_Y(\d+\.\d+)\.csv')
+    
+    found_files = [f for f in os.listdir(analysis_results_sub_dir) if file_pattern.match(f)]
 
-        cross_data_matrix_loaded = pd.read_csv(cross_csv_path, index_col=0) # Read the CSV
-        
-        # Ensure index and columns are numeric strings for reindexing if they are not already
-        cross_data_matrix_loaded.columns = pd.to_numeric(cross_data_matrix_loaded.columns, errors='coerce')
-        cross_data_matrix_loaded.index = pd.to_numeric(cross_data_matrix_loaded.index, errors='coerce')
-
-        # Drop any NaN columns/indices that might have resulted from conversion
-        cross_data_matrix_loaded.dropna(axis=0, how='all', inplace=True)
-        cross_data_matrix_loaded.dropna(axis=1, how='all', inplace=True)
-
-        # Ensure the columns and index are sorted for consistent plotting
-        unique_zs_for_heatmap = sorted([z for z in cross_data_matrix_loaded.index.unique() if not pd.isna(z)])
-        unique_masses_for_heatmap = sorted([m for m in cross_data_matrix_loaded.columns.unique() if not pd.isna(m)])
-
-        # Reindex to ensure consistent order, and fill potential missing grid points with NaN
-        cross_data_df_final = cross_data_matrix_loaded.reindex(index=unique_zs_for_heatmap, columns=unique_masses_for_heatmap)
-        # --- MODIFICATION END ---
-
-        if cross_data_df_final.empty:
-            logging.warning("Cross data DataFrame is empty after loading from CSV. Cannot generate heatmaps.")
-            return
-
-        generate_heatmaps_and_time_diff_csv(
-            cross_data_df=cross_data_df_final, # Pass the directly loaded and processed DataFrame
-            summary_csv_path=os.path.join(analysis_results_sub_dir, "summary_results.csv"),
-            unique_zs=unique_zs_for_heatmap,
-            unique_masses=unique_masses_for_heatmap,
-            plots_output_dir=plots_sub_dir,
-            analysis_results_output_dir=analysis_results_sub_dir,
-            model_name=os.path.basename(input_dir),
-            # FIX 2: Access blue_loop_output_type from blue_loop_analysis
-            blue_loop_output_type=args.blue_loop_analysis.blue_loop_output_type,
-            # FIX 3: Access analyze_blue_loop from blue_loop_analysis
-            analyze_blue_loop=args.blue_loop_analysis.analyze_blue_loop
+    if not found_files:
+        logging.warning(
+            f"No cross-grid CSV files found in '{analysis_results_sub_dir}' "
+            "matching the pattern 'crossing_count_grid_Y*.csv'. "
+            "Cannot generate heatmaps. Please ensure analysis has been run successfully."
         )
-        logging.info("Heatmaps generated successfully.")
-    except Exception as e:
-        logging.error(f"Error generating heatmaps: {e}.")
+        return
 
+    for cross_csv_filename in found_files:
+        try:
+            # Extract the Y value from the filename
+            y_val = file_pattern.match(cross_csv_filename).group(1)
+            
+            cross_csv_path = os.path.join(analysis_results_sub_dir, cross_csv_filename)
+            logging.info(f"Generating heatmap for Y = {y_val} from file '{cross_csv_filename}'...")
+
+            cross_data_matrix_loaded = pd.read_csv(cross_csv_path, index_col=0)
+
+            # Ensure index and columns are numeric for sorting
+            cross_data_matrix_loaded.columns = pd.to_numeric(cross_data_matrix_loaded.columns, errors='coerce')
+            cross_data_matrix_loaded.index = pd.to_numeric(cross_data_matrix_loaded.index, errors='coerce')
+
+            # Drop any NaN columns/indices that might have resulted from conversion
+            cross_data_matrix_loaded.dropna(axis=0, how='all', inplace=True)
+            cross_data_matrix_loaded.dropna(axis=1, how='all', inplace=True)
+
+            if cross_data_matrix_loaded.empty:
+                logging.warning(f"Cross data DataFrame is empty for Y={y_val}. Skipping heatmap generation.")
+                continue
+
+            # Ensure the columns and index are sorted for consistent plotting
+            unique_zs_for_heatmap = sorted([z for z in cross_data_matrix_loaded.index.unique() if not pd.isna(z)])
+            unique_masses_for_heatmap = sorted([m for m in cross_data_matrix_loaded.columns.unique() if not pd.isna(m)])
+
+            # Reindex to ensure consistent order, and fill potential missing grid points with NaN
+            cross_data_df_final = cross_data_matrix_loaded.reindex(index=unique_zs_for_heatmap, columns=unique_masses_for_heatmap)
+
+            generate_heatmaps_and_time_diff_csv(
+                cross_data_df=cross_data_df_final,
+                summary_csv_path=os.path.join(analysis_results_sub_dir, "summary_results.csv"),
+                unique_zs=unique_zs_for_heatmap,
+                unique_masses=unique_masses_for_heatmap,
+                plots_output_dir=plots_sub_dir,
+                analysis_results_output_dir=analysis_results_sub_dir,
+                model_name=f"{os.path.basename(input_dir)}_Y{y_val}",  # Add Y value to model name for filename
+                blue_loop_output_type=args.blue_loop_analysis.blue_loop_output_type,
+                analyze_blue_loop=args.blue_loop_analysis.analyze_blue_loop
+            )
+            logging.info(f"Successfully generated heatmap for Y={y_val}.")
+
+        except Exception as e:
+            logging.error(f"Error generating heatmap for file '{cross_csv_filename}': {e}.")
 
 def handle_blue_loop_bc_plotting(args, combined_detail_data_for_plotting, blue_loop_plots_bc_sub_dir, detail_files_output_dir):
     """
@@ -109,22 +111,13 @@ def handle_blue_loop_bc_plotting(args, combined_detail_data_for_plotting, blue_l
 
     Returns:
         None
-
-    Example:
-        >>> from mesalab.plotting import handle_blue_loop_bc_plotting
-        >>> detail_dir = "processed/detail_data"
-        >>> cmd_plot_dir = "results/plots/cmd"
-        >>> handle_blue_loop_bc_plotting(args, None, cmd_plot_dir, detail_dir)
-        Plots saved for each Z showing blue loop positions in Gaia CMD.
     """
-    # FIX 4: Access generate_blue_loop_plots_with_bc from plotting_settings
     if not args.plotting_settings.generate_blue_loop_plots_with_bc:
         logging.debug("Blue loop specific plots with BCs not requested. Skipping.")
         return
 
     logging.info("Attempting to generate blue loop specific plots with BCs...")
     try:
-        # FIX 5: Access force_reanalysis from general_settings
         if combined_detail_data_for_plotting.empty and not args.general_settings.force_reanalysis:
             logging.info(f"Detail data not in memory; attempting to load from {detail_files_output_dir} for plotting...")
             combined_detail_data_for_plotting = load_and_group_data(detail_files_output_dir)
@@ -155,23 +148,12 @@ def handle_hr_diagram_generation(args, plots_sub_dir, full_history_data_for_plot
         args (argparse.Namespace): Command-line arguments including force overwrite, limits.
         plots_sub_dir (str): Output directory for saving HR diagrams.
         full_history_data_for_plotting (list): List of DataFrames, each representing
-                                                a full history for a single MESA run.
-                                                (Updated from dict to list to match all_hrd_plotter.py)
+                                            a full history for a single MESA run.
         drop_zams (bool): Whether to skip points before the zero-age main sequence.
 
     Returns:
         None
-
-    Example:
-        >>> from mesalab.plotting import handle_hr_diagram_generation
-        >>> data = [df_z004_m1, df_z004_m2, df_z014_m1] # Example: list of DataFrames
-        >>> output_dir = "results/plots/hr"
-        >>> handle_hr_diagram_generation(args, output_dir, data, drop_zams=True)
-        HR diagrams saved to results/plots/hr for each metallicity.
     """
-    # FIX 6: Access generate_hr_diagrams from plotting_settings
-    # Note: cli.py passes a boolean for drop_zams, so args.plotting_settings.generate_hr_diagrams
-    # will be 'true', 'false', or 'drop_zams'. The check here needs to handle that.
     if not args.plotting_settings.generate_hr_diagrams or args.plotting_settings.generate_hr_diagrams.lower() == 'none':
         logging.debug("HR diagram generation not requested. Skipping.")
         return
@@ -182,7 +164,6 @@ def handle_hr_diagram_generation(args, plots_sub_dir, full_history_data_for_plot
             logging.warning("No full history data available for HR diagram generation. Skipping.")
             return
 
-        # FIX 7: Access input_dir from general_settings
         model_name = os.path.basename(args.general_settings.input_dir)
 
         logT_blue_edge = [3.76, 3.83]
@@ -193,7 +174,7 @@ def handle_hr_diagram_generation(args, plots_sub_dir, full_history_data_for_plot
         logging.info(f"Preparing to generate HR diagrams with drop_zams={drop_zams}.")
 
         generate_all_hr_diagrams(
-            all_history_data_flat=full_history_data_for_plotting, # <--- THIS IS THE CORRECTED LINE!
+            all_history_data_flat=full_history_data_for_plotting,
             model_name=model_name,
             output_dir=plots_sub_dir,
             logT_blue_edge=logT_blue_edge,
