@@ -23,7 +23,7 @@ def parsing_options():
     # 1. Define command-line arguments.
     parser = argparse.ArgumentParser(
         description="Analyze MESA stellar evolution grid runs and generate GYRE input files.",
-        add_help=False # We'll add help manually if needed later, or let default help work
+        add_help=False
     )
 
     parser.add_argument("--config", type=str, default="config.yaml",
@@ -94,9 +94,9 @@ def parsing_options():
             'inlist_name': 'inlist_project',
             'force_reanalysis': False,
             'debug': False,
-            'mesasdk_root': None,    # e.g., /Applications/mesasdk
-            'mesa_dir': None,        # e.g., /Users/tnehezd/Documents/Munka/MESA230501/mesa-r23.05.01
-            'mesa_binary_dir': None, # NEW: Where 'rn' and 'star' executables are found (e.g., star/work/)
+            'mesasdk_root': None,
+            'mesa_dir': None,
+            'mesa_binary_dir': None,
             'gyre_dir': None
         },
         'blue_loop_analysis': {
@@ -107,7 +107,7 @@ def parsing_options():
             'generate_heatmaps': False,
             'generate_hr_diagrams': 'none',
             'generate_blue_loop_plots_with_bc': False,
-            'generate_plots': False # This is an internal flag derived from other plotting settings
+            'generate_plots': False
         },
         'gyre_workflow': {
             'run_gyre_workflow': True,
@@ -125,7 +125,7 @@ def parsing_options():
         }
     }
 
-    final_config_dict = Dict(default_config) # Use addict.Dict for easy access
+    final_config_dict = Dict(default_config)
 
     # 3. Load user-provided YAML configuration
     user_yaml_config = {}
@@ -136,7 +136,7 @@ def parsing_options():
         try:
             with open(resolved_config_file_path, 'r') as f:
                 user_yaml_config = yaml.safe_load(f)
-                if user_yaml_config is None: # Handle empty YAML file
+                if user_yaml_config is None:
                     user_yaml_config = {}
             logger.info(f"Loaded configuration from '{resolved_config_file_path}'.")
         except yaml.YAMLError as e:
@@ -156,11 +156,10 @@ def parsing_options():
     # MESASDK_ROOT (SDK installation dir)
     env_mesasdk_root = os.getenv('MESASDK_ROOT')
     if env_mesasdk_root and os.path.isdir(env_mesasdk_root):
-        # Only update if different to avoid redundant logging/setting
         if final_config_dict.general_settings.mesasdk_root != env_mesasdk_root:
             logger.info(f"MESASDK_ROOT set from $MESASDK_ROOT environment variable: {env_mesasdk_root} (overriding YAML if present).")
             final_config_dict.general_settings.mesasdk_root = env_mesasdk_root
-    
+
     # MESA_DIR (specific MESA release dir)
     env_mesa_dir = os.getenv('MESA_DIR')
     if env_mesa_dir and os.path.isdir(env_mesa_dir):
@@ -182,7 +181,6 @@ def parsing_options():
             logger.info(f"GYRE_DIR set from $GYRE_DIR environment variable: {env_gyre_dir} (overriding YAML if present).")
             final_config_dict.general_settings.gyre_dir = env_gyre_dir
     elif final_config_dict.general_settings.gyre_dir and not os.path.isdir(final_config_dict.general_settings.gyre_dir):
-        # Log error if GYRE_DIR was in YAML but is invalid
         logger.error(f"GYRE_DIR set in config to '{final_config_dict.general_settings.gyre_dir}' but it's not a valid directory. GYRE dependent tasks might fail.")
     else:
         logger.debug("GYRE_DIR not explicitly set in config and $GYRE_DIR not found or not valid.")
@@ -194,26 +192,22 @@ def parsing_options():
         arg_name = arg_action.dest
         cli_value = getattr(cli_args, arg_name, None)
 
-        if arg_name == 'config': # Skip the config file argument itself
+        if arg_name == 'config':
             continue
 
-        # Check if the CLI argument was explicitly provided/set by the user
         cli_set_explicitly = False
         if isinstance(arg_action, (argparse._StoreTrueAction, argparse._StoreFalseAction)):
-            # For boolean flags, check if the value is different from its default
             if cli_value is not None:
                 if cli_value != arg_action.default:
                     cli_set_explicitly = True
         else:
-            # For other arguments, check if a value was provided and it's not the default
             if cli_value is not None and cli_value != arg_action.default:
                 cli_set_explicitly = True
 
         if cli_set_explicitly:
             logger.debug(f"Applying CLI override: --{arg_name} = {cli_value}")
-            # Map CLI arguments to their corresponding config paths
             if arg_name in ['input_dir', 'output_dir', 'inlist_name', 'force_reanalysis', 'debug',
-                            'mesasdk_root', 'mesa_dir', 'mesa_binary_dir', 'gyre_dir']: # Added mesa_binary_dir here
+                            'mesasdk_root', 'mesa_dir', 'mesa_binary_dir', 'gyre_dir']:
                 final_config_dict.general_settings[arg_name] = cli_value
             elif arg_name in ['analyze_blue_loop', 'blue_loop_output_type']:
                 final_config_dict.blue_loop_analysis[arg_name] = cli_value
@@ -231,7 +225,7 @@ def parsing_options():
                 final_config_dict.gyre_workflow.max_concurrent_gyre_runs = cli_value
             elif arg_name == 'gyre_inlist_template_path':
                 final_config_dict.gyre_workflow.gyre_inlist_template_path = cli_value
-            elif arg_name == 'run_rsp_workflow':
+            elif arg_name == 'run_rsp-workflow':
                 final_config_dict.rsp_workflow.run_rsp_workflow = cli_value
             elif arg_name == 'rsp_inlist_template_path':
                 final_config_dict.rsp_workflow.rsp_inlist_template_path = cli_value
@@ -255,61 +249,67 @@ def parsing_options():
         logger.critical("ERROR: 'input_dir' must be specified either via command-line (--input-dir) or in the config file.")
         sys.exit(1)
 
-    # Validate MESASDK_ROOT
-    if final_config_dict.general_settings.mesasdk_root:
-        if not os.path.isdir(final_config_dict.general_settings.mesasdk_root):
-            logger.critical(f"ERROR: Resolved MESASDK_ROOT path is not a valid directory: '{final_config_dict.general_settings.mesasdk_root}'. Please ensure your $MESASDK_ROOT environment variable or config.yaml setting is correct.")
-            sys.exit(1)
-        logger.info(f"Validated MESASDK_ROOT: {final_config_dict.general_settings.mesasdk_root}")
-    else:
-        logger.warning("MESASDK_ROOT not set. Some MESA-related tools might not be found if they are part of the SDK.")
+    # --- Conditional validation for dependencies based on enabled workflows ---
+    is_gyre_or_rsp_workflow_enabled = (
+        final_config_dict.gyre_workflow.get('run_gyre_workflow', False) or
+        final_config_dict.rsp_workflow.get('run_rsp_workflow', False)
+    )
 
-
-    # Validate MESA_DIR (the specific MESA release directory, e.g., mesa-r23.05.01)
-    if final_config_dict.general_settings.mesa_dir:
-        if not os.path.isdir(final_config_dict.general_settings.mesa_dir):
-            logger.critical(f"ERROR: Resolved MESA_DIR (specific MESA release) path is not a valid directory: '{final_config_dict.general_settings.mesa_dir}'. Please ensure your $MESA_DIR environment variable or config.yaml setting is correct.")
-            sys.exit(1)
-        logger.info(f"Validated MESA_DIR (specific release): {final_config_dict.general_settings.mesa_dir}")
-    else:
-        # If MESA_DIR is not set by any means, try to infer it from MESASDK_ROOT if MESASDK_ROOT is known.
-        # This is a fallback if user only set MESASDK_ROOT and didn't set MESA_DIR
+    if is_gyre_or_rsp_workflow_enabled:
+        logger.info("A GYRE or RSP workflow is enabled. Validating required paths.")
+        
+        # Validate MESASDK_ROOT
         if final_config_dict.general_settings.mesasdk_root:
-            logger.info(f"MESA_DIR not set. Attempting to auto-select the latest MESA release within MESASDK_ROOT: {final_config_dict.general_settings.mesasdk_root}")
-            latest_mesa_release = None
-            latest_version_num = 0
-            # Iterate through items in MESASDK_ROOT to find mesa-rYYYY.MM.DD directories
-            for item in os.listdir(final_config_dict.general_settings.mesasdk_root):
-                if item.startswith('mesa-r') and os.path.isdir(os.path.join(final_config_dict.general_settings.mesasdk_root, item)):
-                    try:
-                        # Extract version number (e.g., '230501' from 'mesa-r23.05.01')
-                        version_str = item.replace('mesa-r', '').replace('.', '')
-                        version_num = int(version_str)
-                        if version_num > latest_version_num:
-                            latest_version_num = version_num
-                            latest_mesa_release = os.path.join(final_config_dict.general_settings.mesasdk_root, item)
-                    except ValueError:
-                        continue # Ignore directories not matching mesa-rXXXX.XX pattern
-            
-            if latest_mesa_release:
-                final_config_dict.general_settings.mesa_dir = latest_mesa_release
-                logger.info(f"Auto-selected MESA_DIR (specific release) as the latest found within MESASDK_ROOT: {latest_mesa_release}")
-            else:
-                logger.critical(f"ERROR: MESA_DIR (specific release, e.g., mesa-r23.05.01) could not be determined within MESASDK_ROOT: '{final_config_dict.general_settings.mesasdk_root}'. Please ensure your MESA installation is correct.")
+            if not os.path.isdir(final_config_dict.general_settings.mesasdk_root):
+                logger.critical(f"ERROR: Resolved MESASDK_ROOT path is not a valid directory: '{final_config_dict.general_settings.mesasdk_root}'. Please ensure your $MESASDK_ROOT environment variable or config.yaml setting is correct.")
                 sys.exit(1)
+            logger.info(f"Validated MESASDK_ROOT: {final_config_dict.general_settings.mesasdk_root}")
         else:
-            logger.critical("ERROR: Neither MESA_DIR nor MESASDK_ROOT are set or could be determined. MESA-dependent workflows cannot proceed without at least one of them being valid.")
+            # If MESA_DIR is not set, try to infer it from MESASDK_ROOT
+            if final_config_dict.general_settings.mesasdk_root:
+                logger.info(f"MESA_DIR not set. Attempting to auto-select the latest MESA release within MESASDK_ROOT: {final_config_dict.general_settings.mesasdk_root}")
+                latest_mesa_release = None
+                latest_version_num = 0
+                for item in os.listdir(final_config_dict.general_settings.mesasdk_root):
+                    if item.startswith('mesa-r') and os.path.isdir(os.path.join(final_config_dict.general_settings.mesasdk_root, item)):
+                        try:
+                            version_str = item.replace('mesa-r', '').replace('.', '')
+                            version_num = int(version_str)
+                            if version_num > latest_version_num:
+                                latest_version_num = version_num
+                                latest_mesa_release = os.path.join(final_config_dict.general_settings.mesasdk_root, item)
+                        except ValueError:
+                            continue
+                
+                if latest_mesa_release:
+                    final_config_dict.general_settings.mesa_dir = latest_mesa_release
+                    logger.info(f"Auto-selected MESA_DIR as the latest found within MESASDK_ROOT: {latest_mesa_release}")
+                else:
+                    logger.critical(f"ERROR: MESA_DIR could not be determined within MESASDK_ROOT: '{final_config_dict.general_settings.mesasdk_root}'. Please ensure your MESA installation is correct.")
+                    sys.exit(1)
+            else:
+                logger.critical("ERROR: Neither MESA_DIR nor MESASDK_ROOT are set or could be determined. MESA-dependent workflows cannot proceed without at least one of them being valid.")
+                sys.exit(1)
+                
+        # Validate MESA_DIR
+        if final_config_dict.general_settings.mesa_dir:
+            if not os.path.isdir(final_config_dict.general_settings.mesa_dir):
+                logger.critical(f"ERROR: Resolved MESA_DIR path is not a valid directory: '{final_config_dict.general_settings.mesa_dir}'. Please ensure your $MESA_DIR environment variable or config.yaml setting is correct.")
+                sys.exit(1)
+            logger.info(f"Validated MESA_DIR: {final_config_dict.general_settings.mesa_dir}")
+        else:
+            logger.critical("ERROR: MESA_DIR is not set and could not be determined from MESASDK_ROOT. Cannot proceed with MESA-dependent workflows.")
             sys.exit(1)
 
-    # Validate GYRE_DIR
-    if final_config_dict.general_settings.gyre_dir:
-        if not os.path.isdir(final_config_dict.general_settings.gyre_dir):
-            logger.critical(f"ERROR: Resolved GYRE_DIR path is not a valid directory: '{final_config_dict.general_settings.gyre_dir}'. Please ensure your $GYRE_DIR environment variable or config.yaml setting is correct.")
-            sys.exit(1)
-        logger.info(f"Validated GYRE_DIR: {final_config_dict.general_settings.gyre_dir}")
-    # Else: GYRE_DIR is not strictly required if run_gyre_workflow is False. Validation happens later if workflow enabled.
 
-    # GYRE Workflow validations
+        # Validate GYRE_DIR
+        if final_config_dict.general_settings.gyre_dir:
+            if not os.path.isdir(final_config_dict.general_settings.gyre_dir):
+                logger.critical(f"ERROR: Resolved GYRE_DIR path is not a valid directory: '{final_config_dict.general_settings.gyre_dir}'. Please ensure your $GYRE_DIR environment variable or config.yaml setting is correct.")
+                sys.exit(1)
+            logger.info(f"Validated GYRE_DIR: {final_config_dict.general_settings.gyre_dir}")
+    
+    # --- GYRE Workflow specific validations ---
     if final_config_dict.gyre_workflow.get('run_gyre_workflow', False):
         logger.debug("GYRE workflow enabled. Performing final validation of GYRE parameters.")
         required_gyre_params = [
@@ -330,16 +330,14 @@ def parsing_options():
             if param in ['num_gyre_threads', 'max_concurrent_gyre_runs'] and final_config_dict.gyre_workflow[param] <= 0:
                 logger.critical(f"GYRE workflow parameter 'gyre_workflow.{param}' must be a positive integer.")
                 sys.exit(1)
-
         gyre_template_path_to_check = final_config_dict.gyre_workflow.gyre_inlist_template_path
-        # Resolve relative paths
         if not os.path.isabs(gyre_template_path_to_check):
             gyre_template_path_to_check = os.path.abspath(gyre_template_path_to_check)
         if not os.path.exists(gyre_template_path_to_check):
             logger.critical(f"GYRE inlist template file not found at: '{gyre_template_path_to_check}'. Please ensure the path is correct in your config or via CLI.")
             sys.exit(1)
 
-    # RSP Workflow validations
+    # --- RSP Workflow specific validations ---
     if final_config_dict.rsp_workflow.get('run_rsp_workflow', False):
         logger.debug("RSP workflow enabled. Performing final validation of RSP parameters.")
         required_rsp_params = ['rsp_inlist_template_path', 'rsp_mesa_output_base_dir']
@@ -347,19 +345,16 @@ def parsing_options():
             if getattr(final_config_dict.rsp_workflow, param, None) is None:
                 logger.critical(f"Missing required RSP workflow parameter: 'rsp_workflow.{param}'. Please check config.yaml or CLI arguments.")
                 sys.exit(1)
-
         rsp_template_path_to_check = final_config_dict.rsp_workflow.rsp_inlist_template_path
         if not os.path.isabs(rsp_template_path_to_check):
             rsp_template_path_to_check = os.path.abspath(rsp_template_path_to_check)
         if not os.path.exists(rsp_template_path_to_check):
             logger.critical(f"RSP inlist template file not found at: '{rsp_template_path_to_check}'. Please ensure the path is correct in your config or via CLI.")
             sys.exit(1)
-
         rsp_output_base_dir = final_config_dict.rsp_workflow.rsp_mesa_output_base_dir
         if not os.path.isabs(rsp_output_base_dir):
             rsp_output_base_dir = os.path.abspath(rsp_output_base_dir)
         parent_dir_rsp = os.path.dirname(rsp_output_base_dir)
-        # Ensure parent directory exists and is writable for the base output directory
         if not os.path.exists(parent_dir_rsp):
             logger.critical(f"Parent directory for RSP MESA output base directory does not exist: '{parent_dir_rsp}'. Please create it or provide a valid path.")
             sys.exit(1)
@@ -380,12 +375,10 @@ def parsing_options():
     return final_config_dict
 
 if __name__ == '__main__':
-    # Example usage when running this file directly for testing config parsing
     print("Running config_parser.py directly for testing purposes.")
     print("You can try: python -m mesalab.io.config_parser --input-dir /tmp/test --debug --run-rsp-workflow")
     print("Or with a config file: python -m mesalab.io.config_parser --config your_config.yaml")
 
-    # Create a dummy config.yaml for testing
     dummy_config_content = """
     general_settings:
       input_dir: /path/to/your/mesa_runs
@@ -403,17 +396,11 @@ if __name__ == '__main__':
     with open("test_config.yaml", "w") as f:
         f.write(dummy_config_content)
     
-    # Try parsing with the dummy config
     try:
-        # Simulate command line args
         sys.argv = ['config_parser.py', '--config', 'test_config.yaml', '--input-dir', '/tmp/cli_input', '--force-reanalysis']
-        # Remove --debug from here if you want to test default logging
-        # sys.argv = ['config_parser.py', '--config', 'test_config.yaml', '--input-dir', '/tmp/cli_input', '--debug']
-
-        # Temporarily set environment variables for testing
         os.environ['MESA_DIR'] = '/env/mesa/dir'
         os.environ['MESASDK_ROOT'] = '/env/mesasdk/root'
-        os.environ['MESA_BINARY_DIR'] = '/env/mesa/binary/dir' # New env var
+        os.environ['MESA_BINARY_DIR'] = '/env/mesa/binary/dir'
         os.environ['GYRE_DIR'] = '/env/gyre/dir'
 
         parsed_config = parsing_options()
@@ -422,7 +409,7 @@ if __name__ == '__main__':
         print(f"Input Dir: {parsed_config.general_settings.input_dir}")
         print(f"MESA SDK Root: {parsed_config.general_settings.mesasdk_root}")
         print(f"MESA Dir: {parsed_config.general_settings.mesa_dir}")
-        print(f"MESA Binary Dir: {parsed_config.general_settings.mesa_binary_dir}") # Check this
+        print(f"MESA Binary Dir: {parsed_config.general_settings.mesa_binary_dir}")
         print(f"GYRE Dir: {parsed_config.general_settings.gyre_dir}")
         print(f"Force Reanalysis: {parsed_config.general_settings.force_reanalysis}")
         print(f"RSP workflow enabled: {parsed_config.rsp_workflow.run_rsp_workflow}")
@@ -430,7 +417,6 @@ if __name__ == '__main__':
     except SystemExit as e:
         print(f"Parsing exited with code: {e.code}")
     finally:
-        # Clean up dummy config and env vars
         if os.path.exists("test_config.yaml"):
             os.remove("test_config.yaml")
         if 'MESA_DIR' in os.environ:
@@ -441,4 +427,4 @@ if __name__ == '__main__':
             del os.environ['MESA_BINARY_DIR']
         if 'GYRE_DIR' in os.environ:
             del os.environ['GYRE_DIR']
-        sys.argv = [sys.argv[0]] # Reset sys.argv
+        sys.argv = [sys.argv[0]]
