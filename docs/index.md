@@ -26,6 +26,7 @@ gyre_workflow
 :caption: Tutorials
 tutorial_1
 tutorial_2
+../../colab_notebooks/mesalab_full_tutorial.ipynb
 ```
 
 

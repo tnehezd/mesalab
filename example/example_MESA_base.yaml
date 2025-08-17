@@ -10,7 +10,7 @@
 general_settings:
   # The base directory containing your MESA run subdirectories (e.g., '1.0M_solar/Z0.01/'),
   # each with its 'LOGS' and 'profiles.data' files.
-  input_dir: MESA_grid
+  input_dir: 'MESA_grid'
 
   # The base directory where all mesalab outputs (analysis results, plots) will be saved.
   output_dir: MESA_grid_base_output
