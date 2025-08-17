@@ -79,6 +79,16 @@ def set_environment_variables_for_executables(config_data: dict): # Using dict t
     and resolves specific MESA paths (mesa_star_dir, mesa_binary_dir) based on the config_data.
     Exits if critical MESA paths cannot be resolved.
     """
+
+    is_mesa_dependent_workflow_enabled = (
+        config_data.gyre_workflow.get('run_gyre_workflow', False) or
+        config_data.rsp_workflow.get('run_rsp_workflow', False)
+    )
+
+    if not is_mesa_dependent_workflow_enabled:
+        logger.info("No MESA-dependent workflows are enabled. Skipping path validation and environment variable setup.")
+        return
+
     mesasdk_root_path = config_data.general_settings.get('mesasdk_root')
     mesa_dir_path = config_data.general_settings.get('mesa_dir') # This is your /Users/.../mesa-r23.05.01
     gyre_dir_path = config_data.general_settings.get('gyre_dir')

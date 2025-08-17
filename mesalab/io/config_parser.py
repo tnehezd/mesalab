@@ -4,6 +4,9 @@ import yaml
 import sys
 import logging
 from datetime import datetime
+from typing import Union
+# ADD THIS IMPORT: Import the functions from your utility module
+from .config_paths import find_mesa_star_dir_in_release, find_mesa_binary_dir, set_environment_variables_for_executables
 
 try:
     from addict import Dict
@@ -83,7 +86,7 @@ def parsing_options():
         logging.getLogger().setLevel(logging.DEBUG)
         logger.debug("Debug logging enabled via CLI in config_parser (early stage).")
     else:
-        logging.getLogger().setLevel(logging.INFO)
+        logging.getLogger().setLevel(logging.WARNING)
         logger.info("Default logging level is INFO (early stage).")
 
     # 2. Define default configuration values
@@ -207,7 +210,7 @@ def parsing_options():
         if cli_set_explicitly:
             logger.debug(f"Applying CLI override: --{arg_name} = {cli_value}")
             if arg_name in ['input_dir', 'output_dir', 'inlist_name', 'force_reanalysis', 'debug',
-                            'mesasdk_root', 'mesa_dir', 'mesa_binary_dir', 'gyre_dir']:
+                             'mesasdk_root', 'mesa_dir', 'mesa_binary_dir', 'gyre_dir']:
                 final_config_dict.general_settings[arg_name] = cli_value
             elif arg_name in ['analyze_blue_loop', 'blue_loop_output_type']:
                 final_config_dict.blue_loop_analysis[arg_name] = cli_value
@@ -225,7 +228,7 @@ def parsing_options():
                 final_config_dict.gyre_workflow.max_concurrent_gyre_runs = cli_value
             elif arg_name == 'gyre_inlist_template_path':
                 final_config_dict.gyre_workflow.gyre_inlist_template_path = cli_value
-            elif arg_name == 'run_rsp-workflow':
+            elif arg_name == 'run_rsp_workflow':
                 final_config_dict.rsp_workflow.run_rsp_workflow = cli_value
             elif arg_name == 'rsp_inlist_template_path':
                 final_config_dict.rsp_workflow.rsp_inlist_template_path = cli_value
@@ -256,59 +259,48 @@ def parsing_options():
     )
 
     if is_gyre_or_rsp_workflow_enabled:
-        logger.info("A GYRE or RSP workflow is enabled. Validating required paths.")
+        logger.info("A MESA-dependent workflow is enabled. Validating and setting up required paths.")
         
-        # Validate MESASDK_ROOT
-        if final_config_dict.general_settings.mesasdk_root:
-            if not os.path.isdir(final_config_dict.general_settings.mesasdk_root):
-                logger.critical(f"ERROR: Resolved MESASDK_ROOT path is not a valid directory: '{final_config_dict.general_settings.mesasdk_root}'. Please ensure your $MESASDK_ROOT environment variable or config.yaml setting is correct.")
+        # Validate MESA_DIR as the base for all MESA paths
+        mesa_dir_path = final_config_dict.general_settings.get('mesa_dir')
+        if not mesa_dir_path or not os.path.isdir(mesa_dir_path):
+            logger.critical(f"ERROR: MESA_DIR path is not valid: '{mesa_dir_path}'. This is required for MESA-dependent workflows.")
+            sys.exit(1)
+        logger.info(f"Validated MESA_DIR: {mesa_dir_path}")
+
+        # Autodetect mesa_star_dir if not explicitly set
+        if not final_config_dict.general_settings.get('mesa_star_dir'):
+            detected_star_dir = find_mesa_star_dir_in_release(mesa_dir_path)
+            if not detected_star_dir:
+                logger.critical("ERROR: The MESA 'star' directory could not be resolved from MESA_DIR. Cannot proceed with workflows.")
                 sys.exit(1)
-            logger.info(f"Validated MESASDK_ROOT: {final_config_dict.general_settings.mesasdk_root}")
-        else:
-            # If MESA_DIR is not set, try to infer it from MESASDK_ROOT
-            if final_config_dict.general_settings.mesasdk_root:
-                logger.info(f"MESA_DIR not set. Attempting to auto-select the latest MESA release within MESASDK_ROOT: {final_config_dict.general_settings.mesasdk_root}")
-                latest_mesa_release = None
-                latest_version_num = 0
-                for item in os.listdir(final_config_dict.general_settings.mesasdk_root):
-                    if item.startswith('mesa-r') and os.path.isdir(os.path.join(final_config_dict.general_settings.mesasdk_root, item)):
-                        try:
-                            version_str = item.replace('mesa-r', '').replace('.', '')
-                            version_num = int(version_str)
-                            if version_num > latest_version_num:
-                                latest_version_num = version_num
-                                latest_mesa_release = os.path.join(final_config_dict.general_settings.mesasdk_root, item)
-                        except ValueError:
-                            continue
-                
-                if latest_mesa_release:
-                    final_config_dict.general_settings.mesa_dir = latest_mesa_release
-                    logger.info(f"Auto-selected MESA_DIR as the latest found within MESASDK_ROOT: {latest_mesa_release}")
-                else:
-                    logger.critical(f"ERROR: MESA_DIR could not be determined within MESASDK_ROOT: '{final_config_dict.general_settings.mesasdk_root}'. Please ensure your MESA installation is correct.")
-                    sys.exit(1)
-            else:
-                logger.critical("ERROR: Neither MESA_DIR nor MESASDK_ROOT are set or could be determined. MESA-dependent workflows cannot proceed without at least one of them being valid.")
+            final_config_dict.general_settings.mesa_star_dir = detected_star_dir
+        
+        # Autodetect mesa_binary_dir if not explicitly set
+        if not final_config_dict.general_settings.get('mesa_binary_dir'):
+            detected_binary_dir = find_mesa_binary_dir(final_config_dict.general_settings.mesa_star_dir)
+            if not detected_binary_dir:
+                logger.critical("ERROR: The MESA executable directory could not be resolved. Please ensure MESA is compiled.")
                 sys.exit(1)
-                
-        # Validate MESA_DIR
-        if final_config_dict.general_settings.mesa_dir:
-            if not os.path.isdir(final_config_dict.general_settings.mesa_dir):
-                logger.critical(f"ERROR: Resolved MESA_DIR path is not a valid directory: '{final_config_dict.general_settings.mesa_dir}'. Please ensure your $MESA_DIR environment variable or config.yaml setting is correct.")
+            final_config_dict.general_settings.mesa_binary_dir = detected_binary_dir
+
+        # Validate GYRE_DIR only if the GYRE workflow is enabled
+        if final_config_dict.gyre_workflow.get('run_gyre_workflow', False):
+            gyre_dir_path = final_config_dict.general_settings.get('gyre_dir')
+            if not gyre_dir_path or not os.path.isdir(gyre_dir_path):
+                logger.critical("ERROR: The GYRE workflow is enabled, but GYRE_DIR is not a valid directory. GYRE cannot be executed.")
                 sys.exit(1)
-            logger.info(f"Validated MESA_DIR: {final_config_dict.general_settings.mesa_dir}")
-        else:
-            logger.critical("ERROR: MESA_DIR is not set and could not be determined from MESASDK_ROOT. Cannot proceed with MESA-dependent workflows.")
+            logger.info(f"Validated GYRE_DIR: {gyre_dir_path}")
+
+        # Final check to ensure all critical paths are now resolved
+        if not all([final_config_dict.general_settings.get(p) for p in ['mesa_dir', 'mesa_star_dir', 'mesa_binary_dir']]):
+            logger.critical("ERROR: Critical MESA paths could not be fully resolved. Cannot proceed.")
             sys.exit(1)
 
+        # If we reach this point, all critical paths are resolved and valid.
+        # Now, set the environment variables using the new, safer function.
+        set_environment_variables_for_executables(final_config_dict)
 
-        # Validate GYRE_DIR
-        if final_config_dict.general_settings.gyre_dir:
-            if not os.path.isdir(final_config_dict.general_settings.gyre_dir):
-                logger.critical(f"ERROR: Resolved GYRE_DIR path is not a valid directory: '{final_config_dict.general_settings.gyre_dir}'. Please ensure your $GYRE_DIR environment variable or config.yaml setting is correct.")
-                sys.exit(1)
-            logger.info(f"Validated GYRE_DIR: {final_config_dict.general_settings.gyre_dir}")
-    
     # --- GYRE Workflow specific validations ---
     if final_config_dict.gyre_workflow.get('run_gyre_workflow', False):
         logger.debug("GYRE workflow enabled. Performing final validation of GYRE parameters.")
@@ -368,7 +360,7 @@ def parsing_options():
         logger.setLevel(logging.DEBUG)
         logger.debug("Debug mode enabled after full config merge in config_parser.")
     else:
-        logging.root.setLevel(logging.INFO)
+        logging.root.setLevel(logging.WARNING)
         logger.info("Default logging level is INFO after full config merge in config_parser.")
 
     logger.info(f"Final resolved configuration: {final_config_dict}")
