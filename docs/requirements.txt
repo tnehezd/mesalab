@@ -1,7 +1,7 @@
 # docs/requirements.txt
 Sphinx>=5.0
 sphinx-rtd-theme>=1.0
-myst-parser>=0.17.0 # <--- ADD THIS LINE
+myst-parser>=0.17.0 
 
 # Add any other dependencies your *documented code* uses that aren't in your main setup.py
 # For example, if you import pygyre in functions you're documenting:

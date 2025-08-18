@@ -1,191 +1,272 @@
-Tutorial 2: Running an Example Analysis in Google Colab
-=======================================================
+.. _tutorial_2:
+
+2. Tutorial: Running an Example Analysis in ``mesalab`` with Google Colab  
+=========================================================================
+
+.. image:: https://colab.research.google.com/assets/colab-badge.svg 
+     :target: https://colab.research.google.com/github/tnehezd/mesa_blue_loop/blob/main/docs/colab_notebooks/mesalab_mesa_grid_base_tutorial.ipynb
 
 
-.. include:: colab_notebooks/mesalab_mesa_grid_base_tutorial.ipynb
-   :start-after: Introduction
+This tutorial will guide you through running a full ``mesalab`` analysis
+within a Google Colab environment. We’ll set up ``mesalab``, process a
+sample of real MESA data to identify specific stellar phenomena, and
+inspect the results.
 
-This is the conclusion of my page, written after the notebook content.
+The provided example data allows you to test ``mesalab``\ ’s core
+functionality for filtering MESA outputs **without** needing to install
+the MESA SDK, GYRE, or RSP.
+
+
+.. note:: 
+
+    The full tutorial is available at the following Colab link:
+
+    .. raw:: html
+
+        <a href="https://colab.research.google.com/github/tnehezd/mesa_blue_loop/blob/main/docs/colab_notebooks/mesalab_mesa_grid_base_tutorial.ipynb" target="_blank">
+        <img src="https://colab.research.com/assets/colab-badge.svg" alt="Tutorial: Running an Example Analysis in mesalab with Google Colab"/>
+        </a>
 
 
 
+--------------
 
-2) MESA Grid: ``example/MESA_grid``
------------------------------------
+Prerequisites
+~~~~~~~~~~~~~
 
-This set of runs are **actual MESA stellar evolution outputs**, providing standard ``profile``, ``history``, and ``inlist`` files for demonstrating the analysis.
+-  An active Google account (for Colab access).
 
-* **Grid Structure & Parameters:** It contains a **2x2 grid** of models with initial masses of **4 and 5 solar masses** and metallicities (Z) of **0.0090 and 0.0100**.
+--------------
 
-* **Evolutionary Coverage:** Simulations cover stellar evolution from the **pre-main sequence (pre-MS)** through to **after the blue loop phase**.
+1. Set up ``mesalab`` and Get Example Data
+------------------------------------------
 
-* **Blue Loop Behavior:** A key feature is the differing blue loop behavior: **5 Msun models exhibit blue loop crossings**, while **4 Msun models do not**. This highlights `mesalab`'s capability to identify and filter profiles based on evolutionary characteristics.
+1.1 Clone the ``mesalab`` repository
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-* **Location:** These models are found in the ``example/MESA_grid`` directory.
+First, clone the ``mesalab`` repository from GitHub. This will give you
+access to the source code and the ``example/`` directory containing the
+sample MESA data and configuration files.
 
-* **YAML Configuration File:** The corresponding ``example_MESA.yaml`` configuration file set up is responsible to identify blue loops, generate plots, and run GYRE on the relevant stellar profiles.
+   💡 **Note:** This step is a one-time operation per session. If you’ve
+   already run this cell, you can skip it.
 
-----
+.. code:: console
 
-Run MESA grid example
-~~~~~~~~~~~~~~~~~~~~~
+    !git clone https://github.com/konkolyseismolab/mesalab
 
-You can easily run your first example by executing `mesalab` with the provided configuration file:
+Upon successful connection and cloning, you will see something similar:
 
 .. code-block:: console
 
-    $ mesalab --config example/example_MESA.yaml
+    Cloning into 'mesalab'...
+    remote: Enumerating objects: 17007, done.
+    remote: Counting objects: 100% (1256/1256), done.
+    remote: Compressing objects: 100% (348/348), done.
+    remote: Total 17007 (delta 618), reused 1155 (delta 529), pack-reused 15751 (from 2)
+    Receiving objects: 100% (17007/17007), 861.96 MiB | 22.93 MiB/s, done.
+    Resolving deltas: 100% (8864/8864), done.
+    Updating files: 100% (929/929), done.
 
 
-Upon execution, you'll see terminal output similar to this:
+--------------
+
+1.2 Install ``mesalab`` and its dependencies
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Now, install ``mesalab`` and all its required Python packages.
+
+   💡 **Note:** This step is a one-time operation per session. If you’ve
+   already run this cell, you can skip it.
 
 .. code-block:: console
 
+    # Navigate in the main directory
+    %cd mesalab
+    
+    # Install the package
+    !pip install -e .
+
+Upon successfull installation, you will see something similar:
+
+.. code-block:: console
+
+    Obtaining file:///content/mesalab
+      Installing build dependencies ... done
+      Checking if build backend supports build_editable ... done
+      Getting requirements to build editable ... done
+      Preparing editable metadata (pyproject.toml) ... done
+      ... 
+    (Check dependencies)
+      ...
+    Building wheels for collected packages: mesalab
+      Building editable for mesalab (pyproject.toml) ... done
+      Created wheel for mesalab: filename=mesalab-1.0.0.editable-py3-none-any.whl size=4567 sha256=4743ff9c2aa1d4dfe9976940b9330515421f82c261cd1c4487a2faab7463d1b4
+      Stored in directory: /tmp/pip-ephem-wheel-cache-3_j9zmho/wheels/63/36/82/a810ed5c505fd0aa9429ceb5fa4bdd5aec5db1b8aa04ffb789
+    Successfully built mesalab
+    Installing collected packages: mesalab
+      Attempting uninstall: mesalab
+        Found existing installation: mesalab 1.0.0
+        Uninstalling mesalab-1.0.0.:
+          Successfully uninstalled mesalab-1.0.0.
+    Successfully installed mesalab-1.0.0.
+
+
+--------------
+
+2. Examine the Example Data and Configuration
+---------------------------------------------
+
+Once you have successfully installed the package, navigate to the
+``example/`` directory within ``mesalab/``.
+
+.. code-block:: console
+
+    %cd example/
+
+
+This directory contains two pre-defined datasets. In this tutorial, we
+will focus on the ``MESA_grid`` dataset, which consists of real stellar
+evolution outputs from MESA. It is designed to demonstrate
+``mesalab``\ ’s core blue loop filtering and analysis capabilities.
+
+2.1. Dataset Overview
+^^^^^^^^^^^^^^^^^^^^^
+
+-  **Grid Parameters**: The dataset includes a 2x2 grid of models with
+   masses of 4 and 5 M⊙ and metallicities (Z) of 0.0090 and 0.0100.
+
+-  **Evolutionary Coverage**: The simulations cover stellar evolution
+   from the pre-main sequence (pre-MS) to a point after the blue loop
+   phase.
+
+-  **Key Feature**: A defining characteristic of this dataset is the
+   differing blue loop behavior: models with 5 M⊙ exhibit blue loop
+   crossings, while models with 4 M⊙ do not.
+
+This example dataset is located in the ``example/MESA_grid`` directory.
+
+The corresponding ``example_MESA_base.yaml`` configuration file is set
+up to identify blue loop crossers and generate plots. It also prepares
+filtered output files, which can be used as input for a subsequent GYRE
+workflow.
+
+3. Run the ``MESA_grid`` Example
+--------------------------------
+
+You can easily run your first example by executing ``mesalab`` with the
+provided configuration file:
+
+.. code-block:: console
+
+    ! mesalab --config example_MESA_base.yaml
+
+
+.. code-block:: console
+
+    
     ================================================================================
-                       mesalab CLI - Starting Analysis Workflow
-                                  Version: 1.0.0.
+                        mesalab CLI - Starting Analysis Workflow                    
+                                  Version: 0.1.0.dev0                               
     ================================================================================
-
+    
+    2025-08-17 23:12:18,595 - WARNING: PyMultiNest not imported.  MultiNest fits will not work.
+    
     ======================================================================
-        Starting MESA Analysis Workflow...
+            Starting MESA Analysis Workflow...
     ======================================================================
-
-    Performing MESA Run Analysis: 100%|███████████████████████████████████| 4/4 [00:03<00:00,  1.15it/s]
-
+    
+    Performing MESA Run Analysis: 100% 4/4 [00:02<00:00,  1.92it/s]
+    
     ======================================================================
-        MESA Analysis Workflow Completed Successfully.
+            MESA Analysis Workflow Completed Successfully.
     ======================================================================
-
+    
+    
     ======================================================================
-        Starting Plotting Workflow...
+            MESA RSP workflow is disabled in configuration.
     ======================================================================
-
+    
+    
     ======================================================================
-        Full Instability Strip Crossings Matrix (for Heatmap):
+            Starting Plotting Workflow...
     ======================================================================
-                4.0  5.0
-    initial_Z
-    0.009       0.0  2.0
-    0.010       0.0  2.0
+    
+    
     ======================================================================
-
-    Calculating BCs serially: 100%|█████████████████████████████████████████████| 373/373 [00:04<00:00, 88.77it/s]
-
+      Full Instability Strip Crossings Matrix (for Heatmap):
     ======================================================================
-        Plotting Workflow Completed Successfully.
+               4.0  5.0
+    initial_Z          
+    0.009      0.0  2.0
+    0.010      0.0  2.0
     ======================================================================
-
+    
+    Calculating BCs serially: 100% 373/373 [00:02<00:00, 176.61it/s]
+    
     ======================================================================
-        Starting GYRE Workflow...
+            Plotting Workflow Completed Successfully.
     ======================================================================
-
-    [2025-07-17 01:41:30] GYRE Pipeline: Initializing GYRE workflow from mesalab configuration...
-    [2025-07-17 01:41:30] GYRE Progress: Processing M=5.0, Z=0.009 from run directory: run_5.0MSUN_z0.0090
-    [2025-07-17 01:41:30] GYRE Progress: Searching profiles in: MESA_grid/run_5.0MSUN_z0.0090/LOGS within model range [2073-2246]
-    # ... (GYRE processing details for individual profiles will appear here, showing progress) ...
-    [2025-07-17 01:41:37] GYRE Progress: **profile00012 - SUCCESS**
-    [2025-07-17 01:41:37] GYRE Progress: **profile00014 - SUCCESS**
-    # ... (more profile successes and other GYRE messages) ...
-    [2025-07-17 01:42:05] GYRE Pipeline: All GYRE runs completed.
-    [2025-07-17 01:42:05] GYRE Pipeline: **GYRE pipeline execution complete.**
-
+    
+    
     ======================================================================
-        GYRE Workflow Completed Successfully.
+            GYRE workflow is disabled in configuration.
     ======================================================================
-
+    
+    
     ================================================================================
-    ║                  mesalab Workflow Finished Successfully!                     ║
+    ║                   mesalab Workflow Finished Successfully!                    ║
     ================================================================================
+    
 
 
+--------------
 
+3.1. Checking the Ouput
+^^^^^^^^^^^^^^^^^^^^^^^
 
-After the workflow completes, you will find the generated plots in the `example/MESA_grid_output/plots` directory. Here are some examples of the plots generated for this grid:
-
-.. figure:: figs/example_2_CMD.png
-   :alt: Example Gaia Color-Magnitude Diagram for the blue loop crossers
-   :align: center
-   :width: 600px
-
-   Gaia Color-Magnitude Diagram (CMD) for the 5 Msun models that undergo blue loop evolution. This plot specifically focuses on models that are currently within the blue loop phase and have crossed the red (cool) boundary of the Instability Strip (IS), indicating evolutionary stages relevant for pulsating stars.
-
-.. figure:: figs/example_2_heatmap.png
-   :alt: Example Heatmap of Instability Strip Crossings
-   :align: center
-   :width: 600px
-
-   Heatmap visualizing the number of instability strip crossings for different initial masses and metallicities.
-
-
-----
-
-
-Understanding GYRE Output
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-After the GYRE workflow completes, you can explore its output. For each MESA run that underwent GYRE pulsation analysis, a dedicated ``gyre_output`` directory will be created within its respective run folder.
-
-The typical structure within each MESA run directory will look like this:
-
-.. code-block::
-
-    example/MESA_grid_output/
-    └── run_5.0MSUN_z0.0100/ # Example MESA run directory for profile00030
-        └── gyre_output/
-            ├── summary.h5
-            └── detail.l<l>.n<n>.TXT  # Multiple detail files, one per mode
-
-
-The ``gyre_output`` directory contains:
-
-* ``summary.h5``: This is a binary HDF5 file containing an overview of all calculated pulsation modes for a *specific stellar profile*. It's data should look like this:
-
-    .. code-block:: text
-
-                E_norm         eta           freq           l  n_g n_p n_pg          omega         
-        ---------------------- --- ----------------------- --- --- --- ---- -----------------------
-        7.716313969427929e-06  0.0 (0.3288290815023021+0j)   0   0   2    2 (4.1285738058857735+0j)
-        4.977767116023725e-06  0.0 (0.4253575871382588+0j)   0   0   3    3  (5.340525796473679+0j)
-        3.5467134221115035e-06 0.0 (0.5281812006857637+0j)   0   0   4    4  (6.631515253912462+0j)
-        2.8337113271118767e-06 0.0 (0.635019445275698+0j)    0   0   5    5  (7.972909926383766+0j)
-        2.4590763873617003e-06 0.0 (0.7390031628616821+0j)   0   0   6    6  (9.278464929921713+0j)
-        2.6585877070418085e-06 0.0 (0.8449905263159454+0j)   0   0   7    7 (10.609176467091832+0j)
-        3.5417203213359843e-06 0.0 (0.9541649016993462+0j)   0   0   8    8 (11.979902147504905+0j)
-        4.947878175758324e-06  0.0 (1.0683611742967478+0j)   0   0   9    9 (13.413679651676546+0j)
-        7.228378461640029e-06  0.0 (1.1830569761877034+0j)   0   0  10   10 (14.853728935543636+0j)
-* ``detail.l<l>.n<n>.TXT``: These are plain text files, each containing detailed information about the eigenfunction (e.g., displacement, velocity, luminosity perturbations) of a specific pulsation mode in the star's interior. The filename indicates the spherical harmonic degree (`l`) and the radial order (`n`). For example, inspecting a ``detail.l0.n+10.TXT`` file (for a 5 Msun, Z=0.0100 model at a specific evolutionary stage) you should see:
-
-    .. code-block:: text
-
-             Gamma_1                P                   T         dW_dx ...          rho                    x           xi_h             xi_r           
-        ----------------- --------------------- ----------------- ----- ... --------------------- --------------------- ---- ---------------------------
-        1.606969163191305 4.521157801068377e+19 147308873.3222435   0.0 ...      5315.50896647388                   0.0   0j                          0j
-        1.606971014744742 4.520751437574627e+19 147304132.5888782   0.0 ...     5315.215595668408 1.208472088924861e-05   0j (-2.981450615162198e-08+0j)
-        1.606972222965719 4.520489787509158e+19 147301039.0453129   0.0 ...     5315.024158263152 1.522589262621941e-05   0j (-3.756430947851294e-08+0j)
-        1.606974103631016 4.520082534000535e+19 147296223.7726631   0.0 ...     5314.726179017575 1.918363197076153e-05   0j  (-4.73289618981165e-08+0j)
-        # ... (approximately 1240 more rows) ...
-        1.476818050225248      1131.83485879053  6028.82736586096  -0.0 ... 2.834199661473333e-09    0.9999996951714716   0j      (371.9168322490516+0j)
-        1.476826592953945     1131.761019649602 6028.778110862875  -0.0 ... 2.834038079040092e-09    0.9999998013548269   0j      (371.9271310542792+0j)
-        1.476830863819082     1131.724100088799 6028.753484881346  -0.0 ... 2.833957286079444e-09     0.999999854448763   0j      (371.9322807595553+0j)
-        1.476835134309931     1131.687180535459 6028.728860071846  -0.0 ... 2.833876491880485e-09     0.999999907544212   0j      (371.9374306673092+0j)
-        1.476837724407599     1131.664786712097 6028.713924351446  -0.0 ... 2.833827484927481e-09     0.999999939750376   0j      (371.9405544796087+0j)
-        1.476839019409059     1131.653589801338 6028.706456636452  -0.0 ... 2.833802981287909e-09    0.9999999558536716   0j      (371.9421164141642+0j)
-        1.476840314376306     1131.642392891255 6028.698989028436  -0.0 ... 2.833778477534831e-09    0.9999999719571027   0j      (371.9436783669861+0j)
-        1.476841158114899     1131.635097354881 6028.694123442688  -0.0 ... 2.833762511636029e-09    0.9999999824496407   0j      (371.9446960938195+0j)
-        1.476842001837285     1131.627801818827 6028.689257907953  -0.0 ... 2.833746545684138e-09    0.9999999929422394   0j      (371.9457138287099+0j)
-
-
-.. tip::
-
-    You can access the data of GYRE output files using various tools. For Python users, the ``pygyre`` `library <https://pygyre.readthedocs.io/en/stable/index.html>`_ is one of the most convenient options. 
-
-
-For instance, to load the ``summary.h5`` file shown above into a Python object, you would use:
+After a successful run, you will find the generated plots in the
+``example/MESA_grid_base_output/plots`` directory. Here are some
+examples of the plots generated for this grid:
 
 .. code-block:: python
 
-    >>> import pygyre
-    >>> import numpy
-    >>> s = pygyre.read_output('example/MESA_grid_output/run_5.0MSUN_z0.0100/profile00030/summary.h5')
-    >>> print(s) 
+    >>> from IPython.display import Image
+    >>> Image(filename='MESA_grid_base_output/plots/CMD_Gaia_all_blue_loop_data.png')
 
+
+
+
+.. image:: mesalab_mesa_grid_base_tutorial_files/mesalab_mesa_grid_base_tutorial_14_0.png
+
+
+
+**Figure 1:** Gaia Color-Magnitude Diagram (CMD) for the 5 Msun models
+that undergo blue loop evolution. This plot specifically focuses on
+models that are currently within the blue loop phase and have crossed
+the red (cool) boundary of the Instability Strip (IS), indicating
+evolutionary stages relevant for pulsating stars.
+
+.. code-block:: python
+
+    >>> Image(filename='MESA_grid_base_output/plots/mesa_grid_blue_loop_heatmap.png')
+
+
+
+
+.. image:: mesalab_mesa_grid_base_tutorial_files/mesalab_mesa_grid_base_tutorial_16_0.png
+
+
+
+**Figure 2:** Heatmap visualizing the number of instability strip
+crossings for different initial masses and metallicities.
+
+--------------
+
+3.2. Additional Plots and CSVs
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+You can find more plots and CSV files in the
+``example/MESA_grid_base_output/`` directory. These include HR diagrams
+for each metallicity and a color-magnitude diagram (CMD) of the blue
+loop evolutionary tracks.

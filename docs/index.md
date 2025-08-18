@@ -25,8 +25,8 @@ gyre_workflow
 :maxdepth: 3
 :caption: Tutorials
 tutorial_1
-../../colab_notebooks/mesalab_mesa_grid_base_tutorial.ipynb
 tutorial_2
+tutorial_3
 ```
 
 
