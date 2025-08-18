@@ -3,7 +3,16 @@ import subprocess
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
+from tqdm import tqdm
+import sys
+import shutil
 
+# ---------------------------------------------------------------------
+# Set logging level at the start of the script
+# This will suppress INFO messages but allow WARNING, ERROR, and CRITICAL
+# to be shown, unless overridden by a different logging configuration.
+# ---------------------------------------------------------------------
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 def run_mesa_rsp_single(inlist_path: str, mesa_binary_dir: str) -> dict:
@@ -20,42 +29,40 @@ def run_mesa_rsp_single(inlist_path: str, mesa_binary_dir: str) -> dict:
         dict: A dictionary containing the run status (success/failure) and
               other relevant information.
     """
-    run_dir = os.path.dirname(inlist_path) # The directory of the inlist file will be the run directory
+    run_dir = os.path.dirname(inlist_path)
     
     # Construct the full path to the MESA 'star' executable
     mesa_exe_path = os.path.join(mesa_binary_dir, 'star')
 
-    # Validate that the executable actually exists at the constructed path
+    # Note: The main workflow function should handle validation before spawning threads,
+    # but a final check here is a good practice.
     if not os.path.exists(mesa_exe_path):
-        logger.error(f"MESA executable ('rn') not found at: {mesa_exe_path}. This is critical for RSP run.")
-        return {'status': 'failed', 'inlist': inlist_path, 'error': f"MESA executable 'rn' not found at expected path."}
+        logger.error(f"MESA executable ('star') not found at: {mesa_exe_path}. This is critical for RSP run.")
+        return {'status': 'failed', 'inlist': inlist_path, 'error': f"MESA executable 'star' not found at expected path."}
 
-    logger.info(f"Starting RSP run for: {inlist_path} in directory: {run_dir}. Using executable: {mesa_exe_path}")
     start_time = time.time()
     try:
-        # We run MESA from the inlist_path directory.
-        # subprocess.run with check=True will raise an error for non-zero exit codes.
         result = subprocess.run(
-            [mesa_exe_path, 'inlist_rsp'], # Command: /path/to/star/work/rn inlist_rsp
-            cwd=run_dir,                   # The working directory for the command
-            capture_output=True,           # Capture stdout and stderr
-            text=True,                     # Treat output as text
-            check=True,                    # Raise CalledProcessError for non-zero exit codes
-            timeout=300                    # 5-minute timeout for each run
+            [mesa_exe_path, 'inlist_rsp'],
+            cwd=run_dir,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=300
         )
         end_time = time.time()
         duration = end_time - start_time
-        logger.info(f"Successful RSP run: {inlist_path} (duration: {duration:.2f} sec)")
+        # INFO logs are now suppressed by the logging level setting
         return {'status': 'success', 'inlist': inlist_path, 'duration': duration}
     except subprocess.CalledProcessError as e:
         end_time = time.time()
         duration = end_time - start_time
-        logger.error(f"RSP run error for {inlist_path} (duration: {duration:.2f} sec). Command: '{' '.join(e.cmd)}'. Return code: {e.returncode}. Stderr: {e.stderr}")
+        logger.error(f"RSP run error for {inlist_path} (duration: {duration:.2f} sec). Return code: {e.returncode}. Stderr: {e.stderr}")
         return {'status': 'failed', 'inlist': inlist_path, 'error': e.stderr, 'duration': duration}
     except subprocess.TimeoutExpired as e:
         end_time = time.time()
         duration = end_time - start_time
-        logger.error(f"RSP run timeout for {inlist_path} (duration: {duration:.2f} sec). Command: '{' '.join(e.cmd)}'. Stderr: {e.stderr if e.stderr else 'No stderr output'}")
+        logger.warning(f"RSP run timeout for {inlist_path} (duration: {duration:.2f} sec). Stderr: {e.stderr if e.stderr else 'No stderr output'}")
         return {'status': 'timeout', 'inlist': inlist_path, 'error': "Timeout", 'duration': duration}
     except Exception as e:
         end_time = time.time()
@@ -63,10 +70,9 @@ def run_mesa_rsp_single(inlist_path: str, mesa_binary_dir: str) -> dict:
         logger.error(f"Unexpected error during RSP run for {inlist_path} (duration: {duration:.2f} sec): {e}")
         return {'status': 'error', 'inlist': inlist_path, 'error': str(e), 'duration': duration}
 
-
 def run_mesa_rsp_workflow(
     inlist_paths: list[str],
-    config_data: dict, # Now expects the full config_data object
+    config_data: dict,
     max_workers: int = os.cpu_count() or 1
 ) -> dict:
     """
@@ -86,31 +92,24 @@ def run_mesa_rsp_workflow(
         logger.warning("No RSP inlist files provided for execution.")
         return {'successful': [], 'failed': [], 'timeout': [], 'error': []}
 
-    # Retrieve mesa_binary_dir from config_data
     mesa_binary_dir = config_data.general_settings.get('mesa_binary_dir')
     if not mesa_binary_dir:
         logger.critical("ERROR: 'mesa_binary_dir' is not set in configuration. Cannot run RSP workflow.")
         return {'successful': [], 'failed': [], 'timeout': [], 'error': [], 'initial_error': 'mesa_binary_dir not set'}
     
-    # Basic validation for mesa_binary_dir here, though config_paths.py should have done a more thorough job.
-    # This is a final safeguard before spawning threads.
-    if not os.path.isdir(mesa_binary_dir) or not os.path.exists(os.path.join(mesa_binary_dir, 'rn')):
-        logger.critical(f"ERROR: Configured 'mesa_binary_dir' ('{mesa_binary_dir}') is invalid or 'rn' not found within it. Cannot run RSP workflow.")
+    if not os.path.isdir(mesa_binary_dir) or not os.path.exists(os.path.join(mesa_binary_dir, 'star')):
+        logger.critical(f"ERROR: Configured 'mesa_binary_dir' ('{mesa_binary_dir}') is invalid or 'star' not found within it. Cannot run RSP workflow.")
         return {'successful': [], 'failed': [], 'timeout': [], 'error': [], 'initial_error': 'invalid_mesa_binary_dir'}
 
-
-    logger.info(f"Starting MESA RSP workflow for {len(inlist_paths)} inlist files, "
-                f"using a maximum of {max_workers} parallel workers. MESA binary directory: {mesa_binary_dir}")
+#    print(f"Starting MESA RSP workflow for {len(inlist_paths)} inlist files, "
+#                    f"using a maximum of {max_workers} parallel workers. MESA binary directory: {mesa_binary_dir}")
     
     results = {'successful': [], 'failed': [], 'timeout': [], 'error': []}
     
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # Submit tasks for each inlist file to the thread pool.
-        # Pass the correctly resolved mesa_binary_dir to each single run.
         future_to_inlist = {executor.submit(run_mesa_rsp_single, path, mesa_binary_dir): path for path in inlist_paths}
 
-        # Process results as they complete
-        for future in as_completed(future_to_inlist):
+        for future in tqdm(as_completed(future_to_inlist), total=len(inlist_paths), desc="MESA RSP Workflow"):
             inlist_path = future_to_inlist[future]
             try:
                 result = future.result()
@@ -120,10 +119,10 @@ def run_mesa_rsp_workflow(
                     results['failed'].append(result)
                 elif result['status'] == 'timeout':
                     results['timeout'].append(result)
-                else: # 'error' or any other unexpected status
+                else:
                     results['error'].append(result)
             except Exception as exc:
-                logger.error(f'{inlist_path} generated an unexpected exception during execution: {exc}')
+                logger.error(f'Unexpected exception during execution for {inlist_path}: {exc}')
                 results['error'].append({'status': 'error', 'inlist': inlist_path, 'error': str(exc)})
 
     total_runs = len(inlist_paths)
@@ -132,53 +131,45 @@ def run_mesa_rsp_workflow(
     timeout_count = len(results['timeout'])
     error_count = len(results['error'])
 
-    logger.info("--- MESA RSP Workflow Summary ---")
-    logger.info(f"Total runs: {total_runs}")
-    logger.info(f"Successful runs: {successful_count}")
-    logger.info(f"Failed runs: {failed_count}")
-    logger.info(f"Timed out runs: {timeout_count}")
-    logger.info(f"Runs with unexpected errors: {error_count}")
-    logger.info("---------------------------------")
+    print("--- MESA RSP Workflow Summary ---")
+    print(f"Total runs: {total_runs}")
+    print(f"Successful runs: {successful_count}")
+    print(f"Failed runs: {failed_count}")
+    print(f"Timed out runs: {timeout_count}")
+    print(f"Runs with unexpected errors: {error_count}")
+    print("---------------------------------")
 
     return results
 
 # This __name__ == "__main__" block is for testing purposes only.
-# You can remove or modify it once you integrate the functions into your main script.
 if __name__ == "__main__":
-    logger.info("Example run from rsp_workflow.py for local testing.")
-
-    # >>> IMPORTANT: REPLACE WITH YOUR ACTUAL INLIST PATHS! <<<
-    # These would typically be returned by your generate_mesa_rsp_inlists function.
-    # Create some dummy inlist files and directories for this test to work
+    logger.warning("Example run from rsp_workflow.py for local testing.")
+    
     base_test_dir = "./temp_rsp_test_runs"
     os.makedirs(base_test_dir, exist_ok=True)
     example_inlist_paths = []
-    # Create some dummy run directories and inlist files
-    for i in range(2):
+    
+    for i in range(5): # Create 5 dummy files for a better progress bar demo
         run_dir = os.path.join(base_test_dir, f"test_run_{i}")
         os.makedirs(run_dir, exist_ok=True)
         inlist_file = os.path.join(run_dir, "inlist_rsp")
         with open(inlist_file, "w") as f:
-            f.write(f"&inlist_rsp {i+1} /\n") # Minimal content
+            f.write(f"&inlist_rsp {i+1} /\n")
         example_inlist_paths.append(inlist_file)
-    logger.info(f"Created {len(example_inlist_paths)} dummy inlist files for testing.")
+    logger.warning(f"Created {len(example_inlist_paths)} dummy inlist files for testing.")
     
-    # >>> IMPORTANT: REPLACE WITH YOUR ACTUAL MESA INSTALLATION PATH! <<<
-    # This is the directory where the MESA 'rn' executable is located (e.g., /path/to/mesa/star/work)
-    # Based on your previous output, this should be:
-    your_mesa_binary_dir = "/Users/tnehezd/Documents/Munka/MESA230501/mesa-r23.05.01/star/work"
+    your_mesa_binary_dir = "/path/to/your/mesa/star/work"
 
     if not os.path.isdir(your_mesa_binary_dir):
         logger.error(f"ERROR: 'your_mesa_binary_dir' ('{your_mesa_binary_dir}') is not a valid directory. "
-                     "Please set it to the correct path of your MESA 'star/work' directory for testing!")
+                    "Please set it to the correct path of your MESA 'star/work' directory for testing!")
         sys.exit(1)
     
-    if not os.path.exists(os.path.join(your_mesa_binary_dir, 'rn')):
-        logger.error(f"ERROR: 'rn' executable not found in 'your_mesa_binary_dir' ('{your_mesa_binary_dir}'). "
-                     "Please ensure MESA's 'star' module has been compiled and 'rn' exists in this directory for testing.")
+    if not os.path.exists(os.path.join(your_mesa_binary_dir, 'star')):
+        logger.error(f"ERROR: 'star' executable not found in 'your_mesa_binary_dir' ('{your_mesa_binary_dir}'). "
+                    "Please ensure MESA's 'star' module has been compiled and 'star' exists in this directory for testing.")
         sys.exit(1)
 
-    # Mocking a simplified config_data object for direct testing of this module
     class MockGeneralSettings:
         def __init__(self, mesa_binary_dir):
             self._data = {'mesa_binary_dir': mesa_binary_dir}
@@ -188,22 +179,20 @@ if __name__ == "__main__":
     class MockConfigData:
         def __init__(self, mesa_binary_dir):
             self.general_settings = MockGeneralSettings(mesa_binary_dir)
-            self.rsp_workflow = {'run_rsp_workflow': True} # For run_mesa_rsp_workflow validation
+            self.rsp_workflow = {'run_rsp_workflow': True}
     
     mock_config = MockConfigData(your_mesa_binary_dir)
 
-    rsp_results = run_mesa_rsp_workflow(example_inlist_paths, mock_config, max_workers=2) # Use 2 workers for example
+    rsp_results = run_mesa_rsp_workflow(example_inlist_paths, mock_config, max_workers=2)
 
-    logger.info("\n--- Detailed Results ---")
+    logger.warning("\n--- Detailed Results ---")
     for status_type, results_list in rsp_results.items():
-        if isinstance(results_list, list): # Ensure it's a list before iterating
+        if isinstance(results_list, list):
             for res in results_list:
-                logger.info(f"  {status_type.upper()}: {res.get('inlist', 'N/A')} (Status: {res.get('status', 'N/A')}, Time: {res.get('duration', 'N/A'):.2f} sec, Error: {res.get('error', 'N/A')})")
-        else: # For initial_error if present
-            logger.info(f"  {status_type.upper()}: {results_list}")
+                logger.warning(f"  {status_type.upper()}: {res.get('inlist', 'N/A')} (Status: {res.get('status', 'N/A')}, Time: {res.get('duration', 'N/A'):.2f} sec, Error: {res.get('error', 'N/A')})")
+        else:
+            logger.warning(f"  {status_type.upper()}: {results_list}")
 
-    # Clean up dummy files
-    import shutil
     if os.path.exists(base_test_dir):
-        logger.info(f"Cleaning up dummy test directory: {base_test_dir}")
+        logger.warning(f"Cleaning up dummy test directory: {base_test_dir}")
         shutil.rmtree(base_test_dir)
