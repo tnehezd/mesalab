@@ -21,12 +21,14 @@ def extract_params_from_inlist(inlist_path):
         tuple: A tuple (mass, z, y) where elements are floats or `None`
                if the corresponding parameter is not found.
 
-    Example:
+    Example: 
         Assuming 'my_run/inlist_project' contains:
         initial_mass = 1.0
         initial_Z = 0.014
         initial_Y = 0.28
-        >>> extract_params_from_inlist("my_run/inlist_project")
+        
+        >>> from mesalab.analyzis import data_reader
+        >>> data_reader.extract_params_from_inlist("my_run/inlist_project")
         (1.0, 0.014, 0.28)
     """
     mass = None
@@ -83,7 +85,7 @@ def scan_mesa_runs(input_dir, inlist_name):
 
     Args:
         input_dir (str): Absolute path to the main directory containing MESA run subdirectories.
-        inlist_name (str): Name of the inlist file expected in each subdirectory (e.g., 'inlist_project').
+        inlist_name (str): Name of the inlist file expected in each subdirectory (e.g., 'inlist').
 
     Returns:
         list of dict: Each dictionary represents a valid MESA run and contains:
@@ -96,18 +98,20 @@ def scan_mesa_runs(input_dir, inlist_name):
         Returns an empty list if no valid runs are found.
 
     Example:
-        Given a directory structure like:
-        /path/to/mesa_grid/
-        ├── run_M1.0_Z0.014_Y0.28
-        │   ├── inlist_project
-        │   └── LOGS
-        │       └── history.data
-        └── run_M2.0_Z0.006_Y0.25
-            ├── inlist_project
-            └── LOGS
-                └── history.data
+        Given a directory structure like::
 
-        >>> scan_mesa_runs("/path/to/mesa_grid", "inlist_project")
+            /path/to/mesa_grid/
+            ├── run_M1.0_Z0.014_Y0.28
+            │   ├── inlist
+            │   └── LOGS
+            │       └── history.data
+            └── run_M2.0_Z0.006_Y0.25
+                ├── inlist
+                └── LOGS
+                    └── history.data
+        
+        >>> from mesalab.analyzis import data_reader
+        >>> data_reader.scan_mesa_runs("/path/to/mesa_grid", "inlist")
         [
             {
                 'history_file_path': '/path/to/mesa_grid/run_M1.0_Z0.014_Y0.28/LOGS/history.data',
@@ -190,6 +194,7 @@ def get_data_from_history_file(history_file_path):
 
     Example:
         Assuming a valid 'history.data' file exists at the given path:
+        
         >>> df = get_data_from_history_file('/path/to/some_mesa_run/LOGS/history.data')
         >>> if not df.empty:
         ...     print(df.head())
