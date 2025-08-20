@@ -72,6 +72,9 @@ gyre_workflow:
 
 
 rsp_workflow:
-  run_rsp_workflow: True # Default to disabled
-  rsp_inlist_template_path: "../config/rsp.inlist_template" # Example path
-  rsp_mesa_output_base_dir: "./rsp_mesa_profiles" # Example output directory
+  run_rsp_workflow: true                      # Set to 'true' to enable the RSP workflow
+  rsp_inlist_template_path: "../config/rsp.inlist_template" # Path to the inlist_rsp template
+  rsp_output_subdir: "./rsp_outputs"           # Subdirectory within 'output_dir' to store RSP runs
+  num_rsp_threads: 1                          # Number of OpenMP threads for each individual RSP run
+  enable_rsp_parallel: true                   # Enable parallel execution for multiple RSP runs
+  max_concurrent_rsp_runs: 4                  # Maximum number of concurrent RSP runs

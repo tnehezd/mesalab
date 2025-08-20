@@ -1,13 +1,14 @@
 # config/example_config.yaml - MESA Lab Configuration
 
 general_settings:
-  input_dir: "/path/to/your/mesa_runs_grid"  # Replace with the actual path to your MESA grid directory (REQUIRED)
+  input_dir: "/path/to/your/mesa_runs_grid"   # Replace with the actual path to your MESA grid directory (REQUIRED)
   output_dir: "./mesalab_output"              # Output base directory for all mesalab results
   inlist_name: "inlist_project"               # Inlist filename to identify MESA runs (e.g., "inlist_1.0M_0.02Z")
   force_reanalysis: false                     # Force reanalysis even if summary files exist
   debug: false                                # Enable debug logging (can be overridden by --debug CLI flag)
   mesasdk_root: "/path/to/your/mesasdk"       # Optional: Override MESASDK_ROOT environment variable
   gyre_dir: "/path/to/your/gyre/install/bin"  # Optional: Override GYRE_DIR environment variable; should point to GYRE's 'bin' directory
+  mesa_binary_dir: "/path/to/your/mesa/star/work" # REQUIRED for RSP workflow
 
 blue_loop_analysis:
   analyze_blue_loop: true                     # Perform blue loop analysis
@@ -26,13 +27,16 @@ gyre_workflow:
                                               # You can also use an absolute path like "/home/user/my_gyre_templates/my_custom_gyre.in"
   run_mode: "FILTERED_PROFILES"               # "ALL_PROFILES" or "FILTERED_PROFILES"
   num_gyre_threads: 1                         # Number of OpenMP threads for each individual GYRE run
-  enable_parallel: true                       # Enable/disable parallel execution of multiple GYRE runs
+  enable_gyre_parallel: true                  # Enable/disable parallel execution of multiple GYRE runs
   max_concurrent_gyre_runs: 4                 # Maximum number of concurrent GYRE runs if enable_parallel is true
   mesa_profile_pattern: "profile*.data.GYRE"  # Wildcard pattern for MESA profile files (e.g., "profile*.data.GYRE")
   mesa_profile_base_dir_relative: "LOGS"      # Relative path from a MESA run directory to its LOGS folder (e.g., "LOGS")
 
 
 rsp_workflow:
-  run_rsp_workflow: False, # Default to disabled
-  rsp_inlist_template_path: "config/rsp.inlist_template" # Example path
-  rsp_mesa_output_base_dir: "./rsp_mesa_profiles" # Example output directory
+  run_rsp_workflow: true                      # Set to 'true' to enable the RSP workflow
+  rsp_inlist_template_path: "config/rsp.inlist_template" # Path to the inlist_rsp template
+  rsp_output_subdir: "./rsp_outputs"           # Subdirectory within 'output_dir' to store RSP runs
+  enable_rsp_parallel: true                   # Enable parallel execution for multiple RSP runs
+  num_rsp_threads: 1                          # Number of OpenMP threads for each individual RSP run
+  max_concurrent_rsp_runs: 4                  # Maximum number of concurrent RSP runs

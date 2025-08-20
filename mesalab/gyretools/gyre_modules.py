@@ -194,12 +194,12 @@ def run_gyre_workflow(
             raise ValueError(f"Missing required parameter '{param}' in the 'general_settings' section of your main config.")
 
     # Validate essential GYRE workflow settings (only if GYRE workflow is enabled)
-    required_gyre_params = ['run_mode', 'num_gyre_threads', 'enable_parallel', 'max_concurrent_gyre_runs']
+    required_gyre_params = ['run_mode', 'num_gyre_threads', 'enable_gyre_parallel', 'max_concurrent_gyre_runs']
     for param in required_gyre_params:
         if getattr(gyre_cfg, param, None) is None:
             if param in ['num_gyre_threads', 'max_concurrent_gyre_runs'] and not isinstance(getattr(gyre_cfg, param), (int, float)):
                 raise ValueError(f"Missing or invalid required parameter '{param}' in the 'gyre_workflow' section of your main config.")
-            elif param == 'enable_parallel' and not isinstance(getattr(gyre_cfg, param), bool):
+            elif param == 'enable_gyre_parallel' and not isinstance(getattr(gyre_cfg, param), bool):
                 raise ValueError(f"Missing or invalid required parameter '{param}' in the 'gyre_workflow' section of your main config.")
             else:
                 raise ValueError(f"Missing required parameter '{param}' in the 'gyre_workflow' section of your main config.")
@@ -416,7 +416,7 @@ def run_gyre_workflow(
         max_concurrent_runs = gyre_cfg.max_concurrent_gyre_runs
         all_gyre_return_codes = [] # List to store return codes from all GYRE runs
 
-        if gyre_cfg.enable_parallel:
+        if gyre_cfg.enable_gyre_parallel:
             if not isinstance(max_concurrent_runs, int) or max_concurrent_runs <= 0:
                 raise ValueError(f"Invalid 'max_concurrent_gyre_runs' in config: {max_concurrent_runs}. Must be a positive integer.")
             gyre_logger.info(f"**Parallel GYRE execution enabled.** Running {max_concurrent_runs} job(s) concurrently.")

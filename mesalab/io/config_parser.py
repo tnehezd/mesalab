@@ -69,7 +69,7 @@ def parsing_options():
     gyre_group.add_argument('--run-gyre-workflow', action='store_true', help='Override gyre_workflow.run_gyre_workflow. Execute the full GYRE workflow.')
     gyre_group.add_argument('--gyre-run-mode', type=str, choices=['ALL_PROFILES', 'FILTERED_PROFILES'], help='Override gyre_workflow.run_mode. Set the GYRE run mode.')
     gyre_group.add_argument('--gyre-threads', type=int, help='Override gyre_workflow.num_gyre_threads. Number of OpenMP threads for each GYRE run.')
-    gyre_group.add_argument('--gyre-parallel', type=str, choices=['True', 'False'], help='Override gyre_workflow.enable_parallel. Enable/disable parallel GYRE runs (True/False).')
+    gyre_group.add_argument('--gyre-parallel', type=str, choices=['True', 'False'], help='Override gyre_workflow.enable_gyre_parallel. Enable/disable parallel GYRE runs (True/False).')
     gyre_group.add_argument('--gyre-max-concurrent', type=int, help='Override gyre_workflow.max_concurrent_gyre_runs. Maximum number of concurrent GYRE runs.')
     gyre_group.add_argument('--gyre-inlist-template-path', type=str, help='Override gyre_workflow.gyre_inlist_template_path. Full or relative path to the GYRE inlist template file.')
 
@@ -77,7 +77,11 @@ def parsing_options():
     rsp_group = parser.add_argument_group('RSP Workflow Settings')
     rsp_group.add_argument('--run-rsp-workflow', action='store_true', help='Override rsp_workflow.run_rsp_workflow. Execute the full RSP workflow.')
     rsp_group.add_argument('--rsp-inlist-template-path', type=str, help='Override rsp_workflow.rsp_inlist_template_path. Full or relative path to the RSP inlist template file.')
-    rsp_group.add_argument('--rsp-mesa-output-base-dir', type=str, help='Override rsp_workflow.rsp_mesa_output_base_dir. Base directory for RSP MESA output files.')
+    rsp_group.add_argument('--rsp-output-subdir', type=str, help='Override rsp_workflow.rsp_output_subdir. Base directory for RSP MESA output files.')
+    rsp_group.add_argument('--rsp-threads', type=int, help='Override rsp_workflow.num_rsp_threads. Number of OpenMP threads for each RSP run.')
+    rsp_group.add_argument('--rsp-parallel', type=str, choices=['True', 'False'], help='Override rsp_workflow.enable_rsp_parallel. Enable/disable parallel RSP runs (True/False).')
+    rsp_group.add_argument('--rsp-max-concurrent', type=int, help='Override rsp_workflow.max_concurrent_rsp_runs. Maximum number of concurrent RSP runs.')
+
 
     cli_args, unknown_args = parser.parse_known_args()
 
@@ -117,14 +121,17 @@ def parsing_options():
             'gyre_inlist_template_path': 'config/gyre.in',
             'run_mode': 'ALL_PROFILES',
             'num_gyre_threads': 1,
-            'enable_parallel': False,
+            'enable_gyre_parallel': False,
             'max_concurrent_gyre_runs': 4,
             'filtered_profiles_csv_name': 'sorted_blue_loop_profiles.csv'
         },
         'rsp_workflow': {
             'run_rsp_workflow': False,
             'rsp_inlist_template_path': 'config/rsp.inlist_template',
-            'rsp_mesa_output_base_dir': './rsp_mesa_profiles'
+            'rsp_output_subdir': './rsp_outputs',
+            'num_rsp_threads': 1,
+            'enable_rsp_parallel': False,
+            'max_concurrent_rsp_runs': 4
         }
     }
 
@@ -210,7 +217,7 @@ def parsing_options():
         if cli_set_explicitly:
             logger.debug(f"Applying CLI override: --{arg_name} = {cli_value}")
             if arg_name in ['input_dir', 'output_dir', 'inlist_name', 'force_reanalysis', 'debug',
-                             'mesasdk_root', 'mesa_dir', 'mesa_binary_dir', 'gyre_dir']:
+                            'mesasdk_root', 'mesa_dir', 'mesa_binary_dir', 'gyre_dir']:
                 final_config_dict.general_settings[arg_name] = cli_value
             elif arg_name in ['analyze_blue_loop', 'blue_loop_output_type']:
                 final_config_dict.blue_loop_analysis[arg_name] = cli_value
@@ -223,7 +230,7 @@ def parsing_options():
             elif arg_name == 'gyre_threads':
                 final_config_dict.gyre_workflow.num_gyre_threads = cli_value
             elif arg_name == 'gyre_parallel':
-                final_config_dict.gyre_workflow.enable_parallel = (cli_value.lower() == 'true')
+                final_config_dict.gyre_workflow.enable_gyre_parallel = (cli_value.lower() == 'true')
             elif arg_name == 'gyre_max_concurrent':
                 final_config_dict.gyre_workflow.max_concurrent_gyre_runs = cli_value
             elif arg_name == 'gyre_inlist_template_path':
@@ -232,10 +239,17 @@ def parsing_options():
                 final_config_dict.rsp_workflow.run_rsp_workflow = cli_value
             elif arg_name == 'rsp_inlist_template_path':
                 final_config_dict.rsp_workflow.rsp_inlist_template_path = cli_value
-            elif arg_name == 'rsp_mesa_output_base_dir':
-                final_config_dict.rsp_workflow.rsp_mesa_output_base_dir = cli_value
+            elif arg_name == 'rsp_output_subdir':
+                final_config_dict.rsp_workflow.rsp_output_subdir = cli_value
+            elif arg_name == 'rsp_threads':
+                final_config_dict.rsp_workflow.num_rsp_threads = cli_value
+            elif arg_name == 'rsp_parallel':
+                final_config_dict.rsp_workflow.enable_rsp_parallel = (cli_value.lower() == 'true')
+            elif arg_name == 'rsp_max_concurrent':
+                final_config_dict.rsp_workflow.max_concurrent_rsp_runs = cli_value
             else:
                 logger.debug(f"CLI argument '{arg_name}' with value '{cli_value}' was provided but not explicitly mapped to a config setting. It will be ignored.")
+
 
     # Set internal flag for plotting based on other plotting settings
     final_config_dict.plotting_settings.generate_plots = (
@@ -306,14 +320,14 @@ def parsing_options():
         logger.debug("GYRE workflow enabled. Performing final validation of GYRE parameters.")
         required_gyre_params = [
             'run_mode', 'gyre_inlist_template_path', 'num_gyre_threads',
-            'enable_parallel', 'max_concurrent_gyre_runs'
+            'enable_gyre_parallel', 'max_concurrent_gyre_runs'
         ]
         for param in required_gyre_params:
             if getattr(final_config_dict.gyre_workflow, param, None) is None:
                 if param in ['num_gyre_threads', 'max_concurrent_gyre_runs'] and not isinstance(final_config_dict.gyre_workflow.get(param), (int, float)):
                     logger.critical(f"Missing or invalid required GYRE workflow parameter: 'gyre_workflow.{param}'. Please check config.yaml or CLI arguments.")
                     sys.exit(1)
-                elif param == 'enable_parallel' and not isinstance(final_config_dict.gyre_workflow.get(param), bool):
+                elif param == 'enable_gyre_parallel' and not isinstance(final_config_dict.gyre_workflow.get(param), bool):
                     logger.critical(f"Missing or invalid required GYRE workflow parameter: 'gyre_workflow.{param}'. Please check config.yaml or CLI arguments.")
                     sys.exit(1)
                 else:
@@ -329,24 +343,39 @@ def parsing_options():
             logger.critical(f"GYRE inlist template file not found at: '{gyre_template_path_to_check}'. Please ensure the path is correct in your config or via CLI.")
             sys.exit(1)
 
-    # --- RSP Workflow specific validations ---
+# --- RSP Workflow specific validations ---
     if final_config_dict.rsp_workflow.get('run_rsp_workflow', False):
         logger.debug("RSP workflow enabled. Performing final validation of RSP parameters.")
-        required_rsp_params = ['rsp_inlist_template_path', 'rsp_mesa_output_base_dir']
+        required_rsp_params = [
+            'rsp_inlist_template_path', 'rsp_output_subdir',
+            'num_rsp_threads', 'enable_rsp_parallel', 'max_concurrent_rsp_runs'
+        ]
         for param in required_rsp_params:
             if getattr(final_config_dict.rsp_workflow, param, None) is None:
-                logger.critical(f"Missing required RSP workflow parameter: 'rsp_workflow.{param}'. Please check config.yaml or CLI arguments.")
+                if param in ['num_rsp_threads', 'max_concurrent_rsp_runs'] and not isinstance(final_config_dict.rsp_workflow.get(param), (int, float)):
+                    logger.critical(f"Missing or invalid required RSP workflow parameter: 'rsp_workflow.{param}'. Please check config.yaml or CLI arguments.")
+                    sys.exit(1)
+                elif param == 'enable_rsp_parallel' and not isinstance(final_config_dict.rsp_workflow.get(param), bool):
+                    logger.critical(f"Missing or invalid required RSP workflow parameter: 'rsp_workflow.{param}'. Please check config.yaml or CLI arguments.")
+                    sys.exit(1)
+                else:
+                    logger.critical(f"Missing required RSP workflow parameter: 'rsp_workflow.{param}'. Please check config.yaml or CLI arguments.")
+                    sys.exit(1)
+            if param in ['num_rsp_threads', 'max_concurrent_rsp_runs'] and final_config_dict.rsp_workflow[param] <= 0:
+                logger.critical(f"RSP workflow parameter 'rsp_workflow.{param}' must be a positive integer.")
                 sys.exit(1)
+        
         rsp_template_path_to_check = final_config_dict.rsp_workflow.rsp_inlist_template_path
         if not os.path.isabs(rsp_template_path_to_check):
             rsp_template_path_to_check = os.path.abspath(rsp_template_path_to_check)
         if not os.path.exists(rsp_template_path_to_check):
             logger.critical(f"RSP inlist template file not found at: '{rsp_template_path_to_check}'. Please ensure the path is correct in your config or via CLI.")
             sys.exit(1)
-        rsp_output_base_dir = final_config_dict.rsp_workflow.rsp_mesa_output_base_dir
+        rsp_output_base_dir = final_config_dict.rsp_workflow.rsp_output_subdir
         if not os.path.isabs(rsp_output_base_dir):
             rsp_output_base_dir = os.path.abspath(rsp_output_base_dir)
         parent_dir_rsp = os.path.dirname(rsp_output_base_dir)
+        
         if not os.path.exists(parent_dir_rsp):
             logger.critical(f"Parent directory for RSP MESA output base directory does not exist: '{parent_dir_rsp}'. Please create it or provide a valid path.")
             sys.exit(1)
@@ -361,62 +390,7 @@ def parsing_options():
         logger.debug("Debug mode enabled after full config merge in config_parser.")
     else:
         logging.root.setLevel(logging.WARNING)
-        logger.info("Default logging level is INFO after full config merge in config_parser.")
+        logger.info("Default logging level is WARNING after full config merge in config_parser.")
 
     logger.info(f"Final resolved configuration: {final_config_dict}")
     return final_config_dict
-
-if __name__ == '__main__':
-    print("Running config_parser.py directly for testing purposes.")
-    print("You can try: python -m mesalab.io.config_parser --input-dir /tmp/test --debug --run-rsp-workflow")
-    print("Or with a config file: python -m mesalab.io.config_parser --config your_config.yaml")
-
-    dummy_config_content = """
-    general_settings:
-      input_dir: /path/to/your/mesa_runs
-      output_dir: ./mesalab_output_test
-      mesasdk_root: /Applications/mesasdk_test
-      mesa_dir: /Users/tnehezd/Documents/Munka/MESA230501/mesa-r23.05.01_test
-      mesa_binary_dir: /Users/tnehezd/Documents/Munka/MESA230501/mesa-r23.05.01_test/star/work
-      gyre_dir: /path/to/gyre_test
-      debug: false
-    rsp_workflow:
-      run_rsp_workflow: true
-      rsp_inlist_template_path: config/rsp.inlist_template_test
-      rsp_mesa_output_base_dir: ./rsp_mesa_profiles_test
-    """
-    with open("test_config.yaml", "w") as f:
-        f.write(dummy_config_content)
-    
-    try:
-        sys.argv = ['config_parser.py', '--config', 'test_config.yaml', '--input-dir', '/tmp/cli_input', '--force-reanalysis']
-        os.environ['MESA_DIR'] = '/env/mesa/dir'
-        os.environ['MESASDK_ROOT'] = '/env/mesasdk/root'
-        os.environ['MESA_BINARY_DIR'] = '/env/mesa/binary/dir'
-        os.environ['GYRE_DIR'] = '/env/gyre/dir'
-
-        parsed_config = parsing_options()
-        print("\n--- Parsed Configuration (from __main__ block) ---")
-        print(parsed_config)
-        print(f"Input Dir: {parsed_config.general_settings.input_dir}")
-        print(f"MESA SDK Root: {parsed_config.general_settings.mesasdk_root}")
-        print(f"MESA Dir: {parsed_config.general_settings.mesa_dir}")
-        print(f"MESA Binary Dir: {parsed_config.general_settings.mesa_binary_dir}")
-        print(f"GYRE Dir: {parsed_config.general_settings.gyre_dir}")
-        print(f"Force Reanalysis: {parsed_config.general_settings.force_reanalysis}")
-        print(f"RSP workflow enabled: {parsed_config.rsp_workflow.run_rsp_workflow}")
-
-    except SystemExit as e:
-        print(f"Parsing exited with code: {e.code}")
-    finally:
-        if os.path.exists("test_config.yaml"):
-            os.remove("test_config.yaml")
-        if 'MESA_DIR' in os.environ:
-            del os.environ['MESA_DIR']
-        if 'MESASDK_ROOT' in os.environ:
-            del os.environ['MESASDK_ROOT']
-        if 'MESA_BINARY_DIR' in os.environ:
-            del os.environ['MESA_BINARY_DIR']
-        if 'GYRE_DIR' in os.environ:
-            del os.environ['GYRE_DIR']
-        sys.argv = [sys.argv[0]]

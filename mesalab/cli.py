@@ -1,5 +1,3 @@
-# mesalab/cli.py
-
 import sys
 import os
 import logging
@@ -198,7 +196,7 @@ def main():
                 analysis_results_sub_dir=analysis_results_sub_dir,
                 detail_files_output_dir=detail_files_output_dir,
                 gyre_input_csv_name=gyre_csv_name_to_pass if gyre_workflow_enabled_for_analysis_csv else None,
-                rsp_mesa_output_base_dir=rsp_output_dir
+                rsp_output_subdir=rsp_output_dir
             )
 
         if summary_df.empty:
@@ -231,8 +229,7 @@ def main():
             try:
                 rsp_workflow_results = run_mesa_rsp_workflow(
                     inlist_paths=generated_rsp_inlists_paths,
-                    config_data=config,
-                    max_workers=os.cpu_count()
+                    config_data=config
                 )
                 if rsp_workflow_results['failed'] or rsp_workflow_results['timeout'] or rsp_workflow_results['error']:
                     cli_logger.error("MESA RSP workflow completed with some failures, timeouts, or errors. Check previous logs for details.")

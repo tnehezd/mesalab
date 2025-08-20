@@ -5,14 +5,15 @@ import numpy as np
 import os
 import logging
 import sys
+import re # Import the regular expression module
 
 logger = logging.getLogger(__name__)
 
 def generate_mesa_rsp_inlists(
     detail_df: pd.DataFrame,
-    mesa_output_base_dir: str, # Base directory for MESA outputs (where run_dirs are located) - *not directly used if create_RSP_model is true*
+    mesa_output_base_dir: str,
     rsp_inlist_template_path: str,
-    rsp_mesa_output_base_dir: str # Where the generated MESA RSP inlists and their LOGS/plots will go
+    rsp_output_subdir: str
 ) -> list[str]:
     """
     Generates MESA inlist files for RSP simulations, each loading a specific
@@ -20,13 +21,12 @@ def generate_mesa_rsp_inlists(
 
     Args:
         detail_df (pd.DataFrame): DataFrame containing 'initial_mass', 'initial_Z',
-                                   'model_number', 'log_Teff', 'log_L', 'run_dir_path',
-                                   and now 'initial_Y'.
+                                  'model_number', 'log_Teff', 'log_L', 'run_dir_path',
+                                  and 'initial_Y'.
         mesa_output_base_dir (str): The root directory where MESA run output folders are.
-                                    (e.g., 'output/mesa_runs') - This parameter is not directly
-                                    used if RSP is creating a model from scratch based on parameters.
+                                    (e.g., 'output/mesa_runs')
         rsp_inlist_template_path (str): Path to the MESA RSP inlist template file.
-        rsp_mesa_output_base_dir (str): Base directory for generated MESA RSP runs.
+        rsp_output_subdir (str): Base directory for generated MESA RSP runs.
     
     Returns:
         list[str]: A list of paths to the generated MESA RSP inlist files.
@@ -39,12 +39,10 @@ def generate_mesa_rsp_inlists(
         logger.error(f"MESA RSP inlist template not found at: {rsp_inlist_template_path}")
         return []
 
-    # Ensure the base RSP output directory exists
-    os.makedirs(rsp_mesa_output_base_dir, exist_ok=True)
+    os.makedirs(rsp_output_subdir, exist_ok=True)
     
     generated_inlists = []
 
-    # Read the template inlist once
     try:
         with open(rsp_inlist_template_path, 'r') as f:
             template_content = f.read()
@@ -54,72 +52,61 @@ def generate_mesa_rsp_inlists(
 
     logger.info(f"Starting generation of MESA RSP inlists for {len(detail_df)} profiles.")
 
-    # Iterate through each row (each stellar model) in the detail_df
-    for index, row in detail_df.iterrows():
+    for _, row in detail_df.iterrows():
         try:
             mass = row['initial_mass']
             Z = row['initial_Z']
             model_number = int(row['model_number'])
             log_Teff = row['log_Teff']
             log_L = row['log_L']
-            # run_dir_path = row['run_dir_path'] # Not directly needed if creating model from scratch
+            
+            Teff = round(10**log_Teff, 0)
+            L = round(10**log_L, 0)
 
-            # Convert log values to linear scale
-            Teff = round(10**log_Teff, 0) # Round to integer for Teff
-            L = round(10**log_L, 0) # Round to integer for L
-
-            # --- Get initial_Y and calculate X_val ---
-            initial_Y = row.get('initial_Y', np.nan) # Safely get 'initial_Y', defaults to NaN if not present
+            initial_Y = row.get('initial_Y', np.nan)
             
             if pd.isna(initial_Y):
-                # Fallback to a default X if initial_Y is missing or NaN
-                X_val = 0.730 
+                X_val = 0.730
                 logger.warning(f"Initial_Y missing for M={mass:.1f}, Z={Z:.4f}, model={model_number}. Using default RSP_X={X_val:.3f}d0.")
             else:
-                # Calculate X using X + Y + Z = 1
                 X_val = 1.0 - initial_Y - Z
-                if X_val < 0 or X_val > 1: # Basic sanity check for X value
-                    logger.warning(f"Calculated X ({X_val:.3f}) is out of [0, 1] range for M={mass:.1f}, Z={Z:.4f}, Y={initial_Y:.3f}, model={model_number}. Using default RSP_X=0.730d0.")
+                if X_val < 0 or X_val > 1:
+                    logger.warning(f"Calculated X ({X_val:.3f}) is out of [0, 1] range. Using default RSP_X=0.730d0.")
                     X_val = 0.730
-            # --- END NEW ---
 
-            # Fixed value for RSP max_model_number as per template.
-            # IMPORTANT: This assumes the template always has 'max_model_number = 1200'
-            rsp_max_model_num = 1200 
-
-            # --- Construct the new structured output path ---
-            run_folder_name = f"run_{mass:.1f}MSUN_z{Z:.4f}" 
-            model_folder_name = f"model{model_number:04d}" 
+            rsp_max_model_num = 1200
             
-            # Full path for this specific RSP run's directory
-            this_rsp_run_root_dir = os.path.join(rsp_mesa_output_base_dir, run_folder_name, model_folder_name)
+            # Construct the new structured output path
+            run_folder_name = f"run_{mass:.1f}MSUN_z{Z:.4f}"
+            model_folder_name = f"model{model_number:04d}"
             
-            # Create the nested directories if they don't exist
+            this_rsp_run_root_dir = os.path.join(rsp_output_subdir, run_folder_name, model_folder_name)
             os.makedirs(this_rsp_run_root_dir, exist_ok=True)
             
-            # Define the output model filename for this RSP run (MESA will save its .mod here)
-            # Example template string to replace: "save_model_filename = 'rsp_cepheid_6M_cycle0.mod'"
-            save_model_filename = f'rsp_M{mass:.1f}Z{Z:.4f}Mod{model_number}.mod'.replace('.', '_')
-            
-            # Replace placeholders in template - NOW TARGETING THE ACTUAL VALUES IN YOUR TEMPLATE
-            current_inlist_content = template_content \
-                .replace('RSP_mass = 6d0', f'RSP_mass = {mass:.1f}d0') \
-                .replace('RSP_Teff = 4892', f'RSP_Teff = {int(Teff):d}') \
-                .replace('RSP_L = 4660', f'RSP_L = {int(L):d}') \
-                .replace('RSP_Z = 0.003d0', f'RSP_Z = {Z:.4f}d0') \
-                .replace('Zbase = 0.003d0', f'Zbase = {Z:.4f}d0') \
-                .replace("save_model_filename = 'rsp_cepheid_6M_cycle0.mod'", f"save_model_filename = '{save_model_filename}'") \
-                .replace('max_model_number = 1192', f'max_model_number = {rsp_max_model_num}')
-            
-            # Replace RSP_X placeholder with the calculated X_val
-            current_inlist_content = current_inlist_content.replace('RSP_X = 0.730d0', f'RSP_X = {X_val:.3f}d0')
+            save_model_filename = f'rsp_final_M{mass:.1f}Z{Z:.4f}Mod{model_number}.mod'
 
-            # Write the new inlist file inside the specific run directory
+            # Define a dictionary of patterns and their replacement strings
+            replacements = {
+                r"RSP_mass\s*=\s*.*": f'RSP_mass = {mass:.1f}d0',
+                r"RSP_Teff\s*=\s*.*": f'RSP_Teff = {int(Teff):d}',
+                r"RSP_L\s*=\s*.*": f'RSP_L = {int(L):d}',
+                r"RSP_Z\s*=\s*.*": f'RSP_Z = {Z:.4f}d0',
+                r"Zbase\s*=\s*.*": f'Zbase = {Z:.4f}d0',
+                r"save_model_filename\s*=\s*'[^']*'": f"save_model_filename = '{save_model_filename}'",
+                r"max_model_number\s*=\s*.*": f"max_model_number = {rsp_max_model_num}",
+                r"RSP_X\s*=\s*.*": f'RSP_X = {X_val:.3f}d0'
+            }
+            
+            # Apply all replacements using a loop
+            current_inlist_content = template_content
+            for pattern, new_string in replacements.items():
+                current_inlist_content = re.sub(pattern, new_string, current_inlist_content, flags=re.IGNORECASE)
+
             inlist_path = os.path.join(this_rsp_run_root_dir, "inlist_rsp")
-
+            
             with open(inlist_path, 'w') as f:
                 f.write(current_inlist_content)
-            
+                
             generated_inlists.append(inlist_path)
             logger.info(f"Generated MESA RSP inlist: {inlist_path}")
 
@@ -129,7 +116,7 @@ def generate_mesa_rsp_inlists(
         except Exception as e:
             mass_info = f"M={row.get('initial_mass', 'N/A')}, Z={row.get('initial_Z', 'N/A')}, model={row.get('model_number', 'N/A')}"
             logger.error(f"Error generating RSP inlist for {mass_info}: {e}", exc_info=True)
-            continue # Allow other inlists to be generated if one fails.
+            continue
 
     if not generated_inlists:
         logger.warning("No RSP inlist files were generated. Check detail_df content and template.")

@@ -1,97 +1,132 @@
-.. _gyre_workflow:
+.. _rsp_workflow:
 
-GYRE Workflow
+RSP Workflow
 =============
 
-The GYRE Workflow in `mesalab` integrates the `GYRE <https://gyre.readthedocs.io/>`_ pulsation code to perform asteroseismic analysis on stellar models for MESA simulations. This workflow is crucial for understanding the pulsational properties and internal structures of stars.
+The RSP Workflow in `mesalab` integrates the RSP module of `MESA <https://https://docs.mesastar.org//>`_ to perform asteroseismic analysis on stellar models for MESA simulations. 
 
 ----
 
 Purpose
 -------
 
-The GYRE workflow within `mesalab` automates the execution of the GYRE pulsation code across your MESA stellar evolution models. Its primary steps include:
+The RSP workflow within `mesalab` automates the execution of the RSP module across your MESA stellar evolution models. Its primary steps include:
 
-* **MESA Profile Selection:** Identifies and selects MESA stellar profiles (``profile*.data.GYRE`` files) for GYRE analysis. This can be configured to process either all available profiles from your MESA runs or the filtered subset (blue loop crossers) based on previous `mesalab` analysis results (e.g., from ``FILTERED_PROFILES`` mode).
-* **GYRE Inlist Generation:** For each selected MESA profile, a unique GYRE inlist file (``profile_``) is created. This involves reading a user-defined template and programmatically setting the correct absolute path to the stellar profile within the inlist.
-* **GYRE Execution:** Runs the GYRE for each generated inlist. The workflow supports both sequential and parallel execution of multiple GYRE runs to utilize available system resources efficiently.
+* **MESA Model Selection:** The RSP workflow requires a prior selection of stellar models. It performs pulsation analysis exclusively on a pre-filtered subset of models, ensuring that computational resources aren't wasted on models that fall outside the instability strip. Currently, this workflow must be run together with the `mesalab` run analysis workflow, as it is not yet designed to read a standalone input CSV file. While the current analysis is focused on models that exhibit blue loop crossings, future versions of the code will offer the flexibility to run the analysis on all available stellar profiles, regardless of their evolutionary characteristics.
+* **RSP Inlist Generation:** For each selected MESA model, a unique RSP inlist file (``inlist_rsp``) is created. This involves reading a user-defined template and programmatically setting the correct absolute path to the stellar profile within the inlist.
+* **RSP Execution:** Runs the MESA RSP module for each generated inlist.
 
 .. note::
-    This workflow is responsible for *running* GYRE and managing its direct outputs, and it does **not** include post-processing steps. The implementation of post-processing is planned for future development.
+    Currently, this workflow must be run together with the `mesalab` run analysis workflow, as it is not designed to be run as a stand-alone subprocess.  Due to this dependency, the RSP workflow is **currently only applicable to models identified as blue loop crossers**.
+
+.. note::
+    This workflow is responsible for *running* RSP and managing its direct outputs, and it does **not** include post-processing steps. The implementation of post-processing is planned for future development.
 
 ----
 
 Input
 -----
 
-The GYRE Workflow requires two primary inputs: **MESA stellar profile data** and a **GYRE inlist template**.
+The RSP Workflow requires the **RSP inlist template** as an input.
 
-**GYRE Inlist Template**
-The :code:`gyre_inlist_template_path` parameter, typically set to :code:`config/gyre.in`, specifies the absolute or relative path to a GYRE inlist file. This file serves as a **template**; `mesalab` dynamically modifies it before each individual GYRE run to substitute the correct MESA profile filename and other run-specific parameters defined within the workflow.
-
-**MESA Profile Selection** (:code:`run_mode`)
-The :code:`gyre_workflow.run_mode` parameter in the configuration YAML file sets how MESA stellar profiles are selected for GYRE analysis. Profiles are located by matching the :code:`mesa_profile_pattern` (e.g., :code:`profile*.data.GYRE`) within the :code:`mesa_profile_base_dir_relative` (e.g., :code:`LOGS`) directory of each discovered MESA run.
-
-* :code:`FILTERED_PROFILES`: In this mode, `mesalab` expects the ``sorted_blue_loop_profiles.csv`` file to be present in the ``analysis_results`` directory (generated in the previus steps). Only profiles listed in this file will be processed.
-* :code:`ALL_PROFILES`: When set to :code:`ALL_PROFILES`, `mesalab` will process every MESA profile file it finds that matches the configured :code:`mesa_profile_pattern` within the specified :code:`mesa_profile_base_dir_relative` for each discovered MESA run directory.
+**RSP Inlist Template**
+The :code:`rsp_inlist_template_path` parameter, typically set to :code:`config/rsp.inlist_template`, specifies the absolute or relative path to an RSP inlist file. This file serves as a **template**; `mesalab` dynamically modifies it before each individual RSP run.
 
 A typical GYRE template inlist should follow the conventional GYRE 7.0 setup, like::
 
-    &constants
-    /
 
-    &model
-        model_type = 'EVOL'
-        file = 'profile10.data.GYRE'
-        file_format = 'MESA'
-    /
+&star_job
+
+      show_log_description_at_start = .false.
+
+      create_RSP_model = .true.
+
+      save_model_when_terminate = .true.
+      save_model_filename = 'rsp_final_M5.0Z0.0090Mod2073.mod'
+
+      initial_zfracs = 6
+
+      color_num_files=2
+      color_file_names(2)='blackbody_johnson.dat'
+      color_num_colors(2)=5
+
+      set_initial_age = .true.
+      initial_age = 0
+
+      set_initial_model_number = .true.
+      initial_model_number = 0
+      
+      set_initial_cumulative_energy_error = .true.
+      new_cumulative_energy_error = 0d0
+      
+      pgstar_flag = .false.
+   
+/ ! end of star_job namelist
+
+&eos
+/ ! end of eos namelist
+
+&kap
+   Zbase = 0.003d0
+
+      kap_file_prefix = 'a09'
+      kap_lowT_prefix = 'lowT_fa05_a09p'
+      kap_CO_prefix =   'a09_co'
+
+/ ! end of kap namelist
 
 
-    &mode
-        l = 0
-        n_pg_max = 20
-    /
+&controls
+
+    ! limit max_model_number as part of test_suite
+      max_model_number = 1192 ! 16000
+
+! RSP controls
+
+      x_integer_ctrl(1) = 20 ! which period to check
+   !  x_ctrl(1) = 18.2974 ! expected period (in days) 
+
+      RSP_mass = 6d0
+      RSP_Teff = 4892
+      RSP_L = 4660
+      RSP_X = 0.730d0
+      RSP_Z = 0.003d0
+   
+      RSP_nmodes = 15
+
+      
+! solver
+      use_gold2_tolerances = .true.
+
+! output controls
+   
+      terminal_show_age_units = 'days'
+      terminal_show_timestep_units = 'secs'
+      terminal_show_log_dt = .false.
+      terminal_show_log_age = .false.
+
+      !num_trace_history_values = 2
+      trace_history_value_name(1) = 'rel_E_err'
+      trace_history_value_name(2) = 'log_rel_run_E_err'
+
+      RSP_work_period = 5
+      RSP_work_filename = 'work.data'
+
+      photo_interval = 1000
+      profile_interval = 4000
+      history_interval = 10
+      terminal_interval = 4000
+
+/ ! end of controls namelist
 
 
-    &osc
-        outer_bound = 'JCD'
-    /
 
-    &rot
-    /
+&pgstar
 
-    &num
-        diff_scheme = 'COLLOC_GL4' ! 4th-order collocation scheme for difference equations
-    /   
 
-    &scan
-        grid_type = 'LINEAR'
-        freq_min = 0.2
-        freq_max = 1
-        n_freq = 100
-        freq_units = 'ACOUSTIC_CUTOFF'
-    /
 
-    &grid
-        w_osc = 10 
-        w_exp = 2 
-        w_ctr = 10 
-    /
+/ ! end of pgstar namelist
 
-    &tides_output
-    /
-
-    &ad_output
-        summary_file = 'summary.h5'               
-        summary_item_list = 'l,n_p,n_g,n_pg,freq,omega,E_norm,eta' ! Items to appear in summary file
-        detail_file_format = 'TXT'
-        detail_template = 'detail.l%l.n%n.TXT'     
-        detail_item_list = 'id,l,n_pg,omega,x,xi_r,xi_h,eta,freq,W,dW_dx,kap_T,kap_rho,P,rho,T,Gamma_1'
-        freq_units = 'CYC_PER_DAY'
-    /
-
-    &nad_output
-    /
 
 
 .. note::
@@ -151,9 +186,9 @@ GYRE Workflow is controlled by parameters within the :ref:`YAML configuration <u
     * ``ALL_PROFILES``: Processes all available profiles matching the configured :code:`mesa_profile_pattern`.
     * ``FILTERED_PROFILES``: Uses a subset of profiles identified by the `MESA Run Analysis Workflow` and listed in the file specified by :code:`filtered_profiles_csv_name`.
 
-* ``enable_gyre_parallel``: (Boolean) If set to `true`, multiple GYRE runs will be executed concurrently, utilizing the available computational resources more efficiently. Default: `true`.
+* ``enable_parallel``: (Boolean) If set to `true`, multiple GYRE runs will be executed concurrently, utilizing the available computational resources more efficiently. Default: `true`.
 * ``num_gyre_threads``: (Integer) Specifies the number of OpenMP threads that each individual GYRE instance will utilize during its run. Default: `1`.
-* ``max_concurrent_gyre_runs``: (Integer) When :code:`enable_gyre_parallel` is `true`, this parameter defines the maximum number of GYRE instances that can run simultaneously. Default: `4`.
+* ``max_concurrent_gyre_runs``: (Integer) When :code:`enable_parallel` is `true`, this parameter defines the maximum number of GYRE instances that can run simultaneously. Default: `4`.
 * ``mesa_profile_pattern``: (String) A wildcard pattern (e.g., ``profile*.data.GYRE``) used by `mesalab` to identify MESA profile files within the relevant directories for processing. Default: ``profile*.data.GYRE``.
 * ``mesa_profile_base_dir_relative``: (String) The relative path from a MESA run's top directory (e.g., ``/path/to/your/mesa_runs_grid/run_X.XMSUN_Z.XXXX``) to its specific LOGS folder where the profiles are located (e.g., ``LOGS``). Default: `LOGS`.
 
@@ -269,8 +304,8 @@ To run only this part, ensure your YAML configuration file has the following set
         gyre_inlist_template_path: "config/gyre.in"                                       
         run_mode: "FILTERED_PROFILES"               
         num_gyre_threads: 1                         # Number of OpenMP threads for each individual GYRE run
-        enable_gyre_parallel: true                       # Enable/disable parallel execution of multiple GYRE runs
-        max_concurrent_gyre_runs: 4                 # Maximum number of concurrent GYRE runs if enable_gyre_parallel is true
+        enable_parallel: true                       # Enable/disable parallel execution of multiple GYRE runs
+        max_concurrent_gyre_runs: 4                 # Maximum number of concurrent GYRE runs if enable_parallel is true
         mesa_profile_pattern: "profile*.data.GYRE"  # Wildcard pattern for MESA profile files (e.g., "profile*.data.GYRE")
         mesa_profile_base_dir_relative: "LOGS"      # Relative path from a MESA run directory to its LOGS folder (e.g., "LOGS")
 

@@ -7,38 +7,40 @@ from tqdm import tqdm
 import sys
 import shutil
 
-# ---------------------------------------------------------------------
-# Set logging level at the start of the script
+# Set logging level at the start of the script.
 # This will suppress INFO messages but allow WARNING, ERROR, and CRITICAL
 # to be shown, unless overridden by a different logging configuration.
-# ---------------------------------------------------------------------
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
-def run_mesa_rsp_single(inlist_path: str, mesa_binary_dir: str) -> dict:
+def run_mesa_rsp_single(inlist_path: str, mesa_binary_dir: str, num_threads: int) -> dict:
     """
     Runs the MESA RSP module with a single inlist file.
 
     Args:
         inlist_path (str): The full path to the inlist_rsp file.
-        mesa_binary_dir (str): The directory where the 'rn' executable is located
+        mesa_binary_dir (str): The directory where the 'star' executable is located
                                (e.g., '/path/to/mesa/star/work/').
                                This is crucial for finding the executable.
+        num_threads (int): The number of OpenMP threads to use for this run.
 
     Returns:
         dict: A dictionary containing the run status (success/failure) and
               other relevant information.
     """
     run_dir = os.path.dirname(inlist_path)
-    
+
     # Construct the full path to the MESA 'star' executable
     mesa_exe_path = os.path.join(mesa_binary_dir, 'star')
 
-    # Note: The main workflow function should handle validation before spawning threads,
-    # but a final check here is a good practice.
+    # Set the OMP_NUM_THREADS environment variable for this subprocess call
+    env_vars = os.environ.copy()
+    env_vars['OMP_NUM_THREADS'] = str(num_threads)
+    logger.debug(f"Setting OMP_NUM_THREADS to {num_threads} for run in {run_dir}")
+
     if not os.path.exists(mesa_exe_path):
         logger.error(f"MESA executable ('star') not found at: {mesa_exe_path}. This is critical for RSP run.")
-        return {'status': 'failed', 'inlist': inlist_path, 'error': f"MESA executable 'star' not found at expected path."}
+        return {'status': 'failed', 'inlist': inlist_path, 'error': "MESA executable 'star' not found at expected path."}
 
     start_time = time.time()
     try:
@@ -48,12 +50,12 @@ def run_mesa_rsp_single(inlist_path: str, mesa_binary_dir: str) -> dict:
             capture_output=True,
             text=True,
             check=True,
-            timeout=900
+            timeout=900,  # 15 minutes timeout
+            env=env_vars   # Pass the modified environment variables
         )
         end_time = time.time()
         duration = end_time - start_time
-        # INFO logs are now suppressed by the logging level setting
-        return {'status': 'success', 'inlist': inlist_path, 'duration': duration}
+        return {'status': 'successful', 'inlist': inlist_path, 'duration': duration}
     except subprocess.CalledProcessError as e:
         end_time = time.time()
         duration = end_time - start_time
@@ -73,64 +75,76 @@ def run_mesa_rsp_single(inlist_path: str, mesa_binary_dir: str) -> dict:
 def run_mesa_rsp_workflow(
     inlist_paths: list[str],
     config_data: dict,
-    max_workers: int = os.cpu_count() or 1
 ) -> dict:
     """
-    Runs the MESA RSP workflow on all provided inlist files, in parallel.
+    Runs the MESA RSP workflow on all provided inlist files, in parallel or sequentially.
 
     Args:
         inlist_paths (list[str]): A list of full paths to the generated inlist_rsp files.
-        config_data (dict): The full configuration object (addict.Dict) containing all paths.
-        max_workers (int): The maximum number of parallel threads to use.
-                           Defaults to the number of CPU cores.
+        config_data (dict): The full configuration object (addict.Dict) containing all paths and settings.
 
     Returns:
         dict: A summary dictionary of the run results.
-              Example: {'successful': [...], 'failed': [...], 'timeout': [...], 'error': [...]}
+              Example: {'successful': [...], 'failed': [...], 'timeout': [...], 'error': [...]
     """
     if not inlist_paths:
         logger.warning("No RSP inlist files provided for execution.")
         return {'successful': [], 'failed': [], 'timeout': [], 'error': []}
 
     mesa_binary_dir = config_data.general_settings.get('mesa_binary_dir')
-    if not mesa_binary_dir:
-        logger.critical("ERROR: 'mesa_binary_dir' is not set in configuration. Cannot run RSP workflow.")
-        return {'successful': [], 'failed': [], 'timeout': [], 'error': [], 'initial_error': 'mesa_binary_dir not set'}
-    
-    if not os.path.isdir(mesa_binary_dir) or not os.path.exists(os.path.join(mesa_binary_dir, 'star')):
+    if not mesa_binary_dir or not os.path.isdir(mesa_binary_dir) or not os.path.exists(os.path.join(mesa_binary_dir, 'star')):
         logger.critical(f"ERROR: Configured 'mesa_binary_dir' ('{mesa_binary_dir}') is invalid or 'star' not found within it. Cannot run RSP workflow.")
         return {'successful': [], 'failed': [], 'timeout': [], 'error': [], 'initial_error': 'invalid_mesa_binary_dir'}
 
-#    print(f"Starting MESA RSP workflow for {len(inlist_paths)} inlist files, "
-#                    f"using a maximum of {max_workers} parallel workers. MESA binary directory: {mesa_binary_dir}")
+    enable_parallel = config_data.rsp_workflow.get('enable_rsp_parallel', False)
+    max_workers = config_data.rsp_workflow.get('max_concurrent_rsp_runs', os.cpu_count() or 1)
+    num_threads = config_data.rsp_workflow.get('num_rsp_threads', 1)
+    total_runs = len(inlist_paths)
     
     results = {'successful': [], 'failed': [], 'timeout': [], 'error': []}
     
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_inlist = {executor.submit(run_mesa_rsp_single, path, mesa_binary_dir): path for path in inlist_paths}
+    print(f"Starting MESA RSP workflow for {total_runs} inlist files.")
+    if enable_parallel:
+        print(f"Parallel mode enabled. Using a maximum of {max_workers} concurrent processes, each with {num_threads} thread(s).")
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_inlist = {executor.submit(run_mesa_rsp_single, path, mesa_binary_dir, num_threads): path for path in inlist_paths}
 
-        for future in tqdm(as_completed(future_to_inlist), total=len(inlist_paths), desc="MESA RSP Workflow"):
-            inlist_path = future_to_inlist[future]
+            for future in tqdm(as_completed(future_to_inlist), total=total_runs, desc="MESA RSP Workflow"):
+                inlist_path = future_to_inlist[future]
+                try:
+                    result = future.result()
+                    # Check if the result is a valid dictionary with the 'status' key
+                    if isinstance(result, dict) and 'status' in result:
+                        results[result['status']].append(result)
+                    else:
+                        # If the return value is not a dictionary or the 'status' key is missing,
+                        # log a clear error and handle it gracefully.
+                        logger.error(f"Invalid result format from {inlist_path}: {result}")
+                        results['error'].append({'status': 'error', 'inlist': inlist_path, 'error': 'Invalid result format', 'raw_result': str(result)})
+                except Exception as exc:
+                    # Catch any other unexpected exceptions from the worker
+                    logger.error(f'Unexpected exception during execution for {inlist_path}: {exc}')
+                    results['error'].append({'status': 'error', 'inlist': inlist_path, 'error': str(exc)})
+    else:
+        print(f"Sequential mode enabled. Using {num_threads} thread(s) for each run.")
+        for inlist_path in tqdm(inlist_paths, total=total_runs, desc="MESA RSP Workflow"):
             try:
-                result = future.result()
-                if result['status'] == 'success':
-                    results['successful'].append(result)
-                elif result['status'] == 'failed':
-                    results['failed'].append(result)
-                elif result['status'] == 'timeout':
-                    results['timeout'].append(result)
+                result = run_mesa_rsp_single(inlist_path, mesa_binary_dir, num_threads)
+                if isinstance(result, dict) and 'status' in result:
+                    results[result['status']].append(result)
                 else:
-                    results['error'].append(result)
+                    logger.error(f"Invalid result format from {inlist_path}: {result}")
+                    results['error'].append({'status': 'error', 'inlist': inlist_path, 'error': 'Invalid result format', 'raw_result': str(result)})
             except Exception as exc:
-                logger.error(f'Unexpected exception during execution for {inlist_path}: {exc}')
+                logger.error(f'Unexpected exception during sequential execution for {inlist_path}: {exc}')
                 results['error'].append({'status': 'error', 'inlist': inlist_path, 'error': str(exc)})
 
-    total_runs = len(inlist_paths)
+
     successful_count = len(results['successful'])
     failed_count = len(results['failed'])
     timeout_count = len(results['timeout'])
     error_count = len(results['error'])
-
+    
     print("--- MESA RSP Workflow Summary ---")
     print(f"Total runs: {total_runs}")
     print(f"Successful runs: {successful_count}")
@@ -138,7 +152,7 @@ def run_mesa_rsp_workflow(
     print(f"Timed out runs: {timeout_count}")
     print(f"Runs with unexpected errors: {error_count}")
     print("---------------------------------")
-
+    
     return results
 
 # This __name__ == "__main__" block is for testing purposes only.
@@ -158,6 +172,7 @@ if __name__ == "__main__":
         example_inlist_paths.append(inlist_file)
     logger.warning(f"Created {len(example_inlist_paths)} dummy inlist files for testing.")
     
+    # You must set this path to a valid MESA star/work directory for the test to work
     your_mesa_binary_dir = "/path/to/your/mesa/star/work"
 
     if not os.path.isdir(your_mesa_binary_dir):
@@ -169,29 +184,38 @@ if __name__ == "__main__":
         logger.error(f"ERROR: 'star' executable not found in 'your_mesa_binary_dir' ('{your_mesa_binary_dir}'). "
                     "Please ensure MESA's 'star' module has been compiled and 'star' exists in this directory for testing.")
         sys.exit(1)
-
+    
     class MockGeneralSettings:
         def __init__(self, mesa_binary_dir):
             self._data = {'mesa_binary_dir': mesa_binary_dir}
         def get(self, key, default=None):
             return self._data.get(key, default)
     
+    class MockRSPWorkflow:
+        def __init__(self, run_rsp_workflow, enable_rsp_parallel, max_concurrent_rsp_runs, num_rsp_threads):
+            self._data = {
+                'run_rsp_workflow': run_rsp_workflow,
+                'enable_rsp_parallel': enable_rsp_parallel,
+                'max_concurrent_rsp_runs': max_concurrent_rsp_runs,
+                'num_rsp_threads': num_rsp_threads
+            }
+        def get(self, key, default=None):
+            return self._data.get(key, default)
+
     class MockConfigData:
-        def __init__(self, mesa_binary_dir):
+        def __init__(self, mesa_binary_dir, enable_parallel, max_workers, num_threads):
             self.general_settings = MockGeneralSettings(mesa_binary_dir)
-            self.rsp_workflow = {'run_rsp_workflow': True}
+            self.rsp_workflow = MockRSPWorkflow(True, enable_parallel, max_workers, num_threads)
     
-    mock_config = MockConfigData(your_mesa_binary_dir)
-
-    rsp_results = run_mesa_rsp_workflow(example_inlist_paths, mock_config, max_workers=2)
-
-    logger.warning("\n--- Detailed Results ---")
-    for status_type, results_list in rsp_results.items():
-        if isinstance(results_list, list):
-            for res in results_list:
-                logger.warning(f"  {status_type.upper()}: {res.get('inlist', 'N/A')} (Status: {res.get('status', 'N/A')}, Time: {res.get('duration', 'N/A'):.2f} sec, Error: {res.get('error', 'N/A')})")
-        else:
-            logger.warning(f"  {status_type.upper()}: {results_list}")
+    # Example 1: Parallel run with 2 workers
+    print("\n--- Running Parallel Test (2 workers) ---")
+    mock_config_parallel = MockConfigData(your_mesa_binary_dir, enable_parallel=True, max_workers=2, num_threads=1)
+    rsp_results_parallel = run_mesa_rsp_workflow(example_inlist_paths, mock_config_parallel)
+    
+    # Example 2: Sequential run with 1 thread
+    print("\n--- Running Sequential Test (1 worker, 1 thread) ---")
+    mock_config_sequential = MockConfigData(your_mesa_binary_dir, enable_parallel=False, max_workers=1, num_threads=1)
+    rsp_results_sequential = run_mesa_rsp_workflow(example_inlist_paths, mock_config_sequential)
 
     if os.path.exists(base_test_dir):
         logger.warning(f"Cleaning up dummy test directory: {base_test_dir}")

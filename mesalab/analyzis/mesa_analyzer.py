@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_dir,
                           gyre_input_csv_name: str = 'sorted_blue_loop_profiles.csv',
-                          rsp_mesa_output_base_dir: str = None):
+                          rsp_output_subdir: str = None):
     """
     Coordinates the analysis of MESA runs, including blue loop analysis,
     data aggregation, and saving summary and detailed results.
@@ -31,7 +31,7 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
         detail_files_output_dir (str): Path to the directory for detailed blue loop CSVs.
         gyre_input_csv_name (str): The desired filename for the CSV containing profiles
                                    information for the GYRE workflow. Defaults to 'sorted_blue_loop_profiles.csv'.
-        rsp_mesa_output_base_dir (str, optional): Base directory where MESA RSP inlists should be saved.
+        rsp_output_subdir (str, optional): Base directory where MESA RSP inlists should be saved.
                                                    Defaults to None, in which case the RSP inlists will be
                                                    generated relative to the original MESA run directories.
 
@@ -574,13 +574,13 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
         logger.info("Generating MESA RSP inlists.")
         try:
             rsp_template_path = args.rsp_workflow.rsp_inlist_template_path
-            rsp_output_dir = rsp_mesa_output_base_dir
+            rsp_output_dir = rsp_output_subdir
 
             generated_rsp_inlists_paths = generate_mesa_rsp_inlists(
                 detail_df=combined_detail_data_for_plotting, # Use the combined df which now includes initial_Y
                 mesa_output_base_dir=input_dir, # The root directory of your MESA runs
                 rsp_inlist_template_path=rsp_template_path,
-                rsp_mesa_output_base_dir=rsp_output_dir
+                rsp_output_subdir=rsp_output_dir
             )
             if generated_rsp_inlists_paths:
                 logger.info(f"Successfully generated {len(generated_rsp_inlists_paths)} MESA RSP inlist files.")

@@ -19,6 +19,7 @@ overview_workflows
 mesa_analysis_workflow
 plotting_workflow
 gyre_workflow
+rsp_workflow
 ```
 
 ```{toctree}

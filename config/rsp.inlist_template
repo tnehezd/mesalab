@@ -6,7 +6,7 @@
       create_RSP_model = .true.
 
       save_model_when_terminate = .true.
-      save_model_filename = 'rsp_cepheid_6M_cycle0.mod'
+      save_model_filename = 'rsp_final_M5.0Z0.0090Mod2073.mod'
 
       initial_zfracs = 6
 

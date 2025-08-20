@@ -92,7 +92,7 @@ gyre_workflow:
   # Set to 'true' to enable parallel execution of multiple GYRE runs simultaneously.
   # This is highly recommended for large grids to speed up the workflow.
   # If 'false', GYRE runs will be executed sequentially.
-  enable_parallel: True
+  enable_gyre_parallel: True
 
   # When 'enable_parallel' is 'true', this specifies the maximum number of
   # concurrent GYRE processes that mesalab will launch at any given time.
