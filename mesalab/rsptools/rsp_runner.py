@@ -48,7 +48,7 @@ def run_mesa_rsp_single(inlist_path: str, mesa_binary_dir: str) -> dict:
             capture_output=True,
             text=True,
             check=True,
-            timeout=300
+            timeout=900
         )
         end_time = time.time()
         duration = end_time - start_time

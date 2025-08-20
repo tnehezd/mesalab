@@ -1,9 +1,9 @@
 .. _tutorial_2:
 
-2. Tutorial: Running an Example Analysis in ``mesalab`` with Google Colab  
+Tutorial 2.: Running an Example Analysis in ``mesalab`` with Google Colab
 =========================================================================
 
-.. image:: https://colab.research.google.com/assets/colab-badge.svg 
+.. image:: https://colab.research.google.com/assets/colab-badge.svg
      :target: https://colab.research.google.com/github/tnehezd/mesa_blue_loop/blob/main/docs/colab_notebooks/mesalab_mesa_grid_base_tutorial.ipynb
 
 
@@ -17,15 +17,13 @@ functionality for filtering MESA outputs **without** needing to install
 the MESA SDK, GYRE, or RSP.
 
 
-.. note:: 
+.. note::
 
     The full tutorial is available at the following Colab link:
 
-    .. raw:: html
+    .. image:: https://colab.research.google.com/assets/colab-badge.svg
+         :target: https://colab.research.google.com/github/tnehezd/mesa_blue_loop/blob/main/docs/colab_notebooks/mesalab_mesa_grid_base_tutorial.ipynb
 
-        <a href="https://colab.research.google.com/github/tnehezd/mesa_blue_loop/blob/main/docs/colab_notebooks/mesalab_mesa_grid_base_tutorial.ipynb" target="_blank">
-        <img src="https://colab.research.com/assets/colab-badge.svg" alt="Tutorial: Running an Example Analysis in mesalab with Google Colab"/>
-        </a>
 
 
 
@@ -83,7 +81,7 @@ Now, install ``mesalab`` and all its required Python packages.
 
     # Navigate in the main directory
     %cd mesalab
-    
+
     # Install the package
     !pip install -e .
 
@@ -96,7 +94,7 @@ Upon successfull installation, you will see something similar:
       Checking if build backend supports build_editable ... done
       Getting requirements to build editable ... done
       Preparing editable metadata (pyproject.toml) ... done
-      ... 
+      ...
     (Check dependencies)
       ...
     Building wheels for collected packages: mesalab
@@ -164,60 +162,60 @@ provided configuration file:
 
 .. code-block:: console
 
-    
+
     ================================================================================
-                        mesalab CLI - Starting Analysis Workflow                    
-                                  Version: 0.1.0.dev0                               
+                        mesalab CLI - Starting Analysis Workflow
+                                  Version: 0.1.0.dev0
     ================================================================================
-    
+
     2025-08-17 23:12:18,595 - WARNING: PyMultiNest not imported.  MultiNest fits will not work.
-    
+
     ======================================================================
             Starting MESA Analysis Workflow...
     ======================================================================
-    
+
     Performing MESA Run Analysis: 100% 4/4 [00:02<00:00,  1.92it/s]
-    
+
     ======================================================================
             MESA Analysis Workflow Completed Successfully.
     ======================================================================
-    
-    
+
+
     ======================================================================
             MESA RSP workflow is disabled in configuration.
     ======================================================================
-    
-    
+
+
     ======================================================================
             Starting Plotting Workflow...
     ======================================================================
-    
-    
+
+
     ======================================================================
       Full Instability Strip Crossings Matrix (for Heatmap):
     ======================================================================
                4.0  5.0
-    initial_Z          
+    initial_Z
     0.009      0.0  2.0
     0.010      0.0  2.0
     ======================================================================
-    
+
     Calculating BCs serially: 100% 373/373 [00:02<00:00, 176.61it/s]
-    
+
     ======================================================================
             Plotting Workflow Completed Successfully.
     ======================================================================
-    
-    
+
+
     ======================================================================
             GYRE workflow is disabled in configuration.
     ======================================================================
-    
-    
+
+
     ================================================================================
     ║                   mesalab Workflow Finished Successfully!                    ║
     ================================================================================
-    
+
 
 
 --------------

@@ -1,13 +1,13 @@
 Tutorial 3: Running GYRE and RSP with `mesalab`: ``example/MESA_grid_gyre``, ``example/MESA_grid_gyre``
 =================================================================================================================
 
-The base of the ``MESA_grid`` dataset is discussed in :ref:`Tutorial 2. <tutorial_2>`that demonstrates how the `mesalab` pipeline filters, processes, and prepares stellar evolution data for pulsation analysis. 
+The base of the ``MESA_grid`` dataset is discussed in :ref:`Tutorial 2. <tutorial_2>`that demonstrates how the `mesalab` pipeline filters, processes, and prepares stellar evolution data for pulsation analysis.
 
 Since  pulsation analysis with GYRE or RSP requires the installation of MESA, MESASDK and GYRE it is challenging to set up and run interactively on a platform like Google Colab. Therefore, this tutorial walks through what the output of a successful run looks like utilizing GYRE and/or RSP workflow without an interacitve Google Colab notebook.
 
 
-1) MESA Grid dataset
---------------------
+MESA Grid dataset
+-----------------
 
 This set of runs are **actual MESA stellar evolution outputs**, providing standard ``profile``, ``history``, and ``inlist`` files for demonstrating the analysis.
 
@@ -119,26 +119,27 @@ After the workflow completes, you will find the generated plots in the `example/
 Understanding GYRE Output
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-After the GYRE workflow completes, you can explore its output. For each MESA run that underwent GYRE pulsation analysis, a dedicated ``gyre_output`` directory will be created within its respective run folder.
+After the GYRE workflow is complete, a structured output directory is created to store the run data. The main output folder is ``gyre_outputs``, which contains subdirectories for each MESA stellar model run. The name of each subdirectory is identical to its corresponding input folder (e.g., ``run_5.0MSUN_z0.0090``). Within these directories, the final output GYRE files are placed into separate folders, named after the specific ``profileXX`` files that were previously filtered for analysis.
 
 The typical structure within each MESA run directory will look like this:
 
 .. code-block::
 
     example/MESA_grid_output/
-    └── run_5.0MSUN_z0.0100/ # Example MESA run directory for profile00030
-        └── gyre_output/
-            ├── summary.h5
-            └── detail.l<l>.n<n>.TXT  # Multiple detail files, one per mode
+    └── gyre_output/
+        └── run_5.0MSUN_z0.0090/
+             └── profile00018
+                 ├── summary.h5
+                 └── detail.l<l>.n<n>.TXT  # Multiple detail files, one per mode
 
 
-The ``gyre_output`` directory contains:
+This ``profile00018`` directory contains:
 
 * ``summary.h5``: This is a binary HDF5 file containing an overview of all calculated pulsation modes for a *specific stellar profile*. It's data should look like this:
 
     .. code-block:: text
 
-                E_norm         eta           freq           l  n_g n_p n_pg          omega         
+                E_norm         eta           freq           l  n_g n_p n_pg          omega
         ---------------------- --- ----------------------- --- --- --- ---- -----------------------
         7.716313969427929e-06  0.0 (0.3288290815023021+0j)   0   0   2    2 (4.1285738058857735+0j)
         4.977767116023725e-06  0.0 (0.4253575871382588+0j)   0   0   3    3  (5.340525796473679+0j)
@@ -153,7 +154,7 @@ The ``gyre_output`` directory contains:
 
     .. code-block:: text
 
-             Gamma_1                P                   T         dW_dx ...          rho                    x           xi_h             xi_r           
+             Gamma_1                P                   T         dW_dx ...          rho                    x           xi_h             xi_r
         ----------------- --------------------- ----------------- ----- ... --------------------- --------------------- ---- ---------------------------
         1.606969163191305 4.521157801068377e+19 147308873.3222435   0.0 ...      5315.50896647388                   0.0   0j                          0j
         1.606971014744742 4.520751437574627e+19 147304132.5888782   0.0 ...     5315.215595668408 1.208472088924861e-05   0j (-2.981450615162198e-08+0j)
@@ -173,7 +174,7 @@ The ``gyre_output`` directory contains:
 
 .. tip::
 
-    You can access the data of GYRE output files using various tools. For Python users, the ``pygyre`` `library <https://pygyre.readthedocs.io/en/stable/index.html>`_ is one of the most convenient options. 
+    You can access the data of GYRE output files using various tools. For Python users, the ``pygyre`` `library <https://pygyre.readthedocs.io/en/stable/index.html>`_ is one of the most convenient options.
 
 
 For instance, to load the ``summary.h5`` file shown above into a Python object, you would use:
@@ -183,7 +184,7 @@ For instance, to load the ``summary.h5`` file shown above into a Python object, 
     >>> import pygyre
     >>> import numpy
     >>> s = pygyre.read_output('example/MESA_grid_output/run_5.0MSUN_z0.0100/profile00030/summary.h5')
-    >>> print(s) 
+    >>> print(s)
 
 
 
@@ -195,101 +196,73 @@ Run MESA grid example with RSP
 Similar to the case of GYRE, you can easily run your first example by executing `mesalab` with the provided configuration file:
 
 
-IDE MÉG KELL MUNKA
-
-
 .. code-block:: console
 
     $ mesalab --config example/example_MESA_rsp.yaml
 
 
-Upon execution, you'll see terminal output similar to this:
+Upon successful execution, you'll see terminal output similar to this:
 
 .. code-block:: console
 
-    ================================================================================
-                       mesalab CLI - Starting Analysis Workflow
-                                  Version: 1.0.0.
-    ================================================================================
 
-    ======================================================================
-        Starting MESA Analysis Workflow...
-    ======================================================================
-
-    Performing MESA Run Analysis: 100%|███████████████████████████████████| 4/4 [00:03<00:00,  1.15it/s]
-
-    ======================================================================
-        MESA Analysis Workflow Completed Successfully.
-    ======================================================================
-
-    ======================================================================
-        Starting Plotting Workflow...
-    ======================================================================
-
-    ======================================================================
-        Full Instability Strip Crossings Matrix (for Heatmap):
-    ======================================================================
-                4.0  5.0
-    initial_Z
-    0.009       0.0  2.0
-    0.010       0.0  2.0
-    ======================================================================
-
-    Calculating BCs serially: 100%|█████████████████████████████████████████████| 373/373 [00:04<00:00, 88.77it/s]
-
-    ======================================================================
-        Plotting Workflow Completed Successfully.
-    ======================================================================
-
-    ======================================================================
-        Starting GYRE Workflow...
-    ======================================================================
-
-    [2025-07-17 01:41:30] GYRE Pipeline: Initializing GYRE workflow from mesalab configuration...
-    [2025-07-17 01:41:30] GYRE Progress: Processing M=5.0, Z=0.009 from run directory: run_5.0MSUN_z0.0090
-    [2025-07-17 01:41:30] GYRE Progress: Searching profiles in: MESA_grid/run_5.0MSUN_z0.0090/LOGS within model range [2073-2246]
-    # ... (GYRE processing details for individual profiles will appear here, showing progress) ...
-    [2025-07-17 01:41:37] GYRE Progress: **profile00012 - SUCCESS**
-    [2025-07-17 01:41:37] GYRE Progress: **profile00014 - SUCCESS**
-    # ... (more profile successes and other GYRE messages) ...
-    [2025-07-17 01:42:05] GYRE Pipeline: All GYRE runs completed.
-    [2025-07-17 01:42:05] GYRE Pipeline: **GYRE pipeline execution complete.**
-
-    ======================================================================
-        GYRE Workflow Completed Successfully.
-    ======================================================================
-
-    ================================================================================
-    ║                  mesalab Workflow Finished Successfully!                     ║
-    ================================================================================
+  ================================================================================
+                      mesalab CLI - Starting Analysis Workflow
+                                Version: 1.0.0
+  ================================================================================
 
 
+  ======================================================================
+          Starting MESA Analysis Workflow...
+  ======================================================================
+
+  Performing MESA Run Analysis: 100%|███████████████████████████████████████████████████████████████████████████████████████████████| 4/4 [00:03<00:00,  1.25it/s]
+
+  ======================================================================
+          MESA Analysis Workflow Completed Successfully.
+  ======================================================================
 
 
-After the workflow completes, you will find the generated plots in the `example/MESA_grid_output/plots` directory. Here are some examples of the plots generated for this grid:
+  ======================================================================
+          Starting MESA RSP Workflow...
+  ======================================================================
 
-.. figure:: figs/example_2_CMD.png
-   :alt: Example Gaia Color-Magnitude Diagram for the blue loop crossers
-   :align: center
-   :width: 600px
+  MESA RSP Workflow: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████| 373/373 [1:45:53<00:00, 17.03s/it]
+  --- MESA RSP Workflow Summary ---
+  Total runs: 373
+  Successful runs: 373
+  Failed runs: 0
+  Timed out runs: 0
+  Runs with unexpected errors: 0
+  ---------------------------------
 
-   Gaia Color-Magnitude Diagram (CMD) for the 5 Msun models that undergo blue loop evolution. This plot specifically focuses on models that are currently within the blue loop phase and have crossed the red (cool) boundary of the Instability Strip (IS), indicating evolutionary stages relevant for pulsating stars.
+  ======================================================================
+          MESA RSP Workflow Completed.
+  ======================================================================
 
-.. figure:: figs/example_2_heatmap.png
-   :alt: Example Heatmap of Instability Strip Crossings
-   :align: center
-   :width: 600px
 
-   Heatmap visualizing the number of instability strip crossings for different initial masses and metallicities.
+  ======================================================================
+          Plotting workflow is disabled in configuration.
+  ======================================================================
+
+
+  ======================================================================
+          GYRE workflow is disabled in configuration.
+  ======================================================================
+
+
+  ================================================================================
+  ║                   mesalab Workflow Finished Successfully!                    ║
+  ================================================================================
 
 
 ----
 
 
-Understanding GYRE Output
+Understanding RSP Output
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-After the GYRE workflow completes, you can explore its output. For each MESA run that underwent GYRE pulsation analysis, a dedicated ``gyre_output`` directory will be created within its respective run folder.
+After the RSP workflow completes, each run's output is located in the ``rsp_outputs`` directory will be created within its respective run folder.
 
 The typical structure within each MESA run directory will look like this:
 
@@ -308,7 +281,7 @@ The ``gyre_output`` directory contains:
 
     .. code-block:: text
 
-                E_norm         eta           freq           l  n_g n_p n_pg          omega         
+                E_norm         eta           freq           l  n_g n_p n_pg          omega
         ---------------------- --- ----------------------- --- --- --- ---- -----------------------
         7.716313969427929e-06  0.0 (0.3288290815023021+0j)   0   0   2    2 (4.1285738058857735+0j)
         4.977767116023725e-06  0.0 (0.4253575871382588+0j)   0   0   3    3  (5.340525796473679+0j)
@@ -323,7 +296,7 @@ The ``gyre_output`` directory contains:
 
     .. code-block:: text
 
-             Gamma_1                P                   T         dW_dx ...          rho                    x           xi_h             xi_r           
+             Gamma_1                P                   T         dW_dx ...          rho                    x           xi_h             xi_r
         ----------------- --------------------- ----------------- ----- ... --------------------- --------------------- ---- ---------------------------
         1.606969163191305 4.521157801068377e+19 147308873.3222435   0.0 ...      5315.50896647388                   0.0   0j                          0j
         1.606971014744742 4.520751437574627e+19 147304132.5888782   0.0 ...     5315.215595668408 1.208472088924861e-05   0j (-2.981450615162198e-08+0j)
@@ -343,7 +316,7 @@ The ``gyre_output`` directory contains:
 
 .. tip::
 
-    You can access the data of GYRE output files using various tools. For Python users, the ``pygyre`` `library <https://pygyre.readthedocs.io/en/stable/index.html>`_ is one of the most convenient options. 
+    You can access the data of GYRE output files using various tools. For Python users, the ``pygyre`` `library <https://pygyre.readthedocs.io/en/stable/index.html>`_ is one of the most convenient options.
 
 
 For instance, to load the ``summary.h5`` file shown above into a Python object, you would use:
@@ -353,5 +326,4 @@ For instance, to load the ``summary.h5`` file shown above into a Python object, 
     >>> import pygyre
     >>> import numpy
     >>> s = pygyre.read_output('example/MESA_grid_output/run_5.0MSUN_z0.0100/profile00030/summary.h5')
-    >>> print(s) 
-
+    >>> print(s)

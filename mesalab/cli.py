@@ -156,7 +156,7 @@ def main():
     mesa_star_dir = None
 
     if config.rsp_workflow.get('run_rsp_workflow', False):
-        rsp_output_dir = os.path.join(output_base_dir, 'mesa_rsp_runs')
+        rsp_output_dir = os.path.join(output_base_dir, 'rsp_outputs')
         os.makedirs(rsp_output_dir, exist_ok=True)
         cli_logger.info(f"Dedicated RSP output directory created: '{rsp_output_dir}'")
         
