@@ -88,6 +88,7 @@ gyre_workflow:
   # The number of OpenMP threads that each *individual* GYRE process should use.
   # This affects the performance of a single GYRE calculation.
   num_gyre_threads: 4
+  gyre_output_subdir: "./gyre_outputs"        # Subdirectory within 'output_dir' to store GYRE runs
 
   # Set to 'true' to enable parallel execution of multiple GYRE runs simultaneously.
   # This is highly recommended for large grids to speed up the workflow.

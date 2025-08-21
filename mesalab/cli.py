@@ -150,13 +150,16 @@ def main():
     detail_files_output_dir = os.path.join(session_output_dir, 'detail_files')
     plots_output_dir = os.path.join(session_output_dir, 'plots')
     
-    rsp_output_dir = None
+    rsp_output_subdir = None
     mesa_star_dir = None
 
+    rsp_output_subdir = None
     if config.rsp_workflow.get('run_rsp_workflow', False):
-        rsp_output_dir = os.path.join(output_base_dir, 'rsp_outputs')
-        os.makedirs(rsp_output_dir, exist_ok=True)
-        cli_logger.info(f"Dedicated RSP output directory created: '{rsp_output_dir}'")
+        # Retrieve the subdirectory name from the YAML config, or use a default if it's not specified.
+        rsp_output_name = config.rsp_workflow.get('rsp_output_subdir', 'rsp_outputs')
+        rsp_output_subdir = os.path.join(output_base_dir, rsp_output_name)
+        os.makedirs(rsp_output_subdir, exist_ok=True)
+        cli_logger.info(f"Dedicated RSP output directory created: '{rsp_output_subdir}'")
         
     # No more `sys.exit(1)` here for missing paths. That logic is now safely handled
     # within `config_paths.set_environment_variables_for_executables`.
@@ -196,7 +199,7 @@ def main():
                 analysis_results_sub_dir=analysis_results_sub_dir,
                 detail_files_output_dir=detail_files_output_dir,
                 gyre_input_csv_name=gyre_csv_name_to_pass if gyre_workflow_enabled_for_analysis_csv else None,
-                rsp_output_subdir=rsp_output_dir
+                rsp_output_subdir=rsp_output_subdir
             )
 
         if summary_df.empty:
@@ -229,7 +232,8 @@ def main():
             try:
                 rsp_workflow_results = run_mesa_rsp_workflow(
                     inlist_paths=generated_rsp_inlists_paths,
-                    config_data=config
+                    config_data=config,
+                    rsp_output_subdir=rsp_output_subdir
                 )
                 if rsp_workflow_results['failed'] or rsp_workflow_results['timeout'] or rsp_workflow_results['error']:
                     cli_logger.error("MESA RSP workflow completed with some failures, timeouts, or errors. Check previous logs for details.")
@@ -312,10 +316,13 @@ def main():
             print(f"        Starting GYRE Workflow...")
             print(f"{'='*70}\n")
             try:
+                # Create a full path for the GYRE output subdirectory
+                gyre_output_path = os.path.join(output_base_dir, config.gyre_workflow.get('gyre_output_subdir', 'gyre_outputs'))
                 gyre_workflow_return_status = run_gyre_workflow(
                     config_data=config,
                     filtered_profiles_csv_path=gyre_input_csv_path,
-                    debug_mode=config.general_settings.debug
+                    debug_mode=config.general_settings.debug,
+                    gyre_output_subdir=gyre_output_path
                 )
             except Exception as e:
                 cli_logger.critical(f"Critical error during GYRE workflow: {e}", exc_info=True)
@@ -340,7 +347,7 @@ def main():
     if overall_workflow_success:
         print(f"║        {'mesalab Workflow Finished Successfully!':^62}        ║")
     else:
-        print(f"║        {'mesalab Workflow Completed with Errors/Skipped Steps!':^55}        ║")
+        print(f"║        {'mesalab Workflow Completed with Errors/Skipped Steps!':^62}        ║")
     print(f"{'='*80}\n")
 
     if not overall_workflow_success:
