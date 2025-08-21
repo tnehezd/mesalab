@@ -106,7 +106,7 @@ You can read more details about GYRE inlists on the `official documentation <htt
 Output
 ------
 
-All GYRE-related output files are saved to the ``gyre_output`` subdirectory within your `mesalab` session's main ``output_dir``. The output files are organized by creating subdirectories within the ``gyre_outputs``  dir. Subdirectories follow the naming convention of the original MESA model directories (e.g., ``run_5.0MSUN_z0.0090``). Within these subdirectories, further subdirectories are created based on the **profile numbers** corresponding to each pulsation run (e.g., ``profile00018``, ``profile00019``). Within each profile directory, you can find:
+All GYRE-related output files are saved to an output directory defined in the YAML file (``gyre_output_subdir``, ``gyre_outputs`` by default) within your `mesalab` session's main ``output_dir``. Subdirectories follow the naming convention of the original MESA model directories (e.g., ``run_5.0MSUN_z0.0090``). Within these subdirectories, further subdirectories are created based on the **profile numbers** corresponding to each pulsation run (e.g., ``profile00018``, ``profile00019``). Within each profile directory, you can find:
 
 * **GYRE Inlist Files:** ``gyre_inlist_profileXX.in`` files (generated inlists) for each GYRE run.
 * **Generated GYRE Data:** ``detailXXX.txt`` and ``summary.h5`` files, as configured in the ``gyre.in`` template.
@@ -145,12 +145,13 @@ Configuration Parameters
 GYRE Workflow is controlled by parameters within the :ref:`YAML configuration <understanding_yaml_config>` file and the ``gyre.in`` template file.
 
 * ``run_gyre_workflow``: (Boolean) Set to `true` to enable the execution of the full GYRE workflow. Default: `false`.
-* ``gyre_inlist_template_path``: (String) The absolute or relative path to the GYRE inlist template file (e.g., ``config/gyre.in``). This template defines the general GYRE calculation settings, which `mesalab` then customizes for each specific stellar profile.
+* ``gyre_inlist_template_path``: (String) The absolute or relative path to the GYRE inlist template file (e.g., ``config/gyre.in``). This template defines the general GYRE settings.
 
 * ``run_mode``: (String) Specifies which MESA profiles the GYRE workflow should analyze:
     * ``ALL_PROFILES``: Processes all available profiles matching the configured :code:`mesa_profile_pattern`.
     * ``FILTERED_PROFILES``: Uses a subset of profiles identified by the `MESA Run Analysis Workflow` and listed in the file specified by :code:`filtered_profiles_csv_name`.
 
+* ``gyre_output_subdir``: Specifies the subdirectory where all the output files from the GYRE runs will be saved, ``./gyre_outputs`` by deafault.
 * ``enable_gyre_parallel``: (Boolean) If set to `true`, multiple GYRE runs will be executed concurrently, utilizing the available computational resources more efficiently. Default: `true`.
 * ``num_gyre_threads``: (Integer) Specifies the number of OpenMP threads that each individual GYRE instance will utilize during its run. Default: `1`.
 * ``max_concurrent_gyre_runs``: (Integer) When :code:`enable_gyre_parallel` is `true`, this parameter defines the maximum number of GYRE instances that can run simultaneously. Default: `4`.
@@ -158,7 +159,7 @@ GYRE Workflow is controlled by parameters within the :ref:`YAML configuration <u
 * ``mesa_profile_base_dir_relative``: (String) The relative path from a MESA run's top directory (e.g., ``/path/to/your/mesa_runs_grid/run_X.XMSUN_Z.XXXX``) to its specific LOGS folder where the profiles are located (e.g., ``LOGS``). Default: `LOGS`.
 
 
-For a complete list of all `mesalab` parameters, including those in `general_settings` (e.g., `gyre_dir` which points to your GYRE installation), please refer to the :ref:`understanding_yaml_config` section.
+For a complete list of all `mesalab` parameters, including those in `general_settings`, please refer to the :ref:`understanding_yaml_config` section.
 
 ----
 
@@ -235,7 +236,7 @@ Follow these instructions carefully to compile and install GYRE on your system.
 
 **Troubleshooting**
 
-* For more detailed information on diagnosing and resolving common GYRE-related issues (e.g., "command not found" errors, or unexpected workflow skips), please refer to the :ref:`trouble_shooting_gyre` entry in the Troubleshooting section, or consult the `official GYRE documentation <https://gyre.readthedocs.io/en/v7.0/index.html>`_.
+* For more detailed information on diagnosing and resolving common GYRE-related issues (e.g., "command not found" errors, or unexpected workflow skips), please refer to the :ref:`GYRE Workflow Skipped or Failed <trouble_shooting_gyre>` entry in the Troubleshooting section, or consult the `official GYRE documentation <https://gyre.readthedocs.io/en/v7.0/index.html>`_.
 
 ----
 
@@ -255,6 +256,7 @@ To run only this part, ensure your YAML configuration file has the following set
         # mesasdk_root: "/path/to/your/mesasdk"
         # gyre_dir: "/path/to/your/gyre/install/bin"
         force_reanalysis: false
+        input_dir: "/path/to/your/MESA_grid/"
 
     blue_loop_analysis:
         analyze_blue_loop: false
@@ -266,16 +268,17 @@ To run only this part, ensure your YAML configuration file has the following set
 
     gyre_workflow:
         run_gyre_workflow: true 
-        gyre_inlist_template_path: "config/gyre.in"                                       
-        run_mode: "FILTERED_PROFILES"               
-        num_gyre_threads: 1                         # Number of OpenMP threads for each individual GYRE run
-        enable_gyre_parallel: true                       # Enable/disable parallel execution of multiple GYRE runs
-        max_concurrent_gyre_runs: 4                 # Maximum number of concurrent GYRE runs if enable_gyre_parallel is true
-        mesa_profile_pattern: "profile*.data.GYRE"  # Wildcard pattern for MESA profile files (e.g., "profile*.data.GYRE")
-        mesa_profile_base_dir_relative: "LOGS"      # Relative path from a MESA run directory to its LOGS folder (e.g., "LOGS")
+        gyre_inlist_template_path: "config/gyre.in"
+        run_mode: "FILTERED_PROFILES"      
+        gyre_output_subdir: "./gyre_outputs"            # Subdirectory within 'output_dir' to store GYRE runs (default: gyre_outputs)         
+        num_gyre_threads: 1                             # Number of OpenMP threads for each individual GYRE run
+        enable_gyre_parallel: true                      # Enable/disable parallel execution of multiple GYRE runs
+        max_concurrent_gyre_runs: 4                     # Maximum number of concurrent GYRE runs if enable_gyre_parallel is true
+        mesa_profile_pattern: "profile{:05d}.data.GYRE" # Example: "profile00042.data.GYRE"
+        mesa_profile_base_dir_relative: "LOGS"          # Relative path from a MESA run directory to its LOGS folder (e.g., "LOGS")
 
 
-Then, execute mesalab as usual:
+Then, execute `mesalab` as usual:
 
 .. code-block:: console
 

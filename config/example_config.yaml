@@ -23,7 +23,7 @@ gyre_workflow:
   run_gyre_workflow: true                     # Execute the full GYRE workflow
   gyre_inlist_template_path: "config/gyre.in" # Example: Relative path assuming 'config' directory is in the mesalab project root.
                                               # You can also use an absolute path like "/home/user/my_gyre_templates/my_custom_gyre.in"
-  gyre_output_subdir: "./gyre_outputs"        # Subdirectory within 'output_dir' to store GYRE runs
+  gyre_output_subdir: "./gyre_outputs"        # Subdirectory within 'output_dir' to store GYRE runs (default: gyre_outputs)
   run_mode: "FILTERED_PROFILES"               # "ALL_PROFILES" or "FILTERED_PROFILES"
   enable_gyre_parallel: true                  # Enable/disable parallel execution of multiple GYRE runs
   num_gyre_threads: 1                         # Number of OpenMP threads for each individual GYRE run
@@ -35,7 +35,7 @@ gyre_workflow:
 rsp_workflow:
   run_rsp_workflow: true                      # Set to 'true' to enable the RSP workflow
   rsp_inlist_template_path: "config/rsp.inlist_template" # Path to the inlist_rsp template
-  rsp_output_subdir: "./rsp_outputs"          # Subdirectory within 'output_dir' to store RSP runs
+  rsp_output_subdir: "./rsp_outputs"          # Subdirectory within 'output_dir' to store RSP runs (default: rsp_outputs)
   enable_rsp_parallel: true                   # Enable parallel execution for multiple RSP runs
   num_rsp_threads: 1                          # Number of OpenMP threads for each individual RSP run
   max_concurrent_rsp_runs: 4                  # Maximum number of concurrent RSP runs

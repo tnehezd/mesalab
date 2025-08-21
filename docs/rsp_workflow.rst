@@ -32,108 +32,106 @@ The RSP Workflow requires the **RSP inlist template** as an input.
 **RSP Inlist Template**
 The :code:`rsp_inlist_template_path` parameter, typically set to :code:`config/rsp.inlist_template`, specifies the absolute or relative path to an RSP inlist file. This file serves as a **template**; `mesalab` dynamically modifies it before each individual RSP run.
 
-A typical GYRE template inlist should follow the conventional GYRE 7.0 setup, like::
-
-
-&star_job
-
-      show_log_description_at_start = .false.
-
-      create_RSP_model = .true.
-
-      save_model_when_terminate = .true.
-      save_model_filename = 'rsp_final_M5.0Z0.0090Mod2073.mod'
-
-      initial_zfracs = 6
-
-      color_num_files=2
-      color_file_names(2)='blackbody_johnson.dat'
-      color_num_colors(2)=5
-
-      set_initial_age = .true.
-      initial_age = 0
-
-      set_initial_model_number = .true.
-      initial_model_number = 0
-      
-      set_initial_cumulative_energy_error = .true.
-      new_cumulative_energy_error = 0d0
-      
-      pgstar_flag = .false.
-   
-/ ! end of star_job namelist
-
-&eos
-/ ! end of eos namelist
-
-&kap
-   Zbase = 0.003d0
-
-      kap_file_prefix = 'a09'
-      kap_lowT_prefix = 'lowT_fa05_a09p'
-      kap_CO_prefix =   'a09_co'
-
-/ ! end of kap namelist
-
-
-&controls
-
-    ! limit max_model_number as part of test_suite
-      max_model_number = 1192 ! 16000
-
-! RSP controls
-
-      x_integer_ctrl(1) = 20 ! which period to check
-   !  x_ctrl(1) = 18.2974 ! expected period (in days) 
-
-      RSP_mass = 6d0
-      RSP_Teff = 4892
-      RSP_L = 4660
-      RSP_X = 0.730d0
-      RSP_Z = 0.003d0
-   
-      RSP_nmodes = 15
-
-      
-! solver
-      use_gold2_tolerances = .true.
-
-! output controls
-   
-      terminal_show_age_units = 'days'
-      terminal_show_timestep_units = 'secs'
-      terminal_show_log_dt = .false.
-      terminal_show_log_age = .false.
-
-      !num_trace_history_values = 2
-      trace_history_value_name(1) = 'rel_E_err'
-      trace_history_value_name(2) = 'log_rel_run_E_err'
-
-      RSP_work_period = 5
-      RSP_work_filename = 'work.data'
-
-      photo_interval = 1000
-      profile_interval = 4000
-      history_interval = 10
-      terminal_interval = 4000
-
-/ ! end of controls namelist
+A typical RSP template inlist should follow the conventional MESA RSP setup, like::
 
 
 
-&pgstar
+    &star_job
+
+          show_log_description_at_start = .false.
+
+          create_RSP_model = .true.
+
+          save_model_when_terminate = .true.
+          save_model_filename = 'rsp_final_M5.0Z0.0090Mod2073.mod'
+
+          initial_zfracs = 6
+
+          color_num_files=2
+          color_file_names(2)='blackbody_johnson.dat'
+          color_num_colors(2)=5
+
+          set_initial_age = .true.
+          initial_age = 0
+
+          set_initial_model_number = .true.
+          initial_model_number = 0
+          
+          set_initial_cumulative_energy_error = .true.
+          new_cumulative_energy_error = 0d0
+          
+          pgstar_flag = .false.
+       
+    / ! end of star_job namelist
+
+    &eos
+    / ! end of eos namelist
+
+    &kap
+       Zbase = 0.003d0
+
+          kap_file_prefix = 'a09'
+          kap_lowT_prefix = 'lowT_fa05_a09p'
+          kap_CO_prefix =   'a09_co'
+
+    / ! end of kap namelist
+
+
+    &controls
+
+        ! limit max_model_number as part of test_suite
+          max_model_number = 1192 ! 16000
+
+    ! RSP controls
+
+          x_integer_ctrl(1) = 20 ! which period to check
+       !  x_ctrl(1) = 18.2974 ! expected period (in days) 
+
+          RSP_mass = 6d0
+          RSP_Teff = 4892
+          RSP_L = 4660
+          RSP_X = 0.730d0
+          RSP_Z = 0.003d0
+       
+          RSP_nmodes = 15
+
+          
+    ! solver
+          use_gold2_tolerances = .true.
+
+    ! output controls
+       
+          terminal_show_age_units = 'days'
+          terminal_show_timestep_units = 'secs'
+          terminal_show_log_dt = .false.
+          terminal_show_log_age = .false.
+
+          !num_trace_history_values = 2
+          trace_history_value_name(1) = 'rel_E_err'
+          trace_history_value_name(2) = 'log_rel_run_E_err'
+
+          RSP_work_period = 5
+          RSP_work_filename = 'work.data'
+
+          photo_interval = 1000
+          profile_interval = 4000
+          history_interval = 10
+          terminal_interval = 4000
+
+    / ! end of controls namelist
 
 
 
-/ ! end of pgstar namelist
+    &pgstar
+
+
+
+    / ! end of pgstar namelist
 
 
 
 .. note::
-    The provided example ``gyre.in`` template is based on practices and examples demonstrated during the MESA Summer School 2022, led by Earl Bellinger. You can find more details at the `Asteroseismology Across the HRD <https://earlbellinger.com/mesa-summer-school-2022/index.html>`_ tutorial.
-
-
-You can read more details about GYRE inlists on the `official documentation <https://gyre.readthedocs.io/>`_.
+    The provided example ``rsp.inlist_template`` template is based on the `Cepheid MESA test suite <https://docs.mesastar.org/en/latest/test_suite/rsp_Cepheid.html>`_.
 
 
 ----
@@ -141,59 +139,52 @@ You can read more details about GYRE inlists on the `official documentation <htt
 Output
 ------
 
-All GYRE-related output files are saved to the ``gyre_output`` subdirectory within your `mesalab` session's main ``output_dir``. The output files are organized by creating subdirectories within the ``gyre_outputs``  dir. Subdirectories follow the naming convention of the original MESA model directories (e.g., ``run_5.0MSUN_z0.0090``). Within these subdirectories, further subdirectories are created based on the **profile numbers** corresponding to each pulsation run (e.g., ``profile00018``, ``profile00019``). Within each profile directory, you can find:
+All RSP-related output files are saved to the ``rsp_output_subdir`` (e.g., ``rsp_outputs``) subdirectory within your `mesalab` session's main ``output_dir``. Subdirectories follow the naming convention of the original MESA model directories (e.g., ``run_5.0MSUN_z0.0090``). Within these subdirectories, further subdirectories are created based on the **model numbers** corresponding to each pulsation run (e.g., ``model2073``). Within each profile directory, you can find:
 
-* **GYRE Inlist Files:** ``gyre_inlist_profileXX.in`` files (generated inlists) for each GYRE run.
-* **Generated GYRE Data:** ``detailXXX.txt`` and ``summary.h5`` files, as configured in the ``gyre.in`` template.
+* **RSP Inlist Files:** ``inlist_rsp`` file (generated inlists) for MESA RSP run.
+* **Final model:** The final model of the MESA RSP run (``rsp_final_M<mass>Z<metallicity>.mod``).
+* **LOGS dir:** This directory contains RSP output files for each modes: ``history.data``, ``LINA_eigen<mode>.data``, ``LINA_work<mode>.data``, ``LINA_period_growth.data``, ``profile1.data``, ``profiles.index``
+* **photos dir:**
 
 
-Based on your ``gyre.in`` template, the final output directory structure follows the scheme below::
+Based on your ``rsp.inlist_template``, the final output directory structure follows the scheme below::
 
-    output_dir/
-    ├── gyre_outputs/
-    │   ├── run_5.0MSUN_z0.0090/
-    │   │   ├── profile00018/
-    │   │   │   ├── gyre_inlist_profile18.in
-    │   │   │   ├── summary.h5
-    │   │   │   └── detail.txt
-    │   │   ├── profile00019/
-    │   │   │   ├── gyre_inlist_profile19.in
-    │   │   │   ├── summary.h5
-    │   │   │   └── detail.txt
-    │   │   └── ... (additional profile directories as per the run)
-    │   ├── run_5.0MSUN_z0.0100/
-    │   │   ├── profile00018/
-    │   │   │   ├── gyre_inlist_profile18.in
-    │   │   │   ├── summary.h5
-    │   │   │   └── detail.txt
-    │   │   ├── profile00019/
-    │   │   │   ├── gyre_inlist_profile19.in
-    │   │   │   ├── summary.h5
-    │   │   │   └── detail.txt
-    │   │   └── ... (additional profile directories as per the run)
+    example/MESA_grid_output/
+    └── rsp_outputs/ # Example MESA run directory for profile00030
+        ├── run_5.0MSUN_z0.0090/
+        │   ├── model2073
+        │   │   ├── LOGS
+        │   │   │    ├── LINA_eigen1.data
+        │   │   │    ├── LINA_work1.data
+        │   │   │    ├── LINA_period_growth.data
+        │   │   │    ├── history.data
+        │   │   │    ├── profile1.data
+        │   │   │    ├── profiles.index
+        │   │   │    └── ... (additonal eigen and work data files)
+        │   │   ├── photos
+        │   │   │    ├── 1000
+        │   │   │    └── x200
+        │   │   ├── inlist_rsp
+        │   │   └── rsp_final_M5.0Z0.0090Mod2073.mod                        
+        │   └── ... (additional model directories as per the run)
+        └── ... (additional run directories as per the run)
 
 ----
 
 Configuration Parameters
 ------------------------
 
-GYRE Workflow is controlled by parameters within the :ref:`YAML configuration <understanding_yaml_config>` file and the ``gyre.in`` template file.
+RSP Workflow is controlled by parameters within the :ref:`YAML configuration <understanding_yaml_config>` file and the ``rsp.inlist_template`` file.
 
-* ``run_gyre_workflow``: (Boolean) Set to `true` to enable the execution of the full GYRE workflow. Default: `false`.
-* ``gyre_inlist_template_path``: (String) The absolute or relative path to the GYRE inlist template file (e.g., ``config/gyre.in``). This template defines the general GYRE calculation settings, which `mesalab` then customizes for each specific stellar profile.
-
-* ``run_mode``: (String) Specifies which MESA profiles the GYRE workflow should analyze:
-    * ``ALL_PROFILES``: Processes all available profiles matching the configured :code:`mesa_profile_pattern`.
-    * ``FILTERED_PROFILES``: Uses a subset of profiles identified by the `MESA Run Analysis Workflow` and listed in the file specified by :code:`filtered_profiles_csv_name`.
-
-* ``enable_parallel``: (Boolean) If set to `true`, multiple GYRE runs will be executed concurrently, utilizing the available computational resources more efficiently. Default: `true`.
-* ``num_gyre_threads``: (Integer) Specifies the number of OpenMP threads that each individual GYRE instance will utilize during its run. Default: `1`.
-* ``max_concurrent_gyre_runs``: (Integer) When :code:`enable_parallel` is `true`, this parameter defines the maximum number of GYRE instances that can run simultaneously. Default: `4`.
-* ``mesa_profile_pattern``: (String) A wildcard pattern (e.g., ``profile*.data.GYRE``) used by `mesalab` to identify MESA profile files within the relevant directories for processing. Default: ``profile*.data.GYRE``.
-* ``mesa_profile_base_dir_relative``: (String) The relative path from a MESA run's top directory (e.g., ``/path/to/your/mesa_runs_grid/run_X.XMSUN_Z.XXXX``) to its specific LOGS folder where the profiles are located (e.g., ``LOGS``). Default: `LOGS`.
+* ``run_rsp_workflow``: (Boolean) Set to `true` to enable MESA RSP run. Default: `false`.
+* ``rsp_inlist_template_path``: (String) The absolute or relative path to the RSP inlist template file (e.g., ``config/rsp.inlist_template``). This template defines the general RSP settings.
+* ``rsp_output_subdir``: Specifies the subdirectory for MESA RSP outputs, ``./rsp_outputs`` by deafault.
+* ``enable_rsp_parallel``: (Boolean) If set to `true`, multiple RSP runs will be executed concurrently, utilizing the available computational resources more efficiently. Default: `true`.
+* ``num_rsp_threads``: (Integer) Specifies the number of OpenMP threads that each individual RSP instance will utilize during its run. Default: `1`.
+* ``max_concurrent_rsp_runs``: (Integer) When :code:`enable_parallel` is `true`, this parameter defines the maximum number of RSP instances that can run simultaneously. Default: `4`.
 
 
-For a complete list of all `mesalab` parameters, including those in `general_settings` (e.g., `gyre_dir` which points to your GYRE installation), please refer to the :ref:`understanding_yaml_config` section.
+For a complete list of all `mesalab` parameters, including those in `general_settings`, please refer to the :ref:`understanding_yaml_config` section.
 
 ----
 
@@ -201,11 +192,11 @@ Pre-requisites
 --------------
 
 .. note::
-    The `mesalab` GYRE Workflow relies on a correct installation and configuration of **both** the external GYRE software and the MESA SDK. **It is ESSENTIAL to install these separately** before attempting to run this workflow. This version of `mesalab` is configured to run with GYRE version **7.0**.
+    The `mesalab` RSP Workflow relies on a correct installation and configuration **both** of MESA SDK and MESA. **It is ESSENTIAL to install these separately** before attempting to run this workflow. This version of `mesalab` is **tested on MESA version 23.05.1**.
 
 **MESA SDK Installation**
     
-GYRE Workflow of `mesalab` relies on the `MESA SDK` to provide the necessary compilers (like `gfortran`), libraries, and utilities that MESA uses to generate stellar profiles. It also ensures compatibility for reading MESA output files. Therefore, a working installation of the MESA SDK is necessary.
+RSP Workflow of `mesalab` relies on the `MESA SDK` to provide the necessary compilers (like `gfortran`), libraries, and utilities that MESA uses to generate stellar profiles. It also ensures compatibility for reading MESA output files. Therefore, a working installation of the MESA SDK is necessary.
 
 You can find detailed installation instructions on the `official MESA SDK website <http://user.astro.wisc.edu/~townsend/static.php?ref=mesasdk>`_.
 
@@ -233,66 +224,71 @@ You can find detailed installation instructions on the `official MESA SDK websit
                 mesasdk_root: "/path/to/your/mesasdk" # Overrides MESASDK_ROOT environment variable
                 # ...
 
-**GYRE Installation**
+**MESA Installation**
 
-You *must* have the GYRE pulsation code installed separately on your system. `mesalab` does not install GYRE for you; it only interacts with an existing GYRE installation. For GYRE **v7.0**, the official and comprehensive installation guide (including compilation steps) is available `here <https://gyre.readthedocs.io/en/v7.0/ref-guide/installation.html>`_.
+You *must* have MESA installed separately on your system. `mesalab` does not install MESA for you; it only interacts with an existing MESA installation. For MESA **23.05.1**, the official and comprehensive installation guide (including compilation steps) is available `here <https://docs.mesastar.org/en/23.05.1/>`_.
 
-Follow these instructions carefully to compile and install GYRE on your system.
+Follow these instructions carefully to compile and install MESA on your system.
 
-* **Setting the** `GYRE_DIR` **Environment Variable (OR specifying paths in YAML):**
-    After successfully installing GYRE, you **must** configure `mesalab` to find the GYRE executables. This can be done in one of two ways, with the `GYRE_DIR` environment variable being the most common and recommended:
+* **Setting the** `MESA_DIR` **Environment Variable (OR specifying ``mesa_dir`` path in YAML):**
+    After successfully installing MESA, you **must** configure `mesalab` to find the MESA ``star`` executable. This can be done in one of two ways, with using the environment variable being the most common and recommended.
 
-    1.  **Recommended: Set the `GYRE_DIR` Environment Variable:**
-        Set the `GYRE_DIR` environment variable to point to your GYRE installation's root directory and add its `bin` subdirectory to your system's `PATH` environment variable.
+    1.  **Recommended: Set the `MESA_DIR` Environment Variable:**
+        Set the `MESA_DIR` environment variable to point to your MESA installation's root directory. This is the standard convention for all MESA-related software.
 
         * **On Linux/macOS (bash/zsh):**
             Add the following lines to your `~/.bashrc`, `~/.zshrc`, or `~/.profile` file:
 
             .. code-block:: console
 
-                $ export GYRE_DIR="/path/to/your/gyre_installation_root"
-                $ export PATH="$GYRE_DIR/bin:$PATH" # Add GYRE executables to your PATH
+                $ export MESA_DIR="/path/to/your/mesa_installation_root"
 
-            Replace the example path with the actual, full path to your GYRE installation directory and start a **new** terminal, or type `source ~/.bashrc`, `source ~/.zshrc`, or `source ~/.profile`.
+            Replace the example path with the actual, full path to your MESA installation directory and start a **new** terminal, or type `source ~/.bashrc`, `source ~/.zshrc`, or `source ~/.profile`.
 
-    2.  **Alternative: Specify** ``gyre_dir`` **Directly in the YAML Configuration:**
-        As an alternative to setting environment variables, you can explicitly provide the full path to GYRE's `bin` directory within the `general_settings` section of your `mesalab` configuration YAML file. This is useful if you have multiple GYRE installations or prefer not to modify your system's environment variables.
+
+
+    2.  **Alternative: Specify** ``mesa_binary_dir`` **Directly in the YAML Configuration:**
+        As an alternative to setting an environment variable, you can explicitly provide the full path to the directory containing the ``rn`` executable within the ``general_settings`` section of your `mesalab` configuration YAML file. This is useful if you have multiple MESA installations or prefer not to modify your system's environment variables.
 
         .. code-block:: yaml
 
             general_settings:
-                gyre_dir: "/path/to/your/gyre/install/bin" # Points to GYRE's 'bin' directory
+                mesa_binary_dir: "/path/to/your/mesa/star/work" # Points to MESA executable (`rn`).
                 # ...
 
-        Replace the example path with the actual, full path to your GYRE `bin` directory.
+        Replace the example path with the actual, full path to your MESA `star/work` directory.
 
 ----
+
 
 **Troubleshooting**
 
-* For more detailed information on diagnosing and resolving common GYRE-related issues (e.g., "command not found" errors, or unexpected workflow skips), please refer to the :ref:`trouble_shooting_gyre` entry in the Troubleshooting section, or consult the `official GYRE documentation <https://gyre.readthedocs.io/en/v7.0/index.html>`_.
+* For more detailed information on diagnosing and resolving common MESA-related issues (e.g., "command not found" errors, or unexpected workflow skips), please refer to the :ref:`RSP Workflow Skipped or Failed <trouble_shooting_mesa>` entry in the Troubleshooting section, or consult the `official MESA documentation <https://docs.mesastar.org/en/23.05.1/>`_.
 
 ----
 
-Running this Workflow Independently
------------------------------------
+Running the Workflow
+--------------------
 
-GYRE workflow can be run independently if you have already performed the MESA Run Analysis in a previous `mesalab` run, and you simply wish to run or re-run the pulsation analysis. This is particularly useful for, e.g., trying different GYRE ``inlist`` templates.
+The current version of `mesalab` is designed as RSP workfloe cannot be run independently and is only designed to function as an integrated part of a preceding analysis. However, future development aims to enable it to run as a standalone process.
 
-To run only this part, ensure your YAML configuration file has the following settings:
+To run RSP workflow, ensure your YAML configuration file has the following settings:
 
 .. code-block:: yaml
 
-    # Minimal configuration to run only the GYRE workflow
+    # Minimal configuration to run only the RSP workflow
     general_settings:
-        # Optional: Explicitly specify SDK and GYRE binary paths here
-        # if you are NOT using environment variables (MESASDK_ROOT, GYRE_DIR)
+        input_dir: /path/to/your/MESA_grid/
+        output_dir: MESA_grid_output
+        # Optional: Explicitly specify SDK and MESA binary paths here
+        # if you are NOT using environment variables (MESASDK_ROOT, MESA_DIR)
         # mesasdk_root: "/path/to/your/mesasdk"
-        # gyre_dir: "/path/to/your/gyre/install/bin"
-        force_reanalysis: false
+        # mesa_bin_dir: "/path/to/your/mesa/star/work"
+        force_reanalysis: True
 
     blue_loop_analysis:
-        analyze_blue_loop: false
+      analyze_blue_loop: True
+      blue_loop_output_type: "summary"
 
     plotting_settings:
         generate_heatmaps: false                    
@@ -300,20 +296,21 @@ To run only this part, ensure your YAML configuration file has the following set
         generate_blue_loop_plots_with_bc: false     
 
     gyre_workflow:
-        run_gyre_workflow: true 
-        gyre_inlist_template_path: "config/gyre.in"                                       
-        run_mode: "FILTERED_PROFILES"               
-        num_gyre_threads: 1                         # Number of OpenMP threads for each individual GYRE run
-        enable_parallel: true                       # Enable/disable parallel execution of multiple GYRE runs
-        max_concurrent_gyre_runs: 4                 # Maximum number of concurrent GYRE runs if enable_parallel is true
-        mesa_profile_pattern: "profile*.data.GYRE"  # Wildcard pattern for MESA profile files (e.g., "profile*.data.GYRE")
-        mesa_profile_base_dir_relative: "LOGS"      # Relative path from a MESA run directory to its LOGS folder (e.g., "LOGS")
+      run_gyre_workflow: False
+
+    rsp_workflow:
+      run_rsp_workflow: true
+      rsp_inlist_template_path: "config/rsp.inlist_template"
+      enable_rsp_parallel: true
+      num_rsp_threads: 1
+      max_concurrent_rsp_runs: 4 # Typically 1-2x your number of physical CPU cores
 
 
-Then, execute mesalab as usual:
+Then, execute `mesalab` as usual:
 
 .. code-block:: console
 
     $ mesalab --config path/to/your_config_settings.yaml
 
-`mesalab` will look for the necessary MESA profile input (e.g., ``analysis_results/sorted_blue_loop_profiles.csv``) in the analysis_results directory relative to your specified ``output_dir`` from the previous analysis run.
+
+`mesalab` will search for the defined input data, perform the blue loop analysis, and then store the resulting output in the specified `output_dir` directory.

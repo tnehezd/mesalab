@@ -112,8 +112,10 @@ gyre_workflow:
   # format specifier (e.g., '{:05d}') that will be replaced by the profile number.
   mesa_profile_pattern: "profile{:05d}.data.GYRE" # Example: "profile00042.data.GYRE"
 
-  # The relative path from a MESA run's top directory to its 'LOGS' folder.
-  # This is where MESA profiles (e.g., profile*.data.GYRE) are typically located.
+  # The relative path from a MESA run's top directory to its 'LOGS' folder,
+  # which is the default location for MESA profiles (e.g., profile*.data.GYRE).
+  # You can modify this setting if your profile files are stored in a different directory.
+  # "LOGS" by default.
   mesa_profile_base_dir_relative: "LOGS"
 
 

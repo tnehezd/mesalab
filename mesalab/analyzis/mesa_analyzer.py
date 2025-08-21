@@ -575,13 +575,21 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
         try:
             rsp_template_path = args.rsp_workflow.rsp_inlist_template_path
             rsp_output_dir = rsp_output_subdir
+            try:
+                generated_rsp_inlists_paths = generate_mesa_rsp_inlists(
+                    detail_df=combined_detail_data_for_plotting, # Use the combined df which now includes initial_Y
+                    mesa_output_base_dir=input_dir, # The root directory of your MESA runs
+                    rsp_inlist_template_path=rsp_template_path,
+                    rsp_output_subdir=rsp_output_dir
+                )
+            except TypeError as e:
+                logger.error(f"Error during MESA RSP inlist generation: {e}")
+                # Return a value that indicates failure or exit the program
+                return {"status": "error", "message": str(e)}
 
-            generated_rsp_inlists_paths = generate_mesa_rsp_inlists(
-                detail_df=combined_detail_data_for_plotting, # Use the combined df which now includes initial_Y
-                mesa_output_base_dir=input_dir, # The root directory of your MESA runs
-                rsp_inlist_template_path=rsp_template_path,
-                rsp_output_subdir=rsp_output_dir
-            )
+            # Check if the function returned an error status, and handle it gracefully
+            if isinstance(generated_rsp_inlists_paths, dict) and generated_rsp_inlists_paths.get("status") == "error":
+                return {"successful": False, "message": "RSP inlist generation failed."}            
             if generated_rsp_inlists_paths:
                 logger.info(f"Successfully generated {len(generated_rsp_inlists_paths)} MESA RSP inlist files.")
             else:
