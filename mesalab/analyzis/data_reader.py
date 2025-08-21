@@ -195,7 +195,8 @@ def get_data_from_history_file(history_file_path):
     Example:
         Assuming a valid 'history.data' file exists at the given path:
         
-        >>> df = get_data_from_history_file('/path/to/some_mesa_run/LOGS/history.data')
+        >>> from mesalab.analyzis import data_reader       
+        >>> df = data_reader.get_data_from_history_file('/path/to/some_mesa_run/LOGS/history.data')
         >>> if not df.empty:
         ...     print(df.head())
         ...     print(f"Total models: {len(df)}")

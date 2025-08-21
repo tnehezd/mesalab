@@ -36,7 +36,7 @@ def analyze_mesa_grid_directory(grid_root_path,
         ...     "/home/user/mesa_runs/",
         ...     mesa_output_subdir="LOGS",
         ...     inlist_filename="inlist",
-        ...     inlist_alternatives=["inlist_project", "inlist_massive"]
+        ...     inlist_alternatives=["inlist_project"]
         ... )
         >>> for run in results:
         ...     print(f"Path: {run['path']}, Mass: {run['mass']}, Z: {run['z']}")
