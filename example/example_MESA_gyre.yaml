@@ -70,7 +70,7 @@ gyre_workflow:
   # If 'false', all other GYRE settings in this section will be ignored.
   run_gyre_workflow: True
 
-  # NEW: Path to the GYRE inlist template file. This can be an absolute path
+  # Path to the GYRE inlist template file. This can be an absolute path
   # (e.g., '/home/user/my_gyre_templates/my_gyre.in') or a path relative to where
   # you run the mesalab command (e.g., 'config/gyre.in').
   # mesalab will read this template, insert the MESA profile path, and create a
@@ -88,7 +88,9 @@ gyre_workflow:
   # The number of OpenMP threads that each *individual* GYRE process should use.
   # This affects the performance of a single GYRE calculation.
   num_gyre_threads: 4
-  gyre_output_subdir: "./gyre_outputs"        # Subdirectory within 'output_dir' to store GYRE runs
+
+  # Subdirectory within 'output_dir' to store GYRE runs
+  gyre_output_subdir: "./gyre_outputs"       
 
   # Set to 'true' to enable parallel execution of multiple GYRE runs simultaneously.
   # This is highly recommended for large grids to speed up the workflow.
@@ -115,7 +117,10 @@ gyre_workflow:
   mesa_profile_base_dir_relative: "LOGS"
 
 
-
+# --- RSP Workflow Specific Settings ---
+# This section controls the execution of MESA RSP module.
 rsp_workflow:
-  run_rsp_workflow: False # Default to disabled
+# Set to 'false' to disable and execute the full RSP workflow.
+# All other RSP settings in this section will be ignored.
+  run_rsp_workflow: False 
   

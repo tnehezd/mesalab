@@ -71,10 +71,34 @@ gyre_workflow:
   run_gyre_workflow: False
 
 
+# --- RSP Workflow Specific Settings ---
+# This section controls the execution of MESA RSP module.
 rsp_workflow:
-  run_rsp_workflow: true                      # Set to 'true' to enable the RSP workflow
-  rsp_inlist_template_path: "../config/rsp.inlist_template" # Path to the inlist_rsp template
-  rsp_output_subdir: "./rsp_outputs_bla"           # Subdirectory within 'output_dir' to store RSP runs
-  num_rsp_threads: 1                          # Number of OpenMP threads for each individual RSP run
-  enable_rsp_parallel: true                   # Enable parallel execution for multiple RSP runs
-  max_concurrent_rsp_runs: 4                  # Maximum number of concurrent RSP runs
+  # Set to 'true' to enable and execute the full RSP workflow.
+  # If 'false', all other RSP settings in this section will be ignored.
+  run_rsp_workflow: true
+
+  # The path to the inlist_rsp template file. This can be an absolute path
+  # (e.g., '/home/user/my_rsp_templates/my_rsp_inlist') or a path relative to where
+  # you run the mesalab command (e.g., 'config/rsp.inlist_template.in').
+  # mesalab will read this template, insert the MESA profile path, and create a
+  # temporary inlist for each RSP run.
+  rsp_inlist_template_path: "../config/rsp.inlist_template"
+
+  # The subdirectory within 'output_dir' where all RSP runs will be stored
+  # within 'output_dir'.
+  rsp_output_subdir: "./rsp_outputs_bla"
+
+  # Set to 'true' to enable parallel execution of multiple RSP runs simultaneously.
+  # This is highly recommended for large grids to speed up the workflow.
+  # If 'false', RSP runs will be executed sequentially.
+  enable_rsp_parallel: true
+
+  # The number of OpenMP threads that each *individual* RSP process should use.
+  # This affects the performance of a single RSP calculation.
+  num_rsp_threads: 1
+
+  # When 'enable_parallel' is 'true', this specifies the maximum number of
+  # concurrent RSP processes that mesalab will launch at any given time.
+  # Adjust this based on your system's CPU core count and available RAM.
+  max_concurrent_rsp_runs: 4 # Typically 1-2x your number of physical CPU cores
