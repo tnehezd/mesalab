@@ -37,6 +37,7 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
 
     Returns:
         tuple: A tuple containing:
+        
             - pd.DataFrame: The main summary DataFrame of analysis results.
             - pd.DataFrame: A combined DataFrame of detailed blue loop data for plotting
                             (combined_detail_data_for_plotting).
