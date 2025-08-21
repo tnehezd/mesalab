@@ -79,10 +79,11 @@ def z_to_feh(Z):
         float: The [Fe/H] value, or np.nan if Z is not positive.
 
     Example:
+        >>> from mesalab.bluelooptools import z_to_feh
         >>> z_to_feh(0.0152)
         0.0
         >>> z_to_feh(0.0076)
-        -0.30102999566398116
+        -0.3010299956639812
         >>> z_to_feh(0)
         nan
     """
@@ -98,14 +99,38 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
     Analyzes MESA history data for stellar blue loop characteristics and Instability Strip crossings,
     and generates HRD, CMD, and LogL-LogG plots with bolometric corrections.
 
-    :param combined_df_all_data: DataFrame containing combined MESA history data.
-                                Required columns: 'log_Teff', 'log_L', 'center_h1', 'star_age',
-                                'model_number', 'log_g', 'center_he4', 'initial_Z' (or 'Z').
-    :type combined_df_all_data: pandas.DataFrame
-    :param output_dir: Directory where plots will be saved.
-    :type output_dir: str
-    :param output_type_label: Label to use in filenames for the output plots.
-    :type output_type_label: str
+    This function expects a DataFrame that combines MESA history data from one or more
+    evolutionary tracks. It requires specific columns to perform its analysis and plotting.
+
+    Args:
+        combined_df_all_data (pandas.DataFrame): DataFrame containing combined MESA history data.
+                                                Required columns are:
+                                                - 'log_Teff' (Logarithm of effective temperature)
+                                                - 'log_L' (Logarithm of luminosity in solar units)
+                                                - 'log_g' (Logarithm of surface gravity)
+                                                - 'initial_Z' (or 'Z' as a fallback, Initial metallicity)
+                                                - Other MESA history columns are useful but not strictly required.
+        output_dir (str): The directory where the generated plots will be saved.
+        output_type_label (str): A label used in the filenames to categorize the output plots.
+
+    Example:
+        >>> import pandas as pd
+        >>> import os
+        >>> from mesalab.bluelooptools import generate_blue_loop_plots_with_bc
+        >>> # Create a simple, yet realistic, dummy DataFrame.
+        >>> # The rows simulate a short evolutionary phase.
+        >>> dummy_data = {
+        ...     'log_Teff': [3.78, 3.82, 3.75],
+        ...     'log_L': [2.8, 3.0, 3.2],
+        ...     'log_g': [3.5, 3.2, 3.0],
+        ...     'initial_Z': [0.008, 0.008, 0.008]
+        ... }
+        >>> dummy_df = pd.DataFrame(dummy_data) 
+        >>> # Call the function with the data and an output directory.
+        >>> generate_blue_loop_plots_with_bc(dummy_df, "temp_plot_output")
+        Calculating BCs serially: 100%|███████████████████████████████████████| 3/3 [00:04<00:00,  1.65s/it]
+
+
     """
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -324,9 +349,6 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
 
 def load_and_group_data(input_dir):
     """
-    Loads all CSV files from a specified directory, concatenates them into
-    a single DataFrame, and performs basic validation and column renaming.
-
     This function expects CSV files to contain stellar evolution data.
     It checks for 'initial_Z' or 'Z' and 'initial_mass' columns.
 
@@ -336,6 +358,30 @@ def load_and_group_data(input_dir):
     Returns:
         pd.DataFrame: A concatenated DataFrame of all valid CSV data, or an empty
                       DataFrame if no files are found or critical columns are missing.
+
+    Example:
+        >>> import pandas as pd
+        >>> import os
+        >>> import tempfile
+        >>> from mesalab.bluelooptools import blue_loop_cmd_plotter as bcmd
+        >>> # Create a temporary directory and some dummy CSV files for the example
+        >>> with tempfile.TemporaryDirectory() as temp_dir:
+        ...     # File 1: Correct data
+        ...     df1 = pd.DataFrame({'initial_mass': [1.0], 'initial_Z': [0.014], 'log_Teff': [3.7]})
+        ...     df1.to_csv(os.path.join(temp_dir, 'run_1.csv'), index=False)
+        ...     # File 2: Missing 'initial_Z', but has 'Z'
+        ...     df2 = pd.DataFrame({'initial_mass': [1.5], 'Z': [0.008], 'log_Teff': [3.8]})
+        ...     df2.to_csv(os.path.join(temp_dir, 'run_2.csv'), index=False)
+        ...     # Load and process the data
+        ...     combined_df = bcmd.load_and_group_data(temp_dir)
+        ...     # The combined DataFrame should have 2 rows and 3 columns
+        ...     print(f"Combined DataFrame shape: {combined_df.shape}")
+        ...     print(f"Columns: {combined_df.columns.tolist()}")
+        ...     print(f"First row's mass: {combined_df['initial_mass'].iloc[0]}")
+        ...
+        Combined DataFrame shape: (2, 4)
+        Columns: ['initial_mass', 'initial_Z', 'log_Teff']
+        First row's mass: 1.0
     """
     all_dfs = []
     logger.info(f"Loading CSV files from '{input_dir}'...")
