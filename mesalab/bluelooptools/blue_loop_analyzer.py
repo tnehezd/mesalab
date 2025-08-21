@@ -59,7 +59,7 @@ def analyze_blue_loop_and_instability(history_df: pd.DataFrame, initial_mass: fl
                                    'model_number', 'log_g', 'center_he4'.
         initial_mass (float): Initial mass of the star.
         initial_Z (float): Initial metallicity (Z) of the star.
-        initial_Y (float): Initial helium abundance (Y) of the star. # ADDED THIS ARGUMENT
+        initial_Y (float): Initial helium abundance (Y) of the star.
 
     Returns:
         dict: A dictionary containing analysis results, including:
@@ -67,32 +67,30 @@ def analyze_blue_loop_and_instability(history_df: pd.DataFrame, initial_mass: fl
               - 'state_times': Dictionary of specific ages (MS end, min Teff post-MS, IS entries/exits).
               - 'blue_loop_detail_df': DataFrame with detailed data points during the relevant blue loop phase,
                                        filtered to include only points inside or to the blue of the IS.
-                                       
+
         Returns a dictionary with NaN values if analysis cannot be performed (e.g., missing columns, no relevant phase).
 
     Example:
         >>> from mesalab.bluelooptools.blue_loop_analyzer import analyze_blue_loop_and_instability
         >>> import pandas as pd
-        >>> import numpy as np
-        >>> # Create a dummy DataFrame that mimics MESA history data
-        >>> dummy_data = {
-        ...     'model_number': np.arange(100, 200),
-        ...     'star_age': np.linspace(1e8, 1.5e8, 100),
-        ...     'log_Teff': np.concatenate([np.linspace(3.7, 3.6, 50), np.linspace(3.6, 3.8, 50)]), # Simulate a loop
-        ...     'log_L': np.concatenate([np.linspace(2.0, 3.0, 50), np.linspace(3.0, 2.5, 50)]),
-        ...     'log_g': np.linspace(4.0, 3.0, 100),
-        ...     'center_h1': np.concatenate([np.linspace(0.7, 0.001, 50), np.zeros(50)]),
-        ...     'center_he4': np.concatenate([np.zeros(50), np.linspace(0.9, 0.0001, 50)]),
-        ... }
-        >>> dummy_df = pd.DataFrame(dummy_data)
-        >>> initial_mass = 5.0   # solar masses
-        >>> initial_Z = 0.006
-        >>> initial_Y = 0.28    # ADDED DUMMY INITIAL_Y
-        >>>
-        >>> result = analyze_blue_loop_and_instability(dummy_df, initial_mass, initial_Z, initial_Y)
-        >>> print(f"Crossing count: {result['crossing_count']}")
+        >>> import os
+        # Load data from a MESA history.data file for a star that exhibits a blue loop.
+        # This is the recommended approach for this function.
+        # For this example, we'll assume 'history.data' is a pre-existing, valid file.
+        >>> file_path = 'path/to/your/history.data' 
+        >>> if os.path.exists(file_path):
+        ...     history_df = pd.read_csv(file_path, delim_whitespace=True, skiprows=5)
+        ...     # Set initial parameters based on the MESA run, like:
+        ...     initial_mass = 5.0
+        ...     initial_Z = 0.006
+        ...     initial_Y = 0.28
+        ...     result = analyze_blue_loop_and_instability(history_df, initial_mass, initial_Z, initial_Y)
+        ...     print(f"Crossing count: {result['crossing_count']}")
+        ... else:
+        ...     print("MESA history.data file not found. Please provide a valid file.")
+
+
     """
-    # Initialize results. 'crossing_count' defaults to NaN for fundamental errors, 0 for 'no loop' scenarios.
     analysis_results = {
         'crossing_count': np.nan, 
         'state_times': {},
