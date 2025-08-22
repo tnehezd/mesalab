@@ -4,20 +4,14 @@ import os
 import re
 import logging
 
+# Configure logger for this module
 logger = logging.getLogger(__name__)
-
-# --- TEMPORARY: DIRECT DEBUG FILE PATH ---
-# This file will be written to directly, bypassing the standard logging system.
-# Remember to remove these direct file writes and uncomment logger.debug calls
-# once you've debugged the output issue.
-TEMP_DEBUG_FILE_PATH = "inlist_parser_direct_debug.log"
-# --- END TEMPORARY ---
 
 def get_mesa_params_from_inlist(run_path,
                                  inlist_filename="inlist",
                                  inlist_alternatives=None):
     """
-    Extracts `initial_mass`, `initial_z`, and `initial_y` from a MESA inlist file
+    Extracts 'initial_mass', 'initial_z', and 'initial_y' from a MESA inlist file
     in a given run directory.
 
     This function looks for the specified inlist file or alternatives in the provided directory,
@@ -36,111 +30,80 @@ def get_mesa_params_from_inlist(run_path,
 
     Example:
         >>> from mesalab.io import inlist_parser
-        >>> result=inlist_parser.get_mesa_params_from_inlist("runs/model_001", inlist_filename=["inlist"])
-        >>> print(results)
+        >>> result = inlist_parser.get_mesa_params_from_inlist("runs/model_001", inlist_filename=["inlist"])
+        >>> print(result)
         {'initial_mass': 5.0, 'initial_z': 0.0152, 'initial_y': 0.28}
     """
     if inlist_alternatives is None:
         inlist_alternatives = []
 
-    # Prioritize alternatives, then the primary inlist_filename
-    filenames_to_check = inlist_alternatives + [inlist_filename]
+    # Check the primary filename first, then the alternatives.
+    filenames_to_check = [inlist_filename] + inlist_alternatives
 
     inlist_file_to_check = None
-    found_inlist = False
-
+    
     # Iterate through potential inlist filenames to find the first existing one
     for current_filename in filenames_to_check:
         full_path = os.path.join(run_path, current_filename)
         if os.path.exists(full_path):
             inlist_file_to_check = full_path
-            found_inlist = True
-            # logger.debug(f"INLIST_PARSER: Found inlist file: '{inlist_file_to_check}' in run '{run_path}'")
-            with open(TEMP_DEBUG_FILE_PATH, 'a') as f:
-                f.write(f"DIRECT_DEBUG: INLIST_PARSER: Found inlist file: '{inlist_file_to_check}' in run '{run_path}'\n")
+            logger.debug(f"INLIST_PARSER: Found inlist file: '{inlist_file_to_check}' in run '{run_path}'")
             break # Found one, stop checking
 
-    if not found_inlist:
-        # logger.warning(f"INLIST_PARSER: No inlist file found in '{run_path}' with names: {', '.join(filenames_to_check)}")
-        with open(TEMP_DEBUG_FILE_PATH, 'a') as f:
-            f.write(f"DIRECT_WARNING: INLIST_PARSER: No inlist file found in '{run_path}' with names: {', '.join(filenames_to_check)}\n")
+    if inlist_file_to_check is None:
+        logger.warning(f"INLIST_PARSER: No inlist file found in '{run_path}' with names: {', '.join(filenames_to_check)}")
         return None # No inlist file found at all, cannot proceed
-
-
-    # This print statement is for immediate visual confirmation during debugging.
-    # It should ideally be replaced with a logger.debug message in production code.
-    # For now, it's replaced with a direct file write for debugging.
-    with open(TEMP_DEBUG_FILE_PATH, 'a') as f:
-        f.write(f"\n\n\n\n\n\n\n INLIST PARSER (DIRECT WRITE): Inside get_mesa_params_from_inlist for: {inlist_file_to_check} \n\n\n\n\n\n")
-
 
     params = {}
     try:
+        logger.debug(f"INLIST_PARSER: Attempting to parse '{inlist_file_to_check}'")
         with open(inlist_file_to_check, 'r') as f:
             content = f.read()
 
-        # Regular expression to find 'initial_mass'. It's case-insensitive and handles numbers.
-        # It allows for spaces around '=', and captures the number part.
+        # Regular expression to find 'initial_mass'. It's case-insensitive and handles floats.
         mass_match = re.search(r'initial_mass\s*=\s*([0-9.]+)', content, re.IGNORECASE)
         if mass_match:
             params['initial_mass'] = float(mass_match.group(1))
-            # logger.debug(f"INLIST_PARSER: Extracted initial_mass = {params['initial_mass']}")
-            with open(TEMP_DEBUG_FILE_PATH, 'a') as f:
-                f.write(f"DIRECT_DEBUG: INLIST_PARSER: Extracted initial_mass = {params['initial_mass']}\n")
+            logger.debug(f"INLIST_PARSER: Extracted initial_mass = {params['initial_mass']}")
         else:
-            # logger.warning(f"INLIST_PARSER: 'initial_mass' not found in '{inlist_file_to_check}'. Returning None.")
-            with open(TEMP_DEBUG_FILE_PATH, 'a') as f:
-                f.write(f"DIRECT_WARNING: INLIST_PARSER: 'initial_mass' not found in '{inlist_file_to_check}'. Returning None.\n")
+            logger.warning(f"INLIST_PARSER: 'initial_mass' not found in '{inlist_file_to_check}'. Returning None.")
             return None # Initial mass is a critical parameter, so return None if not found
 
-        # Regular expression to find 'initial_z'. It's case-insensitive, handles standard
-        # floats and scientific notation (e.g., 1.23e-2, 1.23E-2).
-        z_match = re.search(r'initial_z\s*=\s*([0-9.eE-]+)', content, re.IGNORECASE)
+        # Regular expression to find 'initial_z'. It handles standard scientific notation (e, E),
+        # and MESA's 'd' notation for exponents (e.g., 1.25d-2).
+        z_match = re.search(r'initial_z\s*=\s*([0-9.eE-]+(?:[dD][-+]?\d+)?)', content, re.IGNORECASE)
         if z_match:
-            params['initial_z'] = float(z_match.group(1))
-            # logger.debug(f"INLIST_PARSER: Extracted initial_z = {params['initial_z']}")
-            with open(TEMP_DEBUG_FILE_PATH, 'a') as f:
-                f.write(f"DIRECT_DEBUG: INLIST_PARSER: Extracted initial_z = {params['initial_z']}\n")
+            # Replace 'd' or 'D' with 'e' for Python's float conversion if MESA's 'd' notation is used
+            z_value_str = z_match.group(1).replace('d', 'e').replace('D', 'E')
+            params['initial_z'] = float(z_value_str)
+            logger.debug(f"INLIST_PARSER: Extracted initial_z = {params['initial_z']}")
         else:
-            # logger.warning(f"INLIST_PARSER: 'initial_z' not found in '{inlist_file_to_check}'. Returning None.")
-            with open(TEMP_DEBUG_FILE_PATH, 'a') as f:
-                f.write(f"DIRECT_WARNING: INLIST_PARSER: 'initial_z' not found in '{inlist_file_to_check}'. Returning None.\n")
+            logger.warning(f"INLIST_PARSER: 'initial_z' not found in '{inlist_file_to_check}'. Returning None.")
             return None # Initial Z is a critical parameter, so return None if not found
 
         # Regular expression for 'initial_y'. It handles floats, scientific notation (e, E),
-        # and MESA's 'd' notation for exponents (e.g., 0.256d0).
+        # and MESA's 'd' notation for exponents.
         y_match = re.search(r'initial_y\s*=\s*([0-9.eE-]+(?:[dD][-+]?\d+)?)', content, re.IGNORECASE)
         if y_match:
             # Replace 'd' or 'D' with 'e' for Python's float conversion if MESA's 'd' notation is used
-            y_value_str = y_match.group(1).replace('d', 'e').replace('D', 'e')
+            y_value_str = y_match.group(1).replace('d', 'e').replace('D', 'E')
             params['initial_y'] = float(y_value_str)
-            # logger.debug(f"INLIST_PARSER: Extracted initial_y = {params['initial_y']}")
-            with open(TEMP_DEBUG_FILE_PATH, 'a') as f:
-                f.write(f"DIRECT_DEBUG: INLIST_PARSER: Extracted initial_y = {params['initial_y']}\n")
+            logger.debug(f"INLIST_PARSER: Extracted initial_y = {params['initial_y']}")
         else:
             # It's acceptable if initial_y is not found, as a default might be used elsewhere.
-            # logger.warning(f"INLIST_PARSER: 'initial_y' not found in '{inlist_file_to_check}'. Setting to None for this run.")
-            with open(TEMP_DEBUG_FILE_PATH, 'a') as f:
-                f.write(f"DIRECT_WARNING: INLIST_PARSER: 'initial_y' not found in '{inlist_file_to_check}'. Setting to None for this run.\n")
+            logger.warning(f"INLIST_PARSER: 'initial_y' not found in '{inlist_file_to_check}'. Setting to None for this run.")
             params['initial_y'] = None # Explicitly set to None if not found
 
-        # logger.debug(f"INLIST_PARSER: Final parsed parameters from '{inlist_file_to_check}': {params}")
-        with open(TEMP_DEBUG_FILE_PATH, 'a') as f:
-            f.write(f"DIRECT_DEBUG: INLIST_PARSER: Final parsed parameters from '{inlist_file_to_check}': {params}\n")
+        logger.debug(f"INLIST_PARSER: Final parsed parameters from '{inlist_file_to_check}': {params}")
         return params
 
     except FileNotFoundError:
-        # This case should ideally be caught by the 'found_inlist' check earlier,
-        # but included for robustness.
-        # logger.error(f"INLIST_PARSER: Inlist file not found (unexpectedly): {inlist_file_to_check}", exc_info=True)
-        with open(TEMP_DEBUG_FILE_PATH, 'a') as f:
-            f.write(f"DIRECT_ERROR: INLIST_PARSER: Inlist file not found (unexpectedly): {inlist_file_to_check}\n")
+        # This case should be caught by the file existence check, but included for robustness.
+        logger.error(f"INLIST_PARSER: Inlist file not found (unexpectedly): {inlist_file_to_check}")
         return None
     except Exception as e:
         # Catch any other unexpected errors during file reading or parsing
-        # logger.error(f"INLIST_PARSER: Error reading or parsing inlist file '{inlist_file_to_check}': {e}", exc_info=True)
-        with open(TEMP_DEBUG_FILE_PATH, 'a') as f:
-            f.write(f"DIRECT_ERROR: INLIST_PARSER: Error reading or parsing inlist file '{inlist_file_to_check}': {e}\n")
+        logger.error(f"INLIST_PARSER: Error reading or parsing inlist file '{inlist_file_to_check}': {e}")
         return None
 
 
