@@ -4,9 +4,9 @@ The Python package `mesalab` is designed for **processing and analyzing stellar 
 
 The primary goal of this pipeline is to take your MESA outputs and automatically:
 
-    1.  Analyze each simulation within your grid.
-    2.  Identify if the star enters the *blue loop* phase and crosses the instability strip.
-    3.  Based on these findings, prepare [GYRE](https://gyre.readthedocs.io/) input files and run the corresponding pulsation simulations.
+1.  Analyze each simulation within your grid.
+2.  Identify if the star enters the *blue loop* phase and crosses the instability strip.
+3.  Based on these findings, prepare [GYRE](https://gyre.readthedocs.io/) input files and run the corresponding pulsation simulations.
 
 ----
 
