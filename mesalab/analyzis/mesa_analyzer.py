@@ -82,8 +82,8 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
     # Initialize gyre_input_csv_name_from_config
     gyre_input_csv_name_from_config = None
 
-    if args.gyre_workflow.get('run_gyre_workflow', False):
-        gyre_input_csv_name_from_config = args.gyre_workflow.get('filtered_profiles_csv_name')
+    if args.gyre_workflow.run_gyre_workflow:
+        gyre_input_csv_name_from_config = args.gyre_workflow.filtered_profiles_csv_name
         if gyre_input_csv_name_from_config is None:
             logger.warning("GYRE workflow enabled but 'filtered_profiles_csv_name' not specified in config. Using 'sorted_blue_loop_profiles.csv' as default.")
             gyre_input_csv_name_from_config = "sorted_blue_loop_profiles.csv"
