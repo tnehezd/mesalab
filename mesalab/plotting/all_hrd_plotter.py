@@ -55,7 +55,56 @@ def generate_all_hr_diagrams(all_history_data_flat: list, model_name: str, outpu
 
     Returns:
         None
+
+    Example:
+        >>> import pandas as pd
+        >>> import os
+        >>> from mesalab.plotting import all_hrd_plotter
+        >>> import numpy as np
+        >>> # Define the output directory
+        >>> output_dir = 'output/plots'
+        >>> os.makedirs(output_dir, exist_ok=True)
+        >>>
+        >>> # Define dummy data for two different runs (M=1.0, Z=0.012 and M=1.5, Z=0.012)
+        >>> df1 = pd.DataFrame({
+        ...     'initial_mass': [1.0] * 20,
+        ...     'initial_Z': [0.012] * 20,
+        ...     'log_Teff': np.linspace(3.7, 3.8, 20),
+        ...     'log_L': np.linspace(1.0, 1.5, 20),
+        ...     'model_number': np.arange(20),
+        ...     'center_h1': np.linspace(0.7, 0.6, 20)
+        ... })
+        >>> df2 = pd.DataFrame({
+        ...     'initial_mass': [1.5] * 20,
+        ...     'initial_Z': [0.012] * 20,
+        ...     'log_Teff': np.linspace(3.8, 3.9, 20),
+        ...     'log_L': np.linspace(1.5, 2.0, 20),
+        ...     'model_number': np.arange(20),
+        ...     'center_h1': np.linspace(0.7, 0.6, 20)
+        ... })
+        >>> # The function expects a flat list of DataFrames
+        >>> all_data = [df1, df2]
+        >>>
+        >>> # Create dummy instability strip data
+        >>> logT_blue = [3.8, 3.75, 3.7]
+        >>> logL_blue = [1.5, 1.0, 0.5]
+        >>> logT_red = [3.7, 3.65, 3.6]
+        >>> logL_red = [1.5, 1.0, 0.5]
+        >>>
+        >>> # Call the function
+        >>> all_hrd_plotter.generate_all_hr_diagrams(
+        ...     all_history_data_flat=all_data,
+        ...     model_name='dummy_model',
+        ...     output_dir=output_dir,
+        ...     logT_blue_edge=logT_blue,
+        ...     logL_blue_edge=logL_blue,
+        ...     logT_red_edge=logT_red,
+        ...     logL_red_edge=logL_red,
+        ...     drop_zams=True
+        ... )
+
     """
+
     logging.info(f"Starting HR diagram generation for model '{model_name}'.")
 
     if not os.path.exists(output_dir):
