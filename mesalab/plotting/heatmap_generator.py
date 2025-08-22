@@ -32,6 +32,9 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
     a CSV with blue loop and instability phase durations.
 
     This function is typically used after the blue loop analysis step in the pipeline.
+    The heatmap is a visual representation of the `cross_data_df` grid, with different
+    colors representing the number of IS crossings for each unique Mass-Metallicity pair.
+    Missing data points (NaNs) are explicitly handled and colored light grey.
 
     Args:
         cross_data_df (pd.DataFrame): Grid-like DataFrame with metallicities as index and masses as columns, 
@@ -47,6 +50,52 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
     
     Returns:
         None
+
+    Example:
+        >>> import pandas as pd
+        >>> import numpy as np
+        >>> import os
+        >>> from mesalab.plotting import heatmap_generator
+        >>> 
+        >>> plots_dir = 'output/plots'
+        >>> results_dir = 'output/analysis_results'
+        >>> os.makedirs(plots_dir, exist_ok=True)
+        >>> os.makedirs(results_dir, exist_ok=True)
+        >>>
+        >>> # Create a dummy `cross_data_df`
+        >>> cross_df = pd.DataFrame({
+        ...     0.8: [0, 1, 2],
+        ...     0.9: [1, np.nan, 3],
+        ...     1.0: [2, 3, 5]
+        ... }, index=[0.005, 0.008, 0.012])
+        >>>
+        >>> # Create a dummy summary CSV file with time data
+        >>> summary_df = pd.DataFrame({
+        ...     'initial_mass': [0.8, 0.8, 0.8, 0.9, 0.9, 0.9, 1.0, 1.0, 1.0],
+        ...     'initial_Z': [0.005, 0.008, 0.012, 0.005, 0.008, 0.012, 0.005, 0.008, 0.012],
+        ...     'blue_loop_crossing_count': [0, 1, 2, 1, 0, 3, 2, 3, 5],
+        ...     'blue_loop_start_age': [np.nan, 10.0, 15.0, 12.0, np.nan, 18.0, 20.0, 25.0, 30.0],
+        ...     'blue_loop_end_age': [np.nan, 12.0, 17.0, 15.0, np.nan, 21.0, 22.0, 28.0, 33.0],
+        ...     'instability_start_age': [np.nan, 10.5, 15.5, 12.5, np.nan, 18.5, 20.5, 25.5, 30.5],
+        ...     'instability_end_age': [np.nan, 11.5, 16.5, 13.5, np.nan, 19.5, 21.5, 26.5, 31.5],
+        ...     'calculated_blue_loop_duration': [np.nan, 2.0, 2.0, 3.0, np.nan, 3.0, 2.0, 3.0, 3.0],
+        ...     'calculated_instability_duration': [np.nan, 1.0, 1.0, 1.0, np.nan, 1.0, 1.0, 1.0, 1.0]
+        ... })
+        >>> summary_csv_path = os.path.join(results_dir, 'summary.csv')
+        >>> summary_df.to_csv(summary_csv_path, index=False)
+        >>>
+        >>> # Call the function with the dummy data and paths
+        >>> print("Running example...")
+        >>> generate_heatmaps_and_time_diff_csv(
+        ...     cross_df,
+        ...     summary_csv_path,
+        ...     unique_zs=[0.005, 0.008, 0.012],
+        ...     unique_masses=[0.8, 0.9, 1.0],
+        ...     plots_output_dir=plots_dir,
+        ...     analysis_results_output_dir=results_dir,
+        ...     analyze_blue_loop=True
+        ... )
+
     """
 
     if cross_data_df.empty:

@@ -108,10 +108,10 @@ def handle_blue_loop_bc_plotting(args, combined_detail_data_for_plotting, blue_l
         None
 
     Example:
-        >>> from mesalab.plotting import handle_blue_loop_bc_plotting
+        >>> from mesalab.plotting import mesa_plotter
         >>> detail_dir = "processed/detail_data"
         >>> cmd_plot_dir = "results/plots/cmd"
-        >>> handle_blue_loop_bc_plotting(args, None, cmd_plot_dir, detail_dir)
+        >>> mesa_plotter.handle_blue_loop_bc_plotting(args, None, cmd_plot_dir, detail_dir)
         Plots saved for each Z showing blue loop positions in Gaia CMD.
     """
     if not args.plotting_settings.generate_blue_loop_plots_with_bc:
