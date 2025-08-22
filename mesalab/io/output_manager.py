@@ -16,7 +16,8 @@ def create_output_directories(output_dir, analyze_blue_loop, should_generate_plo
         tuple: Paths to (analysis_results_sub_dir, plots_sub_dir, blue_loop_plots_bc_sub_dir, detail_files_output_dir)
 
     Example:
-        >>> create_output_directories("output", True, True, False)
+        >>> from mesalab.io import output_manager
+        >>> output_manager.create_output_directories("output", True, True, False)
         ('output/analysis_results', 'output/plots', 'output/blue_loop_plots_bc', 'output/detail_files')
 
     """
@@ -52,7 +53,8 @@ def get_analysis_file_paths(analysis_results_sub_dir):
         tuple: (summary_csv_path, cross_csv_path)
 
     Example:
-        >>> get_analysis_file_paths("output/analysis_results")
+        >>> from mesalab.io import output_manager    
+        >>> output_manager.get_analysis_file_paths("output/analysis_results")
         ('output/analysis_results/mesa_grid_analysis_summary.csv',
          'output/analysis_results/mesa_grid_cross.csv')
     """

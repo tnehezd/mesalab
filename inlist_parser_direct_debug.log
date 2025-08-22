@@ -74,3 +74,23 @@ DIRECT_DEBUG: INLIST_PARSER: Extracted initial_mass = 5.0
 DIRECT_DEBUG: INLIST_PARSER: Extracted initial_z = 0.009
 DIRECT_DEBUG: INLIST_PARSER: Extracted initial_y = 0.256
 DIRECT_DEBUG: INLIST_PARSER: Final parsed parameters from 'example/MESA_grid/run_5.0MSUN_z0.0090/inlist_project': {'initial_mass': 5.0, 'initial_z': 0.009, 'initial_y': 0.256}
+DIRECT_WARNING: INLIST_PARSER: No inlist file found in 'example/MESA_grid/run_5.0MSUN_z0.0090/' with names: inlist
+DIRECT_WARNING: INLIST_PARSER: No inlist file found in 'example/MESA_grid/run_5.0MSUN_z0.0090/' with names: inlist
+DIRECT_DEBUG: INLIST_PARSER: Found inlist file: 'example/MESA_grid/run_5.0MSUN_z0.0090/inlist_project' in run 'example/MESA_grid/run_5.0MSUN_z0.0090/'
+
+
+
+
+
+
+
+ INLIST PARSER (DIRECT WRITE): Inside get_mesa_params_from_inlist for: example/MESA_grid/run_5.0MSUN_z0.0090/inlist_project 
+
+
+
+
+
+DIRECT_DEBUG: INLIST_PARSER: Extracted initial_mass = 5.0
+DIRECT_DEBUG: INLIST_PARSER: Extracted initial_z = 0.009
+DIRECT_DEBUG: INLIST_PARSER: Extracted initial_y = 0.256
+DIRECT_DEBUG: INLIST_PARSER: Final parsed parameters from 'example/MESA_grid/run_5.0MSUN_z0.0090/inlist_project': {'initial_mass': 5.0, 'initial_z': 0.009, 'initial_y': 0.256}

@@ -18,10 +18,17 @@ logger = logging.getLogger(__name__)
 
 def parsing_options():
     """
-    Parses command-line arguments and loads configuration from a YAML file.
-    It combines default settings, YAML file settings, environment variables,
-    and command-line arguments in order of increasing priority.
-    Performs initial validation of critical paths.
+    Parses and consolidates application configuration from multiple sources.
+
+    The function applies a tiered approach to configuration, with each subsequent
+    source overriding the previous one: default settings, a YAML file, environment
+    variables, and finally, command-line arguments. It also performs critical
+    path validation for MESA and GYRE directories.
+
+    Returns:
+        addict.Dict: A nested dictionary-like object containing the final,
+                     resolved configuration settings.
+
     """
     # 1. Define command-line arguments.
     parser = argparse.ArgumentParser(

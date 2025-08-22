@@ -35,7 +35,9 @@ def get_mesa_params_from_inlist(run_path,
                       or if no inlist file is found.
 
     Example:
-        >>> get_mesa_params_from_inlist("runs/model_001", inlist_alternatives=["inlist_project"])
+        >>> from mesalab.io import inlist_parser
+        >>> result=inlist_parser.get_mesa_params_from_inlist("runs/model_001", inlist_filename=["inlist"])
+        >>> print(results)
         {'initial_mass': 5.0, 'initial_z': 0.0152, 'initial_y': 0.28}
     """
     if inlist_alternatives is None:
