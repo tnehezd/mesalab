@@ -17,17 +17,42 @@ def run_mesa_rsp_single(inlist_path: str, mesa_binary_dir: str, num_threads: int
     """
     Runs the MESA RSP module with a single inlist file.
 
+    This function executes the MESA 'star' module for a single input file,
+    managing the run environment and capturing the result.
+
     Args:
         inlist_path (str): The full path to the inlist_rsp file.
         mesa_binary_dir (str): The directory where the 'star' executable is located.
         num_threads (int): The number of OpenMP threads to use for this run.
-        output_dir (str): The dedicated output directory for this specific run.
-                          All log files and outputs will be stored here.
+        output_dir (str): The dedicated output directory for this specific run. All log files and outputs will be stored here.
 
     Returns:
-        dict: A dictionary containing the run status (success/failure) and
-              other relevant information.
+        dict: A dictionary containing the run status (success/failure) and other relevant information.
+
+    Example:
+        >>> # This example assumes you have a valid MESA installation and the required files.
+        >>> 
+        >>> import os
+        >>> from mesalab.rsp_modules import run_mesa_rsp_single
+        >>> 
+        >>> # 1. Define the paths to your MESA executable and inlist file.
+        >>> #    Replace these with your actual paths.
+        >>> mesa_binary_path = "/path/to/your/mesa/star/work"
+        >>> inlist_file_path = "/path/to/your/inlist_rsp"
+        >>> 
+        >>> # 2. Define the output directory for this specific run.
+        >>> output_directory = "./my_single_run_output"
+        >>> 
+        >>> # 3. Call the function.
+        >>> result = run_mesa_rsp_single(
+        ...    inlist_path=inlist_file_path,
+        ...    mesa_binary_dir=mesa_binary_path,
+        ...    num_threads=1,
+        ...    output_dir=output_directory
+        ... )
+
     """
+
     # Create the run directory based on the provided output_dir
     os.makedirs(output_dir, exist_ok=True)
     
@@ -92,14 +117,63 @@ def run_mesa_rsp_workflow(
     """
     Runs the MESA RSP workflow on all provided inlist files, in parallel or sequentially.
 
+    This function automates the execution of the MESA 'star' executable for multiple
+    inlist files, handling parallel processing, output organization, and error
+    logging.
+
+    **Note:** This function requires a working MESA installation with the 'star'
+    executable compiled and accessible. It is intended to be called from a main
+    script that handles file generation and configuration loading.
+
     Args:
-        inlist_paths (list[str]): A list of full paths to the generated inlist_rsp files.
-        config_data (dict): The full configuration object (addict.Dict) containing all paths and settings.
+        inlist_paths (list[str]): A list of full paths to the generated
+            inlist_rsp files.
+        config_data (dict): The full configuration object (e.g., addict.Dict)
+            containing all paths and settings, including `mesa_binary_dir`,
+            `enable_rsp_parallel`, etc.
         rsp_output_subdir (str): The base output directory for all RSP runs.
 
     Returns:
-        dict: A summary dictionary of the run results.
-              Example: {'successful': [...], 'failed': [...], 'timeout': [...], 'error': [...]
+        dict: A summary of the run results, including lists of successful, failed,
+              and timed-out runs.
+
+    Example:
+        >>> # This example shows how to run the workflow from a main script.
+        >>> from mesalab.rsp_modules import run_mesa_rsp_workflow
+        >>> from addict import Dict
+        >>> import os
+        >>> # 1. Define your configuration. This would typically be loaded from a YAML file.
+        >>> config = Dict({
+        ...     'general_settings': {
+        ...         'mesa_binary_dir': '/path/to/your/mesa/star/work'
+        ...     },
+        ...     'rsp_workflow': {
+        ...         'enable_rsp_parallel': True,
+        ...         'max_concurrent_rsp_runs': 4,
+        ...         'num_rsp_threads': 1
+        ...     }
+        ... })
+        >>> # 2. Create a list of inlist files you want to run.
+        >>> #    (This step assumes you have already generated them.)
+        >>> my_inlist_files = [
+        ...     './my_inlists/inlist_rsp_run1',
+        ...     './my_inlists/inlist_rsp_run2',
+        ...     './my_inlists/inlist_rsp_run3'
+        ... ]
+        >>> # 3. Define the output directory for your RSP runs.
+        >>> output_dir = './my_rsp_results'
+        >>> os.makedirs(output_dir, exist_ok=True)
+        >>> # 4. Run the workflow.
+        >>> results = run_mesa_rsp_workflow(
+        ...     inlist_paths=my_inlist_files,
+        ...     config_data=config,
+        ...     rsp_output_subdir=output_dir
+        ... )
+        >>> # 5. Check the results.
+        >>> if not results['failed'] and not results['timeout']:
+        ...     print("All RSP runs were successful!")
+        >>> else:
+        ...     print("Some RSP runs failed or timed out. Check the logs for details.")
     """
     if not inlist_paths:
         logger.warning("No RSP inlist files provided for execution.")

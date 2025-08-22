@@ -20,8 +20,8 @@ def generate_mesa_rsp_inlists(
 
     Args:
         detail_df (pd.DataFrame): DataFrame containing 'initial_mass', 'initial_Z',
-                                   'model_number', 'log_Teff', 'log_L', 'run_dir_path',
-                                   and now 'initial_Y'.
+                                  'model_number', 'log_Teff', 'log_L', 'run_dir_path',
+                                  and 'initial_Y'.
         mesa_output_base_dir (str): The root directory where MESA run output folders are.
                                     (e.g., 'output/mesa_runs') - This parameter is not directly
                                     used if RSP is creating a model from scratch based on parameters.
@@ -30,6 +30,42 @@ def generate_mesa_rsp_inlists(
     
     Returns:
         list[str]: A list of paths to the generated MESA RSP inlist files.
+        
+    Example:
+        >>> import pandas as pd
+        >>> import os
+        >>> from mesalab.rsptools.rsp_inlist_generator import generate_mesa_rsp_inlists
+        >>>
+        >>> # 1. Create a mock DataFrame with the required data.
+        >>> data = {
+        ...     'initial_mass': [1.0, 1.2],
+        ...     'initial_Z': [0.014, 0.003],
+        ...     'model_number': [500, 750],
+        ...     'log_Teff': [3.75, 3.82],
+        ...     'log_L': [1.5, 2.1],
+        ...     'initial_Y': [0.27, 0.28],
+        ...     'run_dir_path': ['/path/to/run1', '/path/to/run2']
+        ... }
+        >>> detail_df = pd.DataFrame(data)
+        >>>
+        >>> # 2. Define your paths. Ensure these directories and files exist on your system.
+        >>> mesa_out_dir = '/path/to/your/mesa_output'
+        >>> template_path = '/path/to/your/inlist_rsp_template'
+        >>> rsp_out_dir = './rsp_inlists'
+        >>>
+        >>> # 3. Call the function to generate the inlist files.
+        >>> generated_inlists = generate_mesa_rsp_inlists(
+        ...     detail_df=detail_df,
+        ...     mesa_output_base_dir=mesa_out_dir,
+        ...     rsp_inlist_template_path=template_path,
+        ...     rsp_output_subdir=rsp_out_dir
+        ... )
+        >>>
+        >>> # 4. Check the results.
+        >>> for inlist in generated_inlists:
+        ...     print(f"Generated: {inlist}")
+        Generated: ./rsp_inlists/run_1.0MSUN_z0.0140/model0500/inlist_rsp
+        Generated: ./rsp_inlists/run_1.2MSUN_z0.0030/model0750/inlist_rsp
     """
     if detail_df.empty:
         logger.warning("Input detail_df is empty. No MESA RSP inlists will be generated.")
