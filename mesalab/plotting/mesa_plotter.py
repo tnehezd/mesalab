@@ -166,7 +166,7 @@ def handle_hr_diagram_generation(args, plots_sub_dir, full_history_data_for_plot
     """
     # Note: cli.py passes a boolean for drop_zams, so args.plotting_settings.generate_hr_diagrams
     # will be 'true', 'false', or 'drop_zams'. The check here needs to handle that.
-    if not args.plotting_settings.generate_hr_diagrams or args.plotting_settings.generate_hr_diagrams.lower() == 'none':
+    if not args.plotting_settings.generate_hr_diagrams or (isinstance(args.plotting_settings.generate_hr_diagrams, str) and args.plotting_settings.generate_hr_diagrams.lower() == 'none'):
         logging.debug("HR diagram generation not requested. Skipping.")
         return
 
