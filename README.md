@@ -3,6 +3,7 @@
 The Python package `mesalab` is designed for **processing and analyzing stellar evolution simulations performed with**  [MESA](https://docs.mesastar.org/en/latest/) (Modules for Experiments in Stellar Astrophysics). It is developed to efficiently handle **large grids of simulations**, such as those where stellar mass (M) and metallicity (Z) are systematically varied.
 
 The primary goal of this pipeline is to take your MESA outputs and automatically:
+
     1.  Analyze each simulation within your grid.
     2.  Identify if the star enters the *blue loop* phase and crosses the instability strip.
     3.  Based on these findings, prepare [GYRE](https://gyre.readthedocs.io/) input files and run the corresponding pulsation simulations.
