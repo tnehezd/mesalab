@@ -1,3 +1,49 @@
+---
+title: 'MESAlab: a Pipeline for Mapping the Blue Loop with MESA runs'
+tags:
+  - Python
+  - astronomy
+  - variable stars
+authors:
+  - name: Dóra Tarczay-Nehéz
+    orcid: 0000-0003-3759-7616
+    affiliation: "1, 2"
+affiliations:
+ - name: HUN-REN CSFK Konkoly Observatory, Konkoly Thege M. út 15-17, Budapest, 1121, Hungary
+   index: 1
+ - name: CSFK, MTA Centre of Excellence, Konkoly Thege M. út 15-17, Budapest, 1121, Hungary
+   index: 2
+date: 22 August 2025
+bibliography: paper.bib
+---
+
+# Summary 
+
+Modules for Experiments in Stellar Astrophysics (MESA; @Paxton2011 et al., 2011, 2013, 2015, 2018, 2019; Jermyn et al., 2023) is a widely used open-source software for modelling stellar evolution. In many studies, the computational grids can encompass thousands of models (e.g., Joyce et al., 2024), which requires a tremendous amount of time and computational effort to process.
+
+To streamline data analysis, the mesalab package was developed. This Python-based pipeline is designed to simplify the post-processing of MESA outputs by automatically identifying various stellar evolutionary phases, with a specific focus on the "blue loop"—a blue-ward excursion in the Hertzsprung-Russell Diagram (HRD) for intermediate-mass stars often associated with peculiar pulsational phenomena like "strange modes."
+
+The pipeline offers several key functionalities:
+
+It collects data on the mass and metallicity ranges of the grid.
+
+It calculates the necessary bolometric corrections (BCs) by utilizing the MESA Isochrones & Stellar Tracks (MIST) bolometric correction tables (Dotter 2016, Choi et al., 2016).
+
+It automatically generates HRDs and Color-Magnitude Diagrams (CMDs) in the required color indices.
+
+Furthermore, mesalab provides crucial tools for asteroseismological investigations. For models where a star crosses the instability strip after central hydrogen exhaustion, the pipeline generates GYRE (Townsend & Teitler, 2013; Townsend et al., 2018; Goldstein & Townsend, 2020; Sun et al., 2023) inlist files with user-specified parameters. This helps filter out astroseismologically potential pulsating stars and prepares them for a more focused investigation of their properties, including the ability to run Rotational Pulsation Spectroscopy (RPS) analysis.
+
+Currently in its initial version, the mesalab package has planned future features and developments to enhance its efficiency and versatility in analyzing stellar evolution and asteroseismological data from both MESA and GYRE grids.
+
+
+
+# Statement of need
+
+# Acknowledgements
+This project has been supported by the KKP-137523 'SeismoLab' Élvonal grant of the Hungarian Research, Development and Innovation Office (NKFIH), and by the LP2025-14/2025 Lend¨ulet grant of the Hungarian Academy of Sciences.
+
+# References
+
 Útmutató a JOSS paper.md Fájlhoz
 
 A JOSS cikke egy rövid (tipikusan ~1000 szó), tömör leírás a szoftveredről, amelynek célja, hogy a kutatók könnyen idézhessék a munkádat és megértsék a szoftver funkcióját. Fontos, hogy a hangsúly a szoftverre kerüljön, nem az általa elért új tudományos eredményekre (azok a hagyományosabb tudományos cikkek témája).
