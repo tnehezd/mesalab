@@ -31,13 +31,12 @@ def handle_heatmap_generation(args, summary_df_for_plotting, plots_sub_dir, anal
         None
 
     Example:
-        >>> from mesalab.plotting import handle_heatmap_generation
+        >>> from mesalab.plotting import mesa_plotter
         >>> summary_dir = "results/summary"
         >>> plot_dir = "results/plots"
-        >>> handle_heatmap_generation(args, None, plot_dir, summary_dir, input_dir="grid_z001")
+        >>> mesa_plotter.handle_heatmap_generation(args, None, plot_dir, summary_dir, input_dir="grid_z001")
         Heatmaps saved to results/plots showing crossing frequencies by Z and M.
     """
-    # FIX 1: Access generate_heatmaps from plotting_settings
     if not args.plotting_settings.generate_heatmaps:
         logging.debug("Heatmap generation not requested. Skipping.")
         return
@@ -83,9 +82,7 @@ def handle_heatmap_generation(args, summary_df_for_plotting, plots_sub_dir, anal
             plots_output_dir=plots_sub_dir,
             analysis_results_output_dir=analysis_results_sub_dir,
             model_name=os.path.basename(input_dir),
-            # FIX 2: Access blue_loop_output_type from blue_loop_analysis
             blue_loop_output_type=args.blue_loop_analysis.blue_loop_output_type,
-            # FIX 3: Access analyze_blue_loop from blue_loop_analysis
             analyze_blue_loop=args.blue_loop_analysis.analyze_blue_loop
         )
         logging.info("Heatmaps generated successfully.")
@@ -117,14 +114,12 @@ def handle_blue_loop_bc_plotting(args, combined_detail_data_for_plotting, blue_l
         >>> handle_blue_loop_bc_plotting(args, None, cmd_plot_dir, detail_dir)
         Plots saved for each Z showing blue loop positions in Gaia CMD.
     """
-    # FIX 4: Access generate_blue_loop_plots_with_bc from plotting_settings
     if not args.plotting_settings.generate_blue_loop_plots_with_bc:
         logging.debug("Blue loop specific plots with BCs not requested. Skipping.")
         return
 
     logging.info("Attempting to generate blue loop specific plots with BCs...")
     try:
-        # FIX 5: Access force_reanalysis from general_settings
         if combined_detail_data_for_plotting.empty and not args.general_settings.force_reanalysis:
             logging.info(f"Detail data not in memory; attempting to load from {detail_files_output_dir} for plotting...")
             combined_detail_data_for_plotting = load_and_group_data(detail_files_output_dir)
@@ -163,13 +158,12 @@ def handle_hr_diagram_generation(args, plots_sub_dir, full_history_data_for_plot
         None
 
     Example:
-        >>> from mesalab.plotting import handle_hr_diagram_generation
+        >>> from mesalab.plotting import mesa_plotter
         >>> data = [df_z004_m1, df_z004_m2, df_z014_m1] # Example: list of DataFrames
-        >>> output_dir = "results/plots/hr"
-        >>> handle_hr_diagram_generation(args, output_dir, data, drop_zams=True)
-        HR diagrams saved to results/plots/hr for each metallicity.
+        >>> output_dir = "output/plots"
+        >>> mesa_plotter.handle_hr_diagram_generation(args, output_dir, data, drop_zams=True)
+        HR diagrams saved to output/plots for each metallicity.
     """
-    # FIX 6: Access generate_hr_diagrams from plotting_settings
     # Note: cli.py passes a boolean for drop_zams, so args.plotting_settings.generate_hr_diagrams
     # will be 'true', 'false', or 'drop_zams'. The check here needs to handle that.
     if not args.plotting_settings.generate_hr_diagrams or args.plotting_settings.generate_hr_diagrams.lower() == 'none':
@@ -182,7 +176,6 @@ def handle_hr_diagram_generation(args, plots_sub_dir, full_history_data_for_plot
             logging.warning("No full history data available for HR diagram generation. Skipping.")
             return
 
-        # FIX 7: Access input_dir from general_settings
         model_name = os.path.basename(args.general_settings.input_dir)
 
         logT_blue_edge = [3.76, 3.83]
