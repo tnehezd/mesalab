@@ -52,6 +52,14 @@ def run_mesa_rsp_single(inlist_path: str, mesa_binary_dir: str, num_threads: int
         ... )
 
     """
+    
+    # Construct the full path to the MESA 'star' executable
+    mesa_exe_path = os.path.join(mesa_binary_dir, 'star')
+
+    # Fontos lépés: Ellenőrizzük, hogy a futtatható fájl létezik-e, még a fájlmásolás előtt.
+    if not os.path.exists(mesa_exe_path):
+        logger.error(f"MESA executable ('star') not found at: {mesa_exe_path}. This is critical for RSP run.")
+        return {'status': 'failed', 'inlist': inlist_path, 'error': "MESA executable 'star' not found at expected path."}
 
     # Create the run directory based on the provided output_dir
     os.makedirs(output_dir, exist_ok=True)
@@ -66,17 +74,10 @@ def run_mesa_rsp_single(inlist_path: str, mesa_binary_dir: str, num_threads: int
         logger.error(f"Failed to copy inlist file to {output_dir}: {e}")
         return {'status': 'failed', 'inlist': inlist_path, 'error': f"Failed to copy inlist to output directory.", 'duration': 0}
     
-    # Construct the full path to the MESA 'star' executable
-    mesa_exe_path = os.path.join(mesa_binary_dir, 'star')
-
     # Set the OMP_NUM_THREADS environment variable for this subprocess call
     env_vars = os.environ.copy()
     env_vars['OMP_NUM_THREADS'] = str(num_threads)
     logger.debug(f"Setting OMP_NUM_THREADS to {num_threads} for run in {run_dir_for_subprocess}")
-
-    if not os.path.exists(mesa_exe_path):
-        logger.error(f"MESA executable ('star') not found at: {mesa_exe_path}. This is critical for RSP run.")
-        return {'status': 'failed', 'inlist': inlist_path, 'error': "MESA executable 'star' not found at expected path."}
 
     start_time = time.time()
     try:
@@ -274,12 +275,12 @@ if __name__ == "__main__":
 
     if not os.path.isdir(your_mesa_binary_dir):
         logger.error(f"ERROR: 'your_mesa_binary_dir' ('{your_mesa_binary_dir}') is not a valid directory. "
-                     "Please set it to the correct path of your MESA 'star/work' directory for testing!")
+                    "Please set it to the correct path of your MESA 'star/work' directory for testing!")
         sys.exit(1)
     
     if not os.path.exists(os.path.join(your_mesa_binary_dir, 'star')):
         logger.error(f"ERROR: 'star' executable not found in 'your_mesa_binary_dir' ('{your_mesa_binary_dir}'). "
-                     "Please ensure MESA's 'star' module has been compiled and 'star' exists in this directory for testing.")
+                    "Please ensure MESA's 'star' module has been compiled and 'star' exists in this directory for testing.")
         sys.exit(1)
     
     class MockGeneralSettings:
