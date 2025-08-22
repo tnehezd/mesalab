@@ -1,5 +1,7 @@
 # About `mesalab` pipeline
 
+> ⚠️**NOTE:** This project is currently under active development. Features and APIs may change, and new functionalities are continuously being added.
+
 The Python package `mesalab` is designed for **processing and analyzing stellar evolution simulations performed with**  [MESA](https://docs.mesastar.org/en/latest/) (Modules for Experiments in Stellar Astrophysics). It is developed to efficiently handle **large grids of simulations**, such as those where stellar mass (M) and metallicity (Z) are systematically varied.
 
 The primary goal of this pipeline is to take your MESA outputs and automatically:
@@ -13,6 +15,9 @@ The primary goal of this pipeline is to take your MESA outputs and automatically
 ## Installation
 
 ### Install from pip
+
+> ⚠️ **NOTE:** The `mesalab` package is **not yet available** on PyPI. It is planned to publish it in a future release.
+
 
 To install `mesalab` with pip:
 
