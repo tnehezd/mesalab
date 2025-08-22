@@ -9,6 +9,7 @@ If your ``mesalab`` analysis runs show ``????`` (question marks) instead of a pr
 ``mesalab`` internally uses the `tqdm`_ library for progress bars and explicitly sets the ``TQDM_ASCII=1`` environment variable to force the use of basic ASCII characters. This is done to prevent display issues with Unicode characters. If you still see question marks despite this, please check the following:
 
 1.  Check and Fix Your Terminal's ``locale`` Setting
+....................................................
 
 This is the most common cause of the problem. If your terminal's `locale` setting is `C` (or another non-UTF-8 encoding), it can cause issues with the terminal's basic character handling and the proper rendering of the progress bar, even with ASCII characters.
 
@@ -72,6 +73,7 @@ This is the most common cause of the problem. If your terminal's `locale` settin
   After attempting these fixes, run the ``mesalab`` program again.
 
 2.  Check Your Terminal Emulator and Font
+..........................................
 
 If the problem persists after correcting your ``locale`` settings, your terminal emulator (e.g., GNOME Terminal, Konsole, XFCE Terminal on Linux; Terminal.app, iTerm2 on macOS) or the font it uses might be the culprit. Some fonts may lack basic drawing characters, or the terminal emulator might misinterpret them with certain font configurations.
 
@@ -133,30 +135,27 @@ If you use a **virtual environment** (like `venv` or `conda`), ensure you activa
 FutureWarning: "isochrones" and "pandas"
 ----------------------------------------
 
-Problem:
-
+**Problem:**
 You may see a FutureWarning when running the bolometric calculation workflow. This step uses the `isochrones` package. The warning message may appear as:
 
-* ``/path/to/your/pyhton/site-packages/isochrones/bc.py:82: FutureWarning: The 'delim_whitespace' keyword in pd.read_csv is deprecated and will be removed in a future version. Use `sep='\s+'` instead``
+  * ``/path/to/your/pyhton/site-packages/isochrones/bc.py:82: FutureWarning: The 'delim_whitespace' keyword in pd.read_csv is deprecated and will be removed in a future version. Use `sep='\s+'` instead``
 
 
 This warning indicates that the `isochrones` package is using a function or syntax from the `pandas` library that is now considered deprecated. While the code still works for now, this warning is a signal that the function will be removed in a future `pandas` version, which could cause your code to break.
 
-** Cause: **
+**Cause:**
+The `requirements.txt` file xspecify a flexible version range for `pandas` (e.g., pandas>=1.0.0). This allows pip to install a newer available `pandas` version, which has deprecated a function still used by an older `isochrones` version.
 
-  The `requirements.txt` file xspecify a flexible version range for `pandas` (e.g., pandas>=1.0.0). This allows pip to install a newer available `pandas` version, which has deprecated a function still used by an older `isochrones` version.
+**Solution:**
+The most effective way to resolve this is to **upgrade the** `isochrones` **package**. 
 
-** Solution: **
-
-  The most effective way to resolve this is to **upgrade the** `isochrones` **package**. 
-
-  To fix the issue, run the following command in your terminal:
+To fix the issue, run the following command in your terminal:
 
   .. code-block:: bash
 
     pip install --upgrade isochrones
 
-  After the upgrade, the FutureWarning should no longer appear.
+After the upgrade, the FutureWarning should no longer appear.
 
 ----
 
@@ -186,6 +185,7 @@ The GYRE workflow is critical for pulsation analysis. `mesalab` will only attemp
 
 1.  **If "GYRE core modules not imported" (Python side issue):**
     This indicates a problem with the Python dependencies required by `mesalab`'s own GYRE integration.
+
     * **Check `mesalab`'s installation:** Ensure your `mesalab` installation is complete and all its direct dependencies are met.
     * **Consult `mesalab`'s `requirements.txt`:** Look for all the Python dependencies listed there and install any missing ones:
         
@@ -195,6 +195,7 @@ The GYRE workflow is critical for pulsation analysis. `mesalab` will only attemp
 
 2.  **If "GYRE Workflow Skipped: Required input CSV not found.":**
     This means `mesalab` couldn't find the input profiles for GYRE when in `FILTERED_PROFILES` mode.
+
     * **Verify MESA Analysis Success:** Ensure the preceding MESA analysis workflow completed successfully and generated the necessary output files. The CSV is typically saved in the `analysis_results` subdirectory within your `output_dir`.
     * **Check `filtered_profiles_csv_name`:** Confirm that the `gyre_workflow.filtered_profiles_csv_name` in your `mesalab` config matches the name of the CSV file expected to be generated.
     * **Check for empty data:** It's possible the MESA analysis ran, but no profiles met the filtering criteria for GYRE. Review your MESA analysis settings and expected output.
@@ -212,6 +213,7 @@ The GYRE workflow is critical for pulsation analysis. `mesalab` will only attemp
 
       * **On Linux/macOS (bash/zsh):**
         Add the following line to your `~/.bashrc`, `~/.zshrc`, or `~/.profile` file:
+      
       .. code-block:: bash
 
         export GYRE_DIR="/path/to/your/gyre_installation"
@@ -313,9 +315,11 @@ The RSP workflow is critical for pulsation analysis. `mesalab` will only attempt
       Replace `/path/to/your/mesa_installation/star/work` with the actual full paths.
 
     * **Missing or Uncompiled MESA Binaries**:
+      
       This CRITICAL error message indicates that the necessary MESA executables were not found in the specified mesa_binary_dir. You need to enter the star/work folder and compile the executables.
         
       * **Solution:** 
+      
       Navigate to the star/work directory of your MESA installation and run the compilation commands:
 
       .. code-block:: bash
@@ -325,12 +329,10 @@ The RSP workflow is critical for pulsation analysis. `mesalab` will only attempt
         ./mk
 
 3.  **Final Verification:**
+    
     After attempting these solutions, run the `mesalab` program again. The RSP workflow should now execute successfully if all dependencies and paths are correctly configured.
 
     
-
-pip install --upgrade isochrones
-
 
 .. _tqdm: https://github.com/tqdm/tqdm
 
