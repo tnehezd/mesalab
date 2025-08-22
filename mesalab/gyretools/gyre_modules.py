@@ -18,11 +18,10 @@ from datetime import datetime
 gyre_logger = logging.getLogger('GYRE_Pipeline')
 
 # --- Core GYRE Execution Function ---
-# --- Core GYRE Execution Function ---
 def run_single_gyre_model(
     model_profile_path: str,
-    gyre_inlist_template_path: str, # This parameter name is already correct
-    output_dir: str, # This is the specific directory for THIS profile's GYRE outputs
+    gyre_inlist_template_path: str,
+    output_dir: str, 
     gyre_executable: str,
     num_gyre_threads: int
 ) -> int:
@@ -44,6 +43,27 @@ def run_single_gyre_model(
 
     Returns:
         int: The exit code of the GYRE process. Zero means success.
+
+    Example:
+
+        >>> from mesalab.gyretools.gyre_modules import run_single_gyre_model
+        >>> import os
+        >>> 
+        >>> # Set the paths for your files
+        >>> profile_path = "my_gyre_profile.data.GYRE"
+        >>> inlist_template = "inlist_gyre_template"
+        >>> output_dir = "gyre_output"
+        >>> gyre_executable = "/path/to/your/gyre/bin/gyre" # Replace with your actual path
+        >>> 
+        >>> # Run the model
+        >>> return_code = run_single_gyre_model(
+        ...     model_profile_path=profile_path,
+        ...     gyre_inlist_template_path=inlist_template,
+        ...     output_dir=output_dir,
+        ...     gyre_executable=gyre_executable,
+        ...     num_gyre_threads=1
+        >>> )
+
     """
 
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Progress: Setting up run for profile: {os.path.basename(model_profile_path)}")
@@ -146,13 +166,13 @@ def run_gyre_workflow(
     Manages the GYRE pulsation analysis workflow based on the provided configuration data.
 
     This function performs the following steps:
-    1. Sets up logging based on debug_mode.
-    2. Extracts GYRE-specific and general settings from the `config_data` object.
-    3. Validates paths to the GYRE executable and the GYRE inlist template.
-    4. Determines the mode of operation ('ALL_PROFILES' or 'FILTERED_PROFILES').
-    5. Creates a list of tasks (MESA profiles) to be analyzed by GYRE.
-    6. Runs GYRE, either sequentially or in parallel, using `run_single_gyre_model`.
-    7. Organizes outputs into the dedicated `gyre_output_subdir`.
+        1. Sets up logging based on debug_mode.
+        2. Extracts GYRE-specific and general settings from the `config_data` object.
+        3. Validates paths to the GYRE executable and the GYRE inlist template.
+        4. Determines the mode of operation ('ALL_PROFILES' or 'FILTERED_PROFILES').
+        5. Creates a list of tasks (MESA profiles) to be analyzed by GYRE.
+        6. Runs GYRE, either sequentially or in parallel, using `run_single_gyre_model`.
+        7. Organizes outputs into the dedicated `gyre_output_subdir`.
 
     Args:
         config_data (addict.Dict): A dictionary-like object containing all
@@ -168,6 +188,43 @@ def run_gyre_workflow(
 
     Returns:
         int: Returns 0 on success, 1 on failure.
+
+    **NOTE:** This function is not designed for simple command-line execution (`python -c "..."`).
+    It requires external libraries (e.g., pandas, f90nml) and a specific file/directory structure.
+    For proper use, save this code in a Python file and run it as a script.
+
+    Example:
+        >>> from addict import Dict
+        >>> from mesalab.gyretools.gyre_modules import run_gyre_workflow
+        >>> import os
+        >>> 
+        >>> # 1. Define your configuration object (originally read from the config.yaml)
+        >>> config = Dict({
+        ...    'general_settings': {
+        ...        'gyre_dir': '/path/to/your/gyre-7.0/bin',
+        ...        'output_dir': './my_output_dir',
+        ...        'input_dir': './my_mesa_runs'
+        ...    },
+        ...    'gyre_workflow': {
+        ...        'run_gyre_workflow': True,
+        ...        'run_mode': 'ALL_PROFILES',
+        ...        'mesa_profile_pattern': 'profile*.data.GYRE',
+        ...        'mesa_profile_base_dir_relative': 'M_2.0_Z_0.014/LOGS',
+        ...        'gyre_inlist_template_path': './inlist_gyre_template',
+        ...        'enable_gyre_parallel': True,
+        ...        'max_concurrent_gyre_runs': 4,
+        ...        'num_gyre_threads': 1
+        ...    }
+        ... })
+        >>> 
+        >>> # 2. Run the workflow
+        >>> return_code = run_gyre_workflow(config_data=config)
+        >>> 
+        >>> if return_code == 0:
+        >>>     print("The GYRE workflow completed successfully!")
+        >>> else:
+        >>>     print("An error occurred during the GYRE workflow.")
+
     """
     if debug_mode:
         gyre_logger.setLevel(logging.DEBUG)
