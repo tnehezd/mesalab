@@ -1,0 +1,55 @@
+# Name of the workflow, visible on the GitHub Actions interface
+name: Publish mesalab to PyPI
+
+# This workflow will be triggered on a push to the 'main' branch
+# only when a new tag is created. The tag format is specified here.
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*' # For example: v1.0.0, v1.2.3, etc.
+
+jobs:
+  build-and-publish:
+    # Name of the job
+    name: Build and publish to PyPI
+    
+    # The workflow will run on the latest version of Ubuntu
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Step 1: Checkout the repository code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      # Step 2: Set up the Python environment
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          # Python version to be used
+          python-version: "3.x"
+
+      # Step 3: Install necessary dependencies
+      - name: Install dependencies
+        run: |
+          # The 'build' and 'twine' packages are required for creating
+          # distribution files and uploading them securely.
+          python -m pip install --upgrade pip build twine
+          
+      # Step 4: Create the distribution files
+      - name: Build sdist and wheel
+        run: |
+          # The 'build' command generates the .tar.gz (source distribution)
+          # and .whl (binary wheel) files in the 'dist' directory.
+          python -m build
+          
+      # Step 5: Upload to PyPI
+      - name: Publish package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # The PyPI API token stored in GitHub's repository secrets
+          # The 'pypa/gh-action-pypi-publish' action automatically handles the upload
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          
+# Note: The 'username' field is not needed, as API token authentication
+# uses a fixed username of "__token__", which this action handles automatically.
+
