@@ -16,9 +16,6 @@ The primary goal of this pipeline is to take your MESA outputs and automatically
 
 ### Install from pip
 
-> ⚠️ **NOTE:** The `mesalab` package is **not yet available** on PyPI. It is planned to publish it in a future release.
-
-
 To install `mesalab` with pip:
 
 ```console
