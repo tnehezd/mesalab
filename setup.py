@@ -1,22 +1,28 @@
+# A file to set up the Python package for distribution.
 from setuptools import setup, find_packages
 from os import path
 import sys
 
+# Define the absolute path of the current file's directory.
+here = path.abspath(path.dirname(__file__))
+
+# Insert 'mesalab' into the system path to allow local imports.
 sys.path.insert(0, "mesalab")
 from version import __version__
 
-# Load requirements
+# Read the requirements from the requirements.txt file.
+# The `path.join(here, 'requirements.txt')` ensures the correct path is used
+# regardless of the current working directory.
 requirements = []
-with open('requirements.txt') as file:
+with open(path.join(here, 'requirements.txt'), encoding='utf-8') as file:
     requirements = file.read().splitlines()
 
-# If Python3: Add "README.md" to setup.
-# Useful for PyPI. Irrelevant for users using Python2.
+# Load the README.md file for the long description on PyPI.
 try:
-    this_directory = path.abspath(path.dirname(__file__))
-    with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
+    with open(path.join(here, 'README.md'), encoding='utf-8') as f:
         long_description = f.read()
 except:
+    # If the README.md file is not found, use a single space.
     long_description = ' '
 
 setup(
