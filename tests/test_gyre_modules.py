@@ -16,10 +16,17 @@ class TestGyreModules(unittest.TestCase):
         self.input_dir = os.path.join(self.test_dir, 'test_input')
         self.gyre_inlist_template_path = os.path.join(self.test_dir, 'gyre_inlist_template.inlist')
         self.filtered_csv_path = os.path.join(self.test_dir, 'filtered_profiles.csv')
+        self.mock_gyre_executable = os.path.join(self.test_dir, 'mock_gyre_bin', 'gyre')
 
         # Create the necessary directory structure and dummy files
         os.makedirs(os.path.join(self.input_dir, 'M_2.0_Z_0.014', 'LOGS'), exist_ok=True)
+        os.makedirs(os.path.dirname(self.mock_gyre_executable), exist_ok=True)
         
+        # Create a dummy GYRE executable file
+        with open(self.mock_gyre_executable, 'w') as f:
+            f.write("#!/bin/bash\necho 'mock gyre run'")
+        os.chmod(self.mock_gyre_executable, 0o755)
+
         # Create the `profiles.index` file using the user-provided format.
         with open(os.path.join(self.input_dir, 'M_2.0_Z_0.014', 'LOGS', 'profiles.index'), 'w') as f:
             f.write("    100 models.    lines hold model number, priority, and profile number.\n")
@@ -48,8 +55,13 @@ class TestGyreModules(unittest.TestCase):
         # Remove the temporary directory
         shutil.rmtree(self.test_dir)
 
-    def test_run_gyre_workflow_filtered_profiles_success(self):
+    @patch('mesalab.gyretools.gyre_modules.shutil.which')
+    def test_run_gyre_workflow_filtered_profiles_success(self, mock_which):
         """Tests the workflow in 'FILTERED_PROFILES' mode with success."""
+        
+        # Make shutil.which return the path to our mock executable
+        mock_which.return_value = self.mock_gyre_executable
+        
         config_data = Dict({
             'general_settings': {
                 'gyre_dir': '/path/to/gyre',
@@ -67,19 +79,15 @@ class TestGyreModules(unittest.TestCase):
             }
         })
         
-        # The test now relies on the real files created in setUp and mocks the subprocess call.
         original_cwd = os.getcwd()
         try:
-            # Change the current working directory to the input directory for the test to pass
             os.chdir(self.input_dir)
             with patch('mesalab.gyretools.gyre_modules.run_single_gyre_model', return_value=0) as mock_single_run:
-                # The filtered_profiles_csv_path must be made absolute to avoid issues with chdir
                 result = gyre_mod.run_gyre_workflow(config_data, filtered_profiles_csv_path=self.filtered_csv_path)
 
                 self.assertEqual(result, 0)
-                
-                # We expect exactly one profile (model 110) to be run
                 self.assertEqual(mock_single_run.call_count, 1)
         finally:
-            # Change back to the original working directory
             os.chdir(original_cwd)
+
+# You would run this from your project's root directory: `python -m unittest tests.test_gyre_modules`
