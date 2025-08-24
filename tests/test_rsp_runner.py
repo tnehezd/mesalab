@@ -7,7 +7,7 @@ import tempfile
 import time
 from addict import Dict
 
-# A helyes importálási útvonal használata a mesalab.rsptools csomaghoz.
+# Use the correct import path for the mesalab.rsptools package.
 from mesalab.rsptools.rsp_runner import run_mesa_rsp_single, run_mesa_rsp_workflow
 
 class TestRSPModules(unittest.TestCase):
@@ -65,8 +65,7 @@ class TestRSPModules(unittest.TestCase):
 
     # --- `run_mesa_rsp_single` tests ---
     @patch('mesalab.rsptools.rsp_runner.subprocess.run')
-    @patch('mesalab.rsptools.rsp_runner.shutil.copy')
-    def test_run_single_success(self, mock_copy, mock_run):
+    def test_run_single_success(self, mock_run):
         """
         Test that `run_mesa_rsp_single` returns a successful status on a successful subprocess run.
         """
@@ -116,9 +115,8 @@ class TestRSPModules(unittest.TestCase):
         self.assertEqual(result['status'], 'timeout')
         self.assertIn('Timeout', result['error'])
 
-    @patch('mesalab.rsptools.rsp_runner.shutil.copy')
     @patch('mesalab.rsptools.rsp_runner.os.path.exists')
-    def test_run_single_no_mesa_exe(self, mock_exists, mock_copy):
+    def test_run_single_no_mesa_exe(self, mock_exists):
         """
         Test that `run_mesa_rsp_single` handles a missing MESA executable.
         """
@@ -131,19 +129,6 @@ class TestRSPModules(unittest.TestCase):
         )
         self.assertEqual(result['status'], 'failed')
         self.assertIn('star', result['error'])
-        # The mock copy should not be called in this case.
-        mock_copy.assert_not_called()
-
-    @patch('mesalab.rsptools.rsp_runner.shutil.copy', side_effect=shutil.Error('copy_error'))
-    def test_run_single_copy_error(self, mock_copy):
-        """
-        Test that `run_mesa_rsp_single` handles a file copying error.
-        """
-        result = run_mesa_rsp_single(
-            self.inlist_path1, self.mesa_binary_dir, 1, self.output_dir
-        )
-        self.assertEqual(result['status'], 'failed')
-        self.assertIn('Failed to copy', result['error'])
 
     # --- `run_mesa_rsp_workflow` tests ---
     @patch('mesalab.rsptools.rsp_runner.run_mesa_rsp_single', side_effect=lambda *args, **kwargs: {'status': 'successful', 'duration': 1})
