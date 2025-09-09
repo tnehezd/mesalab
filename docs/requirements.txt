@@ -1,9 +1,15 @@
 # docs/requirements.txt
+
+# Core dependencies for Sphinx and its themes
 Sphinx>=5.0
 sphinx-rtd-theme>=1.0
-myst-parser>=0.17.0 
+myst-parser>=0.17.0
 nbsphinx
 
-# Add any other dependencies your *documented code* uses that aren't in your main setup.py
-# For example, if you import pygyre in functions you're documenting:
-pygyre
+# Dependencies of the mesalab code that must be installed for documentation
+# The blue_loop_cmd_plotter module requires these to be imported correctly
+isochrones
+pandas
+numpy
+matplotlib
+tqdm
