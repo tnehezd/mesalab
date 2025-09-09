@@ -13,7 +13,6 @@ pygyre>=1.3.2
 seaborn>=0.12.2
 numba>=0.56.4
 swifter>=1.4.0
-isochrones==2.1
 f90nml>=1.4.5
 addict
 
