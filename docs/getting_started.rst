@@ -284,7 +284,7 @@ These files are produced when ``write_pulse_data_with_profile = .true.`` and ``p
 
 
 RSP Workflow Settings
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 
 The `mesalab` `MESA RSP <https://docs.mesastar.org/>`_ (Radial Stellar Pulsation) workflow module provides tools to automate the execution of MESA RSP. This module is designed to run radial pulsation simulations on MESA models based on a user-configured example RSP `inlist` file.
 

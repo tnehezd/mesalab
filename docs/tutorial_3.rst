@@ -1,7 +1,7 @@
 Tutorial 3: Running GYRE and RSP with `mesalab`: ``example/MESA_grid_gyre``, ``example/MESA_grid_gyre``
 =================================================================================================================
 
-The base of the ``MESA_grid`` dataset is discussed in :ref:`Tutorial 2. <tutorial_2>`that demonstrates how the `mesalab` pipeline filters, processes, and prepares stellar evolution data for pulsation analysis.
+The base of the ``MESA_grid`` dataset is discussed in :ref:`Tutorial 2. <tutorial_2>` that demonstrates how the `mesalab` pipeline filters, processes, and prepares stellar evolution data for pulsation analysis.
 
 Since  pulsation analysis with GYRE or RSP requires the installation of MESA, MESASDK and GYRE it is challenging to set up and run interactively on a platform like Google Colab. Therefore, this tutorial walks through what the output of a successful run looks like utilizing GYRE and/or RSP workflow without an interacitve Google Colab notebook.
 
