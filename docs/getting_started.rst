@@ -17,6 +17,37 @@ Once `mesalab` is installed, and you have your grid of MESA simulations ready, t
     Any options provided directly via command-line flags will always override settings defined in your configuration file.
 
 
+Required Directory Structure
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For `mesalab` to correctly identify and process your MESA runs, your simulation outputs must be organized in the common MESA output hierarchical structure. The pipeline expects a **single base directory (`--input-dir`)** that contains multiple subdirectories, with each subdirectory representing a single MESA run.
+
+Each individual run directory must contain:
+
+-   `inlist` files (e.g., `inlist_project`).
+-   a `LOGS` subdirectory, containing the `history.data` and for GYRE workflow, the `profiles.index` file.
+-   the necessary MESA profiles (e.g., `profile*.data.GYRE`) if you plan to use the GYRE workflow.
+
+The expected structure looks like this:
+
+.. code-block:: console
+
+    /path/to/mesa_grid/
+    ├── run_M1.0_Z0.014
+    │           ├── inlist_project
+    │           └── LOGS
+    │                 ├── profiles.index
+    │                 ├── profile*.data.GYRE
+    │                 └── history.data
+    └── run_M2.0_Z0.006
+    │            ├── inlist_project
+    │            └── LOGS
+    │                 ├── profiles.index
+    │                 ├── profile*.data.GYRE
+    │                 └── history.data
+
+
+To run `mesalab` simply type:
 
 .. code-block:: console
 
@@ -27,7 +58,7 @@ Once `mesalab` is installed, and you have your grid of MESA simulations ready, t
 	**Description**: This is the **main executable** for the pipeline. Make sure it's accessible in your system's PATH after installation.
 
 ``--config``
-	**Description**: This is the **primary flag** that tells mesalab to load all its operational parameters and analyzis  instructions from the **specified YAML file**.
+	**Description**: This is the **primary flag** that tells `mesalab` to load all its operational parameters and analyzis  instructions from the **specified YAML file**.
 
 path/to/your/``my_config_settings.yaml``
 	**Description**: This should be the **full or relative path to your custom YAML configuration file**.
@@ -177,6 +208,10 @@ The `mesalab` `GYRE <https://gyre.readthedocs.io/>`_ workflow module provides to
 .. note::
     Before running any of the GYRE workflow commands in mesalab, **ensure that your MESA simulations have generated the necessary** ``profiles.data.GYRE`` **profile files!** 
 
+.. warning::
+    The `mesalab` GYRE Workflow relies on a correct installation and configuration of **both** the external GYRE software and the MESA SDK. **It is ESSENTIAL to install these separately** before attempting to run this workflow. This version of `mesalab` is configured to run with GYRE version **7.0**.
+
+
 These files are produced when ``write_pulse_data_with_profile = .true.`` and ``pulse_data_format = 'GYRE'`` are set in your MESA ``inlist_project`` configuration.
 
 ``--run-gyre-workflow``
@@ -247,6 +282,68 @@ These files are produced when ``write_pulse_data_with_profile = .true.`` and ``p
 
 ----
 
+
+RSP Workflow Settings
+~~~~~~~~~~~~~~~~~~~~
+
+The `mesalab` `MESA RSP <https://docs.mesastar.org/>`_ (Radial Stellar Pulsation) workflow module provides tools to automate the execution of MESA RSP. This module is designed to run radial pulsation simulations on MESA models based on a user-configured example RSP `inlist` file.
+
+.. warning::
+    The mesalab RSP Workflow relies on a correct installation and configuration both of MESA SDK and MESA. It is ESSENTIAL to install these separately before attempting to run this workflow. This version of `mesalab` is tested on MESA version 23.05.1.
+
+--run-rsp-workflow
+    Description: This enables the full RSP workflow within `mesalab`. When this flag is active, the pipeline will generate the necessary MESA RSP inlist files based on a template and execute the MESA star binary with the correct arguments. If this flag is `False`, no RSP-related files or processes will be initiated.
+ 
+    Example: To activate the RSP workflow: mesalab --config my_config.yaml --run-rsp-workflow
+ 
+    Default: False
+
+--rsp-inlist-template-path
+    Description: Specifies the absolute or relative path to your MESA RSP inlist template file (e.g., inlist_rsp_template). This template is read by `mesalab`, which then inserts the specific parameters from your data table (.csv file), creating a `inlist_rsp` for each run.
+ 
+    Example: mesalab --config my_config.yaml --rsp-inlist-template-path /home/user/my_templates/inlist_rsp_template
+ 
+    Default: config/rsp.inlist_template (This default assumes inlist_rsp_template is in a config sub-directory relative to where `mesalab` is run).
+
+--rsp-output-subdir
+    Description: The relative path from the main `output_dir` where the RSP-specific MESA outputs will be saved. This keeps the RSP results organized and separate from other `mesalab` outputs.
+ 
+    Example: mesalab --rsp-output-subdir ./rsp_ouputs
+ 
+    Default: ./output_dir/rsp_outputs
+
+--rsp-threads
+    Description: The number of OpenMP threads that each individual MESA process should use for the RSP calculation. This affects the performance of a single RSP run.
+ 
+    Example: mesalab --rsp-threads 4
+ 
+    Default: 1
+
+--rsp-parallel
+    Description: Set to `True` to enable parallel execution of multiple MESA RSP runs simultaneously. This is highly recommended for large grids to speed up the workflow. If `False`, MESA RSP runs will be executed sequentially.
+ 
+    Example: mesalab --rsp-parallel True
+ 
+    Default: False
+
+--rsp-max-concurrent
+    Description: When --rsp-parallel is `True`, this specifies the maximum number of concurrent MESA RSP processes that `mesalab` will launch at any given time. Adjust this based on your system's CPU core count and available RAM.
+ 
+    Example: mesalab --rsp-max-concurrent 8
+ 
+    Default: 4
+
+--rsp-run-timeout
+    Description: The maximum time in seconds that each MESA RSP run is allowed to execute before it is automatically terminated. This is useful for preventing runs from hanging indefinitely.
+ 
+    Example: mesalab --rsp-run-timeout 3600 (1 hour)
+ 
+    Default: 900
+
+
+----
+
+
 .. _understanding_yaml_config:
 
 Understanding the YAML Configuration
@@ -290,3 +387,13 @@ Below is a commented example of a typical `mesalab` configuration file (``my_con
       max_concurrent_gyre_runs: 8 # Maximum concurrent GYRE processes.
       mesa_profile_pattern: "profile*.data.GYRE" # Pattern for MESA profile filenames (e.g., "profile*.data.GYRE").
       mesa_profile_base_dir_relative: "LOGS" # Relative path from MESA run's top directory to its 'LOGS' folder.
+
+    # --- RSP Workflow Settings ---
+    rsp_workflow:
+      run_rsp_workflow: true                      # Set to 'true' to enable the RSP workflow
+      rsp_inlist_template_path: "config/rsp.inlist_template" # Path to the inlist_rsp template
+      rsp_output_subdir: "./rsp_outputs"          # Subdirectory within 'output_dir' to store RSP runs (default: rsp_outputs)
+      rsp_run_timeout: 3600                       # The maximum time in seconds for each MESA run before it times out (default: 900 seconds)
+      enable_rsp_parallel: true                   # Enable parallel execution for multiple RSP runs
+      num_rsp_threads: 1                          # Number of OpenMP threads for each individual RSP run
+      max_concurrent_rsp_runs: 4                  # Maximum number of concurrent RSP runs

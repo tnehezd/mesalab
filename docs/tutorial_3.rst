@@ -43,7 +43,7 @@ Upon execution, you'll see terminal output similar to this:
 
     ================================================================================
                        mesalab CLI - Starting Analysis Workflow
-                                  Version: 1.0.0.
+                                  Version: 1.1.0.
     ================================================================================
 
     ======================================================================
@@ -212,7 +212,7 @@ Upon successful execution, you'll see terminal output similar to this:
 
   ================================================================================
                       mesalab CLI - Starting Analysis Workflow
-                                Version: 1.0.0
+                                Version: 1.1.0
   ================================================================================
 
 

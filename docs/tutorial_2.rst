@@ -99,15 +99,15 @@ Upon successfull installation, you will see something similar:
       ...
     Building wheels for collected packages: mesalab
       Building editable for mesalab (pyproject.toml) ... done
-      Created wheel for mesalab: filename=mesalab-1.0.0.editable-py3-none-any.whl size=4567 sha256=4743ff9c2aa1d4dfe9976940b9330515421f82c261cd1c4487a2faab7463d1b4
+      Created wheel for mesalab: filename=mesalab-1.1.0.editable-py3-none-any.whl size=4567 sha256=4743ff9c2aa1d4dfe9976940b9330515421f82c261cd1c4487a2faab7463d1b4
       Stored in directory: /tmp/pip-ephem-wheel-cache-3_j9zmho/wheels/63/36/82/a810ed5c505fd0aa9429ceb5fa4bdd5aec5db1b8aa04ffb789
     Successfully built mesalab
     Installing collected packages: mesalab
       Attempting uninstall: mesalab
-        Found existing installation: mesalab 1.0.0
-        Uninstalling mesalab-1.0.0.:
-          Successfully uninstalled mesalab-1.0.0.
-    Successfully installed mesalab-1.0.0.
+        Found existing installation: mesalab 1.1.0
+        Uninstalling mesalab-1.1.0.:
+          Successfully uninstalled mesalab-1.1.0.
+    Successfully installed mesalab-1.1.0.
 
 
 --------------
@@ -165,7 +165,7 @@ provided configuration file:
 
     ================================================================================
                         mesalab CLI - Starting Analysis Workflow
-                                  Version: 0.1.0.dev0
+                                  Version: 1.1.0
     ================================================================================
 
     2025-08-17 23:12:18,595 - WARNING: PyMultiNest not imported.  MultiNest fits will not work.

@@ -44,7 +44,7 @@ Upon execution, you'll see terminal output similar to this:
 
     ================================================================================
                         mesalab CLI - Starting Analysis Workflow                    
-                                  Version: 0.1.0.dev0                               
+                                  Version: 1.1.0                               
     ================================================================================
 
 

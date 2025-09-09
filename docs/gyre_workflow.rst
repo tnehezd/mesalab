@@ -166,7 +166,7 @@ For a complete list of all `mesalab` parameters, including those in `general_set
 Pre-requisites
 --------------
 
-.. note::
+.. warning::
     The `mesalab` GYRE Workflow relies on a correct installation and configuration of **both** the external GYRE software and the MESA SDK. **It is ESSENTIAL to install these separately** before attempting to run this workflow. This version of `mesalab` is configured to run with GYRE version **7.0**.
 
 **MESA SDK Installation**

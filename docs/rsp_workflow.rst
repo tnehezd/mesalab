@@ -191,7 +191,7 @@ For a complete list of all `mesalab` parameters, including those in `general_set
 Pre-requisites
 --------------
 
-.. note::
+.. warning::
     The `mesalab` RSP Workflow relies on a correct installation and configuration **both** of MESA SDK and MESA. **It is ESSENTIAL to install these separately** before attempting to run this workflow. This version of `mesalab` is **tested on MESA version 23.05.1**.
 
 **MESA SDK Installation**
@@ -301,6 +301,7 @@ To run RSP workflow, ensure your YAML configuration file has the following setti
     rsp_workflow:
       run_rsp_workflow: true
       rsp_inlist_template_path: "config/rsp.inlist_template"
+      rsp_run_timeout: 300
       enable_rsp_parallel: true
       num_rsp_threads: 1
       max_concurrent_rsp_runs: 4 # Typically 1-2x your number of physical CPU cores
