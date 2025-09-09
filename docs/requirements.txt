@@ -7,7 +7,7 @@ nbsphinx
 # Add any other dependencies your *documented code* uses that aren't in your main setup.py
 # For example, if you import pygyre in functions you're documenting:
 pygyre
-isochrones
+isochrones==2.1
 pandas
 numpy
 matplotlib
