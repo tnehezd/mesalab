@@ -13,7 +13,7 @@ import shutil
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
-def run_mesa_rsp_single(inlist_path: str, mesa_binary_dir: str, num_threads: int, output_dir: str) -> dict:
+def run_mesa_rsp_single(inlist_path: str, mesa_binary_dir: str, num_threads: int, output_dir: str, timeout: int) -> dict:
     """
     Runs the MESA RSP module with a single inlist file.
 
@@ -25,6 +25,7 @@ def run_mesa_rsp_single(inlist_path: str, mesa_binary_dir: str, num_threads: int
         mesa_binary_dir (str): The directory where the 'star' executable is located.
         num_threads (int): The number of OpenMP threads to use for this run.
         output_dir (str): The dedicated output directory for this specific run. All log files and outputs will be stored here.
+        timeout (int): The maximum time in seconds the run is allowed to take before being terminated.
 
     Returns:
         dict: A dictionary containing the run status (success/failure) and other relevant information.
@@ -87,7 +88,7 @@ def run_mesa_rsp_single(inlist_path: str, mesa_binary_dir: str, num_threads: int
             capture_output=True,
             text=True,
             check=True,
-            timeout=900,  # 15 minutes timeout
+            timeout=timeout,  # Use the new timeout parameter
             env=env_vars  # Pass the modified environment variables
         )
         end_time = time.time()
@@ -187,6 +188,8 @@ def run_mesa_rsp_workflow(
     enable_parallel = config_data.rsp_workflow.get('enable_rsp_parallel', False)
     max_workers = config_data.rsp_workflow.get('max_concurrent_rsp_runs', os.cpu_count() or 1)
     num_threads = config_data.rsp_workflow.get('num_rsp_threads', 1)
+    # Get timeout from config, with a default of 900 seconds.
+    rsp_run_timeout = config_data.rsp_workflow.get('rsp_run_timeout', 900)
     total_runs = len(inlist_paths)
     
     results = {'successful': [], 'failed': [], 'timeout': [], 'error': []}
@@ -199,7 +202,7 @@ def run_mesa_rsp_workflow(
     tasks = []
     for path in inlist_paths:
         output_dir = os.path.dirname(path)
-        tasks.append((path, mesa_binary_dir, num_threads, output_dir))
+        tasks.append((path, mesa_binary_dir, num_threads, output_dir, rsp_run_timeout))
     
     
     if enable_parallel:
@@ -207,7 +210,7 @@ def run_mesa_rsp_workflow(
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             future_to_inlist = {executor.submit(run_mesa_rsp_single, *task): task[0] for task in tasks}
 
-            for future in tqdm(as_completed(future_to_inlist), total=total_runs, desc="MESA RSP Workflow"):
+            for future in tqdm(as_completed(future_to_inlist), total=total_runs, desc="MESA RSP Workflow", ncols=80):
                 inlist_path = future_to_inlist[future]
                 try:
                     result = future.result()
@@ -223,7 +226,13 @@ def run_mesa_rsp_workflow(
         print(f"Sequential mode enabled. Using {num_threads} thread(s) for each run.")
         for task in tqdm(tasks, total=total_runs, desc="MESA RSP Workflow"):
             try:
-                result = run_mesa_rsp_single(*task)
+                result = run_mesa_rsp_single(
+                    task[0], 
+                    task[1], 
+                    task[2], 
+                    task[3], 
+                    task[4] # The timeout is now the 5th element
+                )
                 if isinstance(result, dict) and 'status' in result:
                     results[result['status']].append(result)
                 else:
@@ -286,32 +295,33 @@ if __name__ == "__main__":
             return self._data.get(key, default)
     
     class MockRSPWorkflow:
-        def __init__(self, run_rsp_workflow, enable_rsp_parallel, max_concurrent_rsp_runs, num_rsp_threads):
+        def __init__(self, run_rsp_workflow, enable_rsp_parallel, max_concurrent_rsp_runs, num_rsp_threads, rsp_run_timeout=900):
             self._data = {
                 'run_rsp_workflow': run_rsp_workflow,
                 'enable_rsp_parallel': enable_rsp_parallel,
                 'max_concurrent_rsp_runs': max_concurrent_rsp_runs,
-                'num_rsp_threads': num_rsp_threads
+                'num_rsp_threads': num_rsp_threads,
+                'rsp_run_timeout': rsp_run_timeout
             }
         def get(self, key, default=None):
             return self._data.get(key, default)
 
     class MockConfigData:
-        def __init__(self, mesa_binary_dir, output_dir, enable_parallel, max_workers, num_threads):
+        def __init__(self, mesa_binary_dir, output_dir, enable_parallel, max_workers, num_threads, rsp_run_timeout=900):
             self.general_settings = MockGeneralSettings(mesa_binary_dir, output_dir)
-            self.rsp_workflow = MockRSPWorkflow(True, enable_parallel, max_workers, num_threads)
+            self.rsp_workflow = MockRSPWorkflow(True, enable_parallel, max_workers, num_threads, rsp_run_timeout)
 
     rsp_output_dir_test = os.path.join(base_test_dir, 'rsp_outputs_test')
     os.makedirs(rsp_output_dir_test, exist_ok=True)
 
     # Example 1: Parallel run with 2 workers
     print("\n--- Running Parallel Test (2 workers) ---")
-    mock_config_parallel = MockConfigData(your_mesa_binary_dir, base_test_dir, enable_parallel=True, max_workers=2, num_threads=1)
+    mock_config_parallel = MockConfigData(your_mesa_binary_dir, base_test_dir, enable_parallel=True, max_workers=2, num_threads=1, rsp_run_timeout=3600)
     rsp_results_parallel = run_mesa_rsp_workflow(example_inlist_paths, mock_config_parallel, rsp_output_subdir=rsp_output_dir_test)
     
     # Example 2: Sequential run with 1 thread
     print("\n--- Running Sequential Test (1 worker, 1 thread) ---")
-    mock_config_sequential = MockConfigData(your_mesa_binary_dir, base_test_dir, enable_parallel=False, max_workers=1, num_threads=1)
+    mock_config_sequential = MockConfigData(your_mesa_binary_dir, base_test_dir, enable_parallel=False, max_workers=1, num_threads=1, rsp_run_timeout=3600)
     rsp_results_sequential = run_mesa_rsp_workflow(example_inlist_paths, mock_config_sequential, rsp_output_subdir=rsp_output_dir_test)
 
     if os.path.exists(base_test_dir):

@@ -53,7 +53,8 @@ class TestRSPModules(unittest.TestCase):
             'rsp_workflow': {
                 'enable_rsp_parallel': False,  # Default setting for most tests.
                 'max_concurrent_rsp_runs': 1,
-                'num_rsp_threads': 1
+                'num_rsp_threads': 1,
+                'rsp_run_timeout': 900 
             }
         })
 
@@ -73,7 +74,7 @@ class TestRSPModules(unittest.TestCase):
         mock_run.return_value = MagicMock(spec=subprocess.CompletedProcess, returncode=0, stdout='success', stderr='')
 
         result = run_mesa_rsp_single(
-            self.inlist_path1, self.mesa_binary_dir, 1, self.output_dir
+            self.inlist_path1, self.mesa_binary_dir, 1, self.output_dir, timeout=900 # Hozzáadva a timeout paraméter
         )
         
         # Assertions to check the function's output.
@@ -92,7 +93,7 @@ class TestRSPModules(unittest.TestCase):
         mock_run.side_effect = subprocess.CalledProcessError(returncode=1, cmd='test_cmd', stderr='error_message')
 
         result = run_mesa_rsp_single(
-            self.inlist_path1, self.mesa_binary_dir, 1, self.output_dir
+            self.inlist_path1, self.mesa_binary_dir, 1, self.output_dir, timeout=900 
         )
 
         # Assert that the status is 'failed' and the error message is correct.
@@ -108,7 +109,7 @@ class TestRSPModules(unittest.TestCase):
         mock_run.side_effect = subprocess.TimeoutExpired(cmd='test_cmd', timeout=900)
 
         result = run_mesa_rsp_single(
-            self.inlist_path1, self.mesa_binary_dir, 1, self.output_dir
+            self.inlist_path1, self.mesa_binary_dir, 1, self.output_dir, timeout=900 
         )
 
         # Assert that the status is 'timeout' and the error message is correct.
@@ -120,12 +121,10 @@ class TestRSPModules(unittest.TestCase):
         """
         Test that `run_mesa_rsp_single` handles a missing MESA executable.
         """
-        # A mock side effect, amely azt eredményezi, hogy az `os.path.exists`
-        # a MESA futtatható fájlra False értéket ad vissza, minden másra pedig True-t.
         mock_exists.side_effect = lambda path: path != self.mesa_exe_path
         
         result = run_mesa_rsp_single(
-            self.inlist_path1, self.mesa_binary_dir, 1, self.output_dir
+            self.inlist_path1, self.mesa_binary_dir, 1, self.output_dir, timeout=900 
         )
         self.assertEqual(result['status'], 'failed')
         self.assertIn('star', result['error'])
@@ -144,6 +143,7 @@ class TestRSPModules(unittest.TestCase):
         self.assertEqual(len(results['failed']), 0)
         self.assertEqual(len(results['timeout']), 0)
         self.assertEqual(mock_run_single.call_count, 2)
+        self.assertEqual(mock_run_single.call_args_list[0].args[4], 900)
 
     @patch('mesalab.rsptools.rsp_runner.run_mesa_rsp_single', side_effect=lambda *args, **kwargs: {'status': 'successful', 'duration': 1})
     def test_workflow_parallel_success(self, mock_run_single):
@@ -159,6 +159,7 @@ class TestRSPModules(unittest.TestCase):
         self.assertEqual(len(results['failed']), 0)
         self.assertEqual(len(results['timeout']), 0)
         self.assertEqual(mock_run_single.call_count, 2)
+        self.assertEqual(mock_run_single.call_args_list[0].args[4], 900)
 
     @patch('mesalab.rsptools.rsp_runner.run_mesa_rsp_single', side_effect=[
         {'status': 'successful', 'duration': 1},
@@ -179,7 +180,9 @@ class TestRSPModules(unittest.TestCase):
         self.assertEqual(len(results['failed']), 1)
         self.assertEqual(len(results['timeout']), 1)
         self.assertEqual(len(results['error']), 0)
-
+        self.assertEqual(mock_run_single.call_count, 4)
+        self.assertEqual(mock_run_single.call_args_list[0].args[4], 900)
+        
     @patch('mesalab.rsptools.rsp_runner.os.path.exists', return_value=False)
     @patch('mesalab.rsptools.rsp_runner.os.path.isdir', return_value=True)
     def test_workflow_invalid_mesa_dir(self, mock_isdir, mock_exists):
