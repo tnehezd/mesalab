@@ -1,4 +1,4 @@
-# .readthedocs.yml
+# .readthedocs.yaml
 version: 2
 
 build:
@@ -11,5 +11,8 @@ sphinx:
 
 python:
   install:
+    # Step 1: Install your main project and its dependencies (from setup.py)
     - method: pip
       path: .
+    # Step 2: Install your documentation-specific dependencies
+    - requirements: docs/requirements.txt
