@@ -5,8 +5,9 @@ import sys
 import logging
 from datetime import datetime
 from typing import Union
-# ADD THIS IMPORT: Import the functions from your utility module
 from .config_paths import find_mesa_star_dir_in_release, find_mesa_binary_dir, set_environment_variables_for_executables
+from argparse import RawTextHelpFormatter
+import textwrap
 
 try:
     from addict import Dict
@@ -16,7 +17,7 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-def parsing_options():
+def parsing_options(args: Union[list, None] = None):
     """
     Parses and consolidates application configuration from multiple sources.
 
@@ -25,21 +26,32 @@ def parsing_options():
     variables, and finally, command-line arguments. It also performs critical
     path validation for MESA and GYRE directories.
 
+    Args:
+        args (list, optional): A list of command-line arguments to parse. If None,
+                               the function will use sys.argv[1:]. This is useful
+                               for testing or specific calls like --help.
+
     Returns:
         addict.Dict: A nested dictionary-like object containing the final,
                      resolved configuration settings.
-
     """
     # 1. Define command-line arguments.
+    # The 'add_help=True' is crucial here to ensure a clean exit.
     parser = argparse.ArgumentParser(
         description="Analyze MESA stellar evolution grid runs and generate GYRE input files.",
-        add_help=False
+        add_help=True,
+        formatter_class=RawTextHelpFormatter,
     )
-
+    
+    # We no longer need to manually add --help and --version here, as argparse handles them.
+    # But for demonstration, we keep the version flag as a separate action.
+    parser.add_argument("-v", "--version", action="version",
+                        version=f"mesalab v{_get_version()}",
+                        help="Show program version and exit.")
+    
+    # General Settings (can be overridden by CLI)
     parser.add_argument("--config", type=str, default="config.yaml",
                         help="Path to a YAML configuration file.")
-
-    # General Settings (can be overridden by CLI)
     parser.add_argument("-i", "--input-dir", type=str, default=None,
                         help="Override general_settings.input_dir. Directory containing MESA run subdirectories.")
     parser.add_argument("-o", "--output-dir", type=str,
@@ -56,22 +68,21 @@ def parsing_options():
                         help='Override MESASDK_ROOT path. (CLI > Env Var > config.yaml).')
     parser.add_argument('--mesa-dir', type=str,
                         help='Override MESA_DIR (specific MESA release) path. (CLI > Env Var > config.yaml).')
-    # NEW: Added CLI arg for mesa_binary_dir
     parser.add_argument('--mesa-binary-dir', type=str,
                         help='Override MESA_BINARY_DIR path (where `rn` and `star` executables are). (CLI > Env Var > config.yaml).')
     parser.add_argument('--gyre-dir', type=str,
                         help='Override GYRE_DIR path. (CLI > Env Var > config.yaml).')
 
-    # Blue Loop Analysis Settings (remain the same)
+    # Blue Loop Analysis Settings
     parser.add_argument("--analyze-blue-loop", action="store_true", help="Override blue_loop_analysis.analyze_blue_loop. Perform blue loop analysis.")
     parser.add_argument("--blue-loop-output-type", choices=['summary', 'all'], help="Override blue_loop_analysis.blue_loop_output_type. Blue loop output type for detail files.")
 
-    # Plotting Settings (remain the same)
+    # Plotting Settings
     parser.add_argument("--generate-heatmaps", action="store_true", help="Override plotting_settings.generate_heatmaps. Generate heatmaps from cross-grid data.")
     parser.add_argument("--generate-hr-diagrams", type=str, choices=['none', 'all', 'drop_zams'], help='Override plotting_settings.generate_hr_diagrams. Control HR diagram generation.')
     parser.add_argument("--generate-blue-loop-plots-with-bc", action="store_true", help="Override plotting_settings.generate_blue_loop_plots_with_bc. Generate blue loop plots including bolometric corrections.")
 
-    # GYRE Workflow Settings (remain the same)
+    # GYRE Workflow Settings
     gyre_group = parser.add_argument_group('GYRE Workflow Settings')
     gyre_group.add_argument('--run-gyre-workflow', action='store_true', help='Override gyre_workflow.run_gyre_workflow. Execute the full GYRE workflow.')
     gyre_group.add_argument('--gyre-run-mode', type=str, choices=['ALL_PROFILES', 'FILTERED_PROFILES'], help='Override gyre_workflow.run_mode. Set the GYRE run mode.')
@@ -80,7 +91,7 @@ def parsing_options():
     gyre_group.add_argument('--gyre-max-concurrent', type=int, help='Override gyre_workflow.max_concurrent_gyre_runs. Maximum number of concurrent GYRE runs.')
     gyre_group.add_argument('--gyre-inlist-template-path', type=str, help='Override gyre_workflow.gyre_inlist_template_path. Full or relative path to the GYRE inlist template file.')
 
-    # RSP Workflow Settings (remain the same)
+    # RSP Workflow Settings
     rsp_group = parser.add_argument_group('RSP Workflow Settings')
     rsp_group.add_argument('--run-rsp-workflow', action='store_true', help='Override rsp_workflow.run_rsp_workflow. Execute the full RSP workflow.')
     rsp_group.add_argument('--rsp-inlist-template-path', type=str, help='Override rsp_workflow.rsp_inlist_template_path. Full or relative path to the RSP inlist template file.')
@@ -88,17 +99,10 @@ def parsing_options():
     rsp_group.add_argument('--rsp-threads', type=int, help='Override rsp_workflow.num_rsp_threads. Number of OpenMP threads for each RSP run.')
     rsp_group.add_argument('--rsp-parallel', type=str, choices=['True', 'False'], help='Override rsp_workflow.enable_rsp_parallel. Enable/disable parallel RSP runs (True/False).')
     rsp_group.add_argument('--rsp-max-concurrent', type=int, help='Override rsp_workflow.max_concurrent_rsp_runs. Maximum number of concurrent RSP runs.')
+    rsp_group.add_argument('--rsp-run-timeout', type=int, help='Override rsp_workflow.rsp_run_timeout. Maximum time in seconds for each MESA run before it times out.')
 
-
-    cli_args, unknown_args = parser.parse_known_args()
-
-    # Early debug logging setup
-    if cli_args.debug:
-        logging.getLogger().setLevel(logging.DEBUG)
-        logger.debug("Debug logging enabled via CLI in config_parser (early stage).")
-    else:
-        logging.getLogger().setLevel(logging.WARNING)
-        logger.info("Default logging level is INFO (early stage).")
+    # Parse arguments
+    cli_args = parser.parse_args(args=args)
 
     # 2. Define default configuration values
     default_config = {
@@ -138,7 +142,8 @@ def parsing_options():
             'rsp_output_subdir': './rsp_outputs',
             'num_rsp_threads': 1,
             'enable_rsp_parallel': False,
-            'max_concurrent_rsp_runs': 4
+            'max_concurrent_rsp_runs': 4,
+            'rsp_run_timeout': 900
         }
     }
 
@@ -170,28 +175,24 @@ def parsing_options():
 
     # --- Apply Environment Variables (Override YAML, but overridden by CLI) ---
 
-    # MESASDK_ROOT (SDK installation dir)
     env_mesasdk_root = os.getenv('MESASDK_ROOT')
     if env_mesasdk_root and os.path.isdir(env_mesasdk_root):
         if final_config_dict.general_settings.mesasdk_root != env_mesasdk_root:
             logger.info(f"MESASDK_ROOT set from $MESASDK_ROOT environment variable: {env_mesasdk_root} (overriding YAML if present).")
             final_config_dict.general_settings.mesasdk_root = env_mesasdk_root
 
-    # MESA_DIR (specific MESA release dir)
     env_mesa_dir = os.getenv('MESA_DIR')
     if env_mesa_dir and os.path.isdir(env_mesa_dir):
         if final_config_dict.general_settings.mesa_dir != env_mesa_dir:
             logger.info(f"MESA_DIR set from $MESA_DIR environment variable: {env_mesa_dir} (overriding YAML if present).")
             final_config_dict.general_settings.mesa_dir = env_mesa_dir
 
-    # MESA_BINARY_DIR (new env var check)
     env_mesa_binary_dir = os.getenv('MESA_BINARY_DIR')
     if env_mesa_binary_dir and os.path.isdir(env_mesa_binary_dir):
         if final_config_dict.general_settings.mesa_binary_dir != env_mesa_binary_dir:
             logger.info(f"MESA_BINARY_DIR set from $MESA_BINARY_DIR environment variable: {env_mesa_binary_dir} (overriding YAML if present).")
             final_config_dict.general_settings.mesa_binary_dir = env_mesa_binary_dir
 
-    # GYRE_DIR
     env_gyre_dir = os.getenv('GYRE_DIR')
     if env_gyre_dir and os.path.isdir(env_gyre_dir):
         if final_config_dict.general_settings.gyre_dir != env_gyre_dir:
@@ -209,9 +210,9 @@ def parsing_options():
         arg_name = arg_action.dest
         cli_value = getattr(cli_args, arg_name, None)
 
-        if arg_name == 'config':
+        if arg_name in ['config', 'help', 'version']:
             continue
-
+            
         cli_set_explicitly = False
         if isinstance(arg_action, (argparse._StoreTrueAction, argparse._StoreFalseAction)):
             if cli_value is not None:
@@ -254,9 +255,10 @@ def parsing_options():
                 final_config_dict.rsp_workflow.enable_rsp_parallel = (cli_value.lower() == 'true')
             elif arg_name == 'rsp_max_concurrent':
                 final_config_dict.rsp_workflow.max_concurrent_rsp_runs = cli_value
+            elif arg_name == 'rsp_run_timeout':
+                final_config_dict.rsp_workflow.rsp_run_timeout = cli_value
             else:
                 logger.debug(f"CLI argument '{arg_name}' with value '{cli_value}' was provided but not explicitly mapped to a config setting. It will be ignored.")
-
 
     # Set internal flag for plotting based on other plotting settings
     final_config_dict.plotting_settings.generate_plots = (
@@ -268,7 +270,7 @@ def parsing_options():
         logger.debug("Internal 'generate_plots' flag set to True as a specific plotting option is enabled.")
 
     # 5. Final validation for required arguments and paths
-    # Input directory is always required
+    # INPUT_DIR VALIDATION
     if final_config_dict.general_settings.input_dir is None:
         logger.critical("ERROR: 'input_dir' must be specified either via command-line (--input-dir) or in the config file.")
         sys.exit(1)
@@ -355,11 +357,11 @@ def parsing_options():
         logger.debug("RSP workflow enabled. Performing final validation of RSP parameters.")
         required_rsp_params = [
             'rsp_inlist_template_path', 'rsp_output_subdir',
-            'num_rsp_threads', 'enable_rsp_parallel', 'max_concurrent_rsp_runs'
+            'num_rsp_threads', 'enable_rsp_parallel', 'max_concurrent_rsp_runs', 'rsp_run_timeout'
         ]
         for param in required_rsp_params:
             if getattr(final_config_dict.rsp_workflow, param, None) is None:
-                if param in ['num_rsp_threads', 'max_concurrent_rsp_runs'] and not isinstance(final_config_dict.rsp_workflow.get(param), (int, float)):
+                if param in ['num_rsp_threads', 'max_concurrent_rsp_runs', 'rsp_run_timeout'] and not isinstance(final_config_dict.rsp_workflow.get(param), (int, float)):
                     logger.critical(f"Missing or invalid required RSP workflow parameter: 'rsp_workflow.{param}'. Please check config.yaml or CLI arguments.")
                     sys.exit(1)
                 elif param == 'enable_rsp_parallel' and not isinstance(final_config_dict.rsp_workflow.get(param), bool):
@@ -368,7 +370,7 @@ def parsing_options():
                 else:
                     logger.critical(f"Missing required RSP workflow parameter: 'rsp_workflow.{param}'. Please check config.yaml or CLI arguments.")
                     sys.exit(1)
-            if param in ['num_rsp_threads', 'max_concurrent_rsp_runs'] and final_config_dict.rsp_workflow[param] <= 0:
+            if param in ['num_rsp_threads', 'max_concurrent_rsp_runs', 'rsp_run_timeout'] and final_config_dict.rsp_workflow[param] <= 0:
                 logger.critical(f"RSP workflow parameter 'rsp_workflow.{param}' must be a positive integer.")
                 sys.exit(1)
         
@@ -401,3 +403,11 @@ def parsing_options():
 
     logger.info(f"Final resolved configuration: {final_config_dict}")
     return final_config_dict
+
+def _get_version():
+    """Helper function to get package version."""
+    try:
+        import pkg_resources
+        return pkg_resources.get_distribution('mesalab').version
+    except pkg_resources.DistributionNotFound:
+        return "N/A (not installed as package)"

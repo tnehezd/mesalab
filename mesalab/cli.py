@@ -1,13 +1,13 @@
+# In mesalab/cli.py
+
 import sys
 import os
 import logging
 import pkg_resources
+import argparse
 
 # Import config_parser module, which handles ALL argument parsing and config loading.
-# It's imported first because the entire script's behavior depends on the config.
 from mesalab.io import config_parser
-
-# It's better to import the config_paths module here and use its functions directly.
 from mesalab.io import config_paths
 
 # --- Logging Setup (Initial - Manual Configuration) ---
@@ -16,7 +16,7 @@ root_logger = logging.getLogger()
 
 # Crucially, set the root logger to DEBUG immediately.
 # This ensures that all loggers that inherit from root can emit DEBUG messages from the very beginning.
-root_logger.setLevel(logging.DEBUG)
+root_logger.setLevel(logging.WARNING)
 
 # Remove any existing handlers to prevent duplicate output (e.g., from implicit basicConfig calls).
 for handler in root_logger.handlers[:]:
@@ -35,7 +35,8 @@ logging.getLogger('numba').setLevel(logging.WARNING)
 
 # Logger for cli.py itself (distinct from root_logger for finer control).
 cli_logger = logging.getLogger(__name__)
-# Set cli_logger to DEBUG initially to capture early debug messages specific to cli.py.
+# Set cli_logger to WARNING initially to capture early debug messages specific to cli.py.
+# The final log level will be set based on the configuration file's 'debug' setting.
 cli_logger.setLevel(logging.WARNING)
 
 
@@ -58,12 +59,49 @@ def main():
 
     overall_workflow_success = True
 
+    # --- Version and Help Handling (This is the place!) ---
+    # Create a separate parser for quick --version and --help handling.
+    parser = argparse.ArgumentParser(add_help=False)
+    # Add the -v and --version option.
+    parser.add_argument('-v', '--version', action='store_true', help='Show program version and exit.')
+    # Add the -h and --help option.
+    parser.add_argument('-h', '--help', action='store_true', help='Show this help message and exit.')
+    
+    # Process only the known, global arguments.
+    args, remaining_args = parser.parse_known_args()
+    
+    # Extract version number.
     try:
-        # Get mesalab package version for display
         mesalab_version = pkg_resources.get_distribution('mesalab').version
     except pkg_resources.DistributionNotFound:
         mesalab_version = "N/A (not installed as package)"
-
+    
+    # Handle the --version or -v option.
+    if args.version:
+        print(f"mesalab v{mesalab_version}")
+        sys.exit(0)
+    
+    # Handle the --help or -h option.
+    if args.help:
+        print(f"\n{'='*80}")
+        print(f"{'mesalab CLI - Help':^80}")
+        print(f"{'='*80}\n")
+        # The help message must be printed from the config_parser,
+        # as it contains all specific options.
+        try:
+            # Pass '--help' to explicitly trigger the help message generation.
+            config_parser.parsing_options(['--help'])
+        except SystemExit:
+            # This is the normal behavior when argparse prints help and exits.
+            pass
+        except Exception as e:
+            # Catch any unexpected errors during help generation.
+            cli_logger.error(f"An unexpected error occurred while generating help message: {e}")
+        finally:
+            # Always exit cleanly after printing help.
+            sys.exit(0)
+    
+    # --- The rest of the program ---
     # Print initial banner to console.
     print(f"\n{'='*80}")
     print(f"{'mesalab CLI - Starting Analysis Workflow':^80}")
@@ -73,11 +111,12 @@ def main():
     # The most critical step: Parse command line arguments and load configuration from YAML.
     # The entire program flow depends on this object.
     try:
-        config = config_parser.parsing_options()
+        # Crucially, we now pass the 'remaining_args' to the full parser.
+        config = config_parser.parsing_options(args=remaining_args)
     except Exception as e:
         cli_logger.critical(f"FATAL: Failed to parse configuration at startup: {e}", exc_info=True)
         sys.exit(1)
-
+        
     # --- Conditional Module Imports based on Configuration ---
     # We only import the heavier modules if they are actually needed.
     is_mesa_dependent_workflow_enabled = (
@@ -138,6 +177,8 @@ def main():
         cli_logger.setLevel(logging.WARNING)
         cli_logger.info("Debug mode is OFF. General logging level is INFO.")
     else:
+        root_logger.setLevel(logging.DEBUG)
+        cli_logger.setLevel(logging.DEBUG)
         cli_logger.debug("Debug logging confirmed and enabled by final configuration.")
         
     cli_logger.debug(f"Final resolved configuration being used by cli.py: {config}")
@@ -178,7 +219,7 @@ def main():
 
     # --- MESA Analysis Workflow ---
     print(f"\n{'='*70}")
-    print(f"        Starting MESA Analysis Workflow...")
+    print(f"       Starting MESA Analysis Workflow...")
     print(f"{'='*70}\n")
     try:
         gyre_cfg_exists = hasattr(config, 'gyre_workflow') and config.gyre_workflow is not None
@@ -208,7 +249,7 @@ def main():
             sys.exit(1)
 
         print(f"\n{'='*70}")
-        print(f"        MESA Analysis Workflow Completed Successfully.")
+        print(f"       MESA Analysis Workflow Completed Successfully.")
         print(f"{'='*70}\n")
     except Exception as e:
         cli_logger.critical(f"Critical error during MESA Analysis workflow: {e}", exc_info=True)
@@ -227,7 +268,7 @@ def main():
             overall_workflow_success = False
         else:
             print(f"\n{'='*70}")
-            print(f"        Starting MESA RSP Workflow...")
+            print(f"       Starting MESA RSP Workflow...")
             print(f"{'='*70}\n")
             try:
                 rsp_workflow_results = run_mesa_rsp_workflow(
@@ -245,11 +286,11 @@ def main():
                 overall_workflow_success = False
             
             print(f"\n{'='*70}")
-            print(f"        MESA RSP Workflow Completed.")
+            print(f"       MESA RSP Workflow Completed.")
             print(f"{'='*70}\n")
     else:
         print(f"\n{'='*70}")
-        print(f"        MESA RSP workflow is disabled in configuration.")
+        print(f"       MESA RSP workflow is disabled in configuration.")
         print(f"{'='*70}\n")
 
     # --- Plotting Workflow ---
@@ -261,7 +302,7 @@ def main():
 
     if plotting_enabled:
         print(f"\n{'='*70}")
-        print(f"        Starting Plotting Workflow...")
+        print(f"       Starting Plotting Workflow...")
         print(f"{'='*70}\n")
         try:
             if config.plotting_settings.get('generate_heatmaps', False):
@@ -292,13 +333,13 @@ def main():
                 )
             
             print(f"\n{'='*70}")
-            print(f"        Plotting Workflow Completed Successfully.")
+            print(f"       Plotting Workflow Completed Successfully.")
             print(f"{'='*70}\n")
         except Exception as e:
             cli_logger.error(f"Error during plotting workflow: {e}", exc_info=True)
     else:
         print(f"\n{'='*70}")
-        print(f"        Plotting workflow is disabled in configuration.")
+        print(f"       Plotting workflow is disabled in configuration.")
         print(f"{'='*70}\n")
 
     # --- GYRE Workflow ---
@@ -313,7 +354,7 @@ def main():
             gyre_workflow_return_status = 1
         else:
             print(f"\n{'='*70}")
-            print(f"        Starting GYRE Workflow...")
+            print(f"       Starting GYRE Workflow...")
             print(f"{'='*70}\n")
             try:
                 # Create a full path for the GYRE output subdirectory
@@ -333,21 +374,21 @@ def main():
 
         print(f"\n{'='*70}")
         if gyre_workflow_return_status == 0:
-            print(f"        GYRE Workflow Completed Successfully.")
+            print(f"       GYRE Workflow Completed Successfully.")
         else:
-            print(f"        GYRE Workflow Encountered an Error.")
+            print(f"       GYRE Workflow Encountered an Error.")
         print(f"{'='*70}\n")
     else:
         print(f"\n{'='*70}")
-        print(f"        GYRE workflow is disabled in configuration.")
+        print(f"       GYRE workflow is disabled in configuration.")
         print(f"{'='*70}\n")
 
     # --- END OF RUN ---
     print(f"\n{'='*80}")
     if overall_workflow_success:
-        print(f"║        {'mesalab Workflow Finished Successfully!':^62}        ║")
+        print(f"║       {'mesalab Workflow Finished Successfully!':^62}        ║")
     else:
-        print(f"║        {'mesalab Workflow Completed with Errors/Skipped Steps!':^62}        ║")
+        print(f"║       {'mesalab Workflow Completed with Errors/Skipped Steps!':^62}        ║")
     print(f"{'='*80}\n")
 
     if not overall_workflow_success:
