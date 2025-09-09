@@ -55,6 +55,12 @@ You can run `mesalab` by providing your configuration file:
 $ mesalab --config myconfig.yaml
 ```
 
+For a full list of command-line arguments and their descriptions, use the help command:
+
+```console
+$ mesalab --help
+```
+
 For more detailed information on configuration options, command-line arguments, and advanced usage, please consult the official `mesalab` documentation on [Read the Docs](https://mesalab.readthedocs.io/en/latest/index.html).
 
 
