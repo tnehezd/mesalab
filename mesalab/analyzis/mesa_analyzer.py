@@ -209,10 +209,10 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                 # This will require scanning for files matching the new naming convention.
                 if os.path.exists(analysis_results_sub_dir):
                     for fname in os.listdir(analysis_results_sub_dir):
-                        if fname.startswith("crossing_count_grid_Y") and fname.endswith(".csv"):
+                        if fname.startswith("crossing_count_grid") and fname.endswith(".csv"):
                             generated_cross_csv_paths.append(os.path.join(analysis_results_sub_dir, fname))
                     if not generated_cross_csv_paths:
-                        logger.warning("No existing Y-specific cross-grid CSVs found. Full reanalysis might be needed to generate them.")
+                        logger.warning("No existing cross-grid CSVs found. Full reanalysis might be needed to generate them.")
                         reanalysis_needed = True # If we didn't find them, force reanalysis to generate.
 
                 # This return needs to be inside the "if not reanalysis_needed" block to actually return
@@ -552,7 +552,8 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                                 df_to_save = combined_df_bl[existing_desired_cols]
                                 output_type_label = "selected columns"
 
-                            detail_filename = os.path.join(detail_files_output_dir, f"detail_z{z_val:.4f}_y{y_val:.3f}.csv") # NEW: Include Y in filename
+#                            detail_filename = os.path.join(detail_files_output_dir, f"detail_z{z_val:.4f}_y{y_val:.3f}.csv") 
+                            detail_filename = os.path.join(detail_files_output_dir, f"detail_z{z_val:.4f}.csv") 
                             df_to_save.to_csv(detail_filename, index=False, na_rep='NaN')
                             logger.info(f"Written concatenated detail CSV for Z={z_val}, Y={y_val} with {output_type_label} to {detail_filename}") # Log with Y
 

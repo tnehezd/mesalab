@@ -39,3 +39,6 @@ example/MESA_grid/output/
 nad_conv_high_output/
 nad_conv_mid_output/
 rsp_inlists/
+
+example_config.yaml
+no_conv_output
