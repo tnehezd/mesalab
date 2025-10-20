@@ -22,6 +22,19 @@ BLUELOOP_MASS_THRESHOLD = 2.0 # In solar masses. Stars below this mass are gener
 BL_CENTER_HE4_START_THRESHOLD = 0.9 # Defines the start of significant core helium burning for RGB tip search
 BL_CENTER_HE4_END_THRESHOLD = 1e-4 # Defines the end of core helium burning for the blue loop phase
 
+def safe_duration(start, end):
+    """
+    Safely computes the duration between two time points, ensuring both are valid and ordered.
+
+    Args:
+        start (float): Starting time value (e.g., age in years).
+        end (float): Ending time value.
+
+    Returns:
+        float: Duration (end - start) if both values are non-NaN and end > start; otherwise NaN.
+    """
+    return end - start if pd.notna(start) and pd.notna(end) and end > start else np.nan
+
 
 def is_in_instability_strip(log_Teff, log_L):
     """
@@ -47,6 +60,43 @@ def is_in_instability_strip(log_Teff, log_L):
         False
     """
     return instability_path.contains_point((log_Teff, log_L))
+
+def compute_true_instability_duration(df: pd.DataFrame, is_in_is_series: pd.Series) -> float:
+    """
+    Computes the total time the star spends inside the Instability Strip,
+    by summing all entry-exit intervals within the blue loop candidate phase.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing 'star_age' column.
+        is_in_is_series (pd.Series): Boolean Series indicating IS membership per row.
+
+    Returns:
+        float: Total duration spent inside the Instability Strip (in years).
+    """
+    duration = 0.0
+    currently_inside = False
+    entry_age = None
+
+    for i in range(len(is_in_is_series)):
+        age = df['star_age'].iloc[i]
+        inside = is_in_is_series.iloc[i]
+
+        if inside and not currently_inside:
+            entry_age = age
+            currently_inside = True
+
+        elif not inside and currently_inside:
+            exit_age = age
+            duration += exit_age - entry_age
+            currently_inside = False
+            entry_age = None
+
+    # If track ends while still inside IS
+    if currently_inside and entry_age is not None:
+        duration += df['star_age'].iloc[-1] - entry_age
+
+    return duration
+
 
 def analyze_blue_loop_and_instability(history_df: pd.DataFrame, initial_mass: float, initial_Z: float, initial_Y: float):
     """
@@ -286,14 +336,13 @@ def analyze_blue_loop_and_instability(history_df: pd.DataFrame, initial_mass: fl
     # Calculate durations if possible
     if pd.notna(analysis_results['state_times'].get('first_is_entry_age')) and \
        pd.notna(analysis_results['state_times'].get('last_is_exit_age')):
-        analysis_results['calculated_blue_loop_duration'] = analysis_results['state_times']['last_is_exit_age'] - \
-                                                            analysis_results['state_times']['first_is_entry_age']
+        analysis_results['calculated_blue_loop_duration'] = safe_duration(analysis_results['state_times'].get('first_is_entry_age'), analysis_results['state_times'].get('last_is_exit_age'))
+
         analysis_results['blue_loop_duration_yr'] = analysis_results['calculated_blue_loop_duration'] # For consistency with old column name
     
-    if pd.notna(analysis_results['state_times'].get('instability_start_age')) and \
-       pd.notna(analysis_results['state_times'].get('instability_end_age')):
-        analysis_results['calculated_instability_duration'] = analysis_results['state_times']['instability_end_age'] - \
-                                                               analysis_results['state_times']['instability_start_age']
+    analysis_results['calculated_instability_duration'] = compute_true_instability_duration(blue_loop_candidate_df, is_in_is_series)
+    
+
 
     # Populate detailed metrics (max_log_L, etc.) and blue_loop_detail_df
     red_edge_y_coords = np.array([INSTABILITY_STRIP_VERTICES[2][1], INSTABILITY_STRIP_VERTICES[3][1]])
@@ -341,14 +390,12 @@ def analyze_blue_loop_and_instability(history_df: pd.DataFrame, initial_mass: fl
         # Calculate durations if possible
         if pd.notna(analysis_results['state_times'].get('first_is_entry_age')) and \
            pd.notna(analysis_results['state_times'].get('last_is_exit_age')):
-            analysis_results['calculated_blue_loop_duration'] = analysis_results['state_times']['last_is_exit_age'] - \
-                                                                analysis_results['state_times']['first_is_entry_age']
+            analysis_results['calculated_blue_loop_duration'] = safe_duration(analysis_results['state_times'].get('first_is_entry_age'), analysis_results['state_times'].get('last_is_exit_age'))
+
             analysis_results['blue_loop_duration_yr'] = analysis_results['calculated_blue_loop_duration'] # For consistency with old column name
         
-        if pd.notna(analysis_results['state_times'].get('instability_start_age')) and \
-           pd.notna(analysis_results['state_times'].get('instability_end_age')):
-            analysis_results['calculated_instability_duration'] = analysis_results['state_times']['instability_end_age'] - \
-                                                                  analysis_results['state_times']['instability_start_age']
+        analysis_results['calculated_instability_duration'] = compute_true_instability_duration(blue_loop_candidate_df, is_in_is_series)
+
     else:
         # If blue_loop_detail_df is empty despite crossings, still set metrics to NaN
         analysis_results['max_log_L'] = np.nan
