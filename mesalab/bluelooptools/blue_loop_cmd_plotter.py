@@ -298,7 +298,7 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
         ax_cmd.scatter(cmd_plot_df['G_BP_minus_G_RP'], cmd_plot_df['M_G'],
                        c=cmd_plot_df['initial_Z'], cmap=cmap_cmd, norm=norm_cmd,
                        s=1, alpha=0.5) # Increased alpha for better visibility
-        ax_cmd.set_xlabel(r'$G_{BP} - G_{RP}$')
+        ax_cmd.set_xlabel(r'$M_{BP} - M_{RP}$')
         ax_cmd.set_ylabel(r'$M_G$')
         ax_cmd.set_title(f'Combined CMD (Gaia) (All Z)')
         ax_cmd.invert_yaxis()
