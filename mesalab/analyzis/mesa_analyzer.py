@@ -209,10 +209,10 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                 # This will require scanning for files matching the new naming convention.
                 if os.path.exists(analysis_results_sub_dir):
                     for fname in os.listdir(analysis_results_sub_dir):
-                        if fname.startswith("crossing_count_grid_Y") and fname.endswith(".csv"):
+                        if fname.startswith("crossing_count_grid") and fname.endswith(".csv"):
                             generated_cross_csv_paths.append(os.path.join(analysis_results_sub_dir, fname))
                     if not generated_cross_csv_paths:
-                        logger.warning("No existing Y-specific cross-grid CSVs found. Full reanalysis might be needed to generate them.")
+                        logger.warning("No existing cross-grid CSVs found. Full reanalysis might be needed to generate them.")
                         reanalysis_needed = True # If we didn't find them, force reanalysis to generate.
 
                 # This return needs to be inside the "if not reanalysis_needed" block to actually return
@@ -283,18 +283,19 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
             for run_info in mesa_run_infos:
                 current_mass = run_info['mass']
                 current_z = run_info['z']
-                current_y = run_info['y'] # NEW: Get current_y from run_info
+                current_y = run_info['y'] 
                 history_file_path = run_info['history_file_path']
                 run_dir_path = run_info['run_dir_path']
 
                 analysis_result_summary = {
                     'initial_mass': current_mass,
                     'initial_Z': current_z,
-                    'initial_Y': current_y, # NEW: Add initial_Y to summary
+                    'initial_Y': current_y,
                     'run_dir_path': run_dir_path,
                     'blue_loop_crossing_count': np.nan,
-                    'blue_loop_duration_yr': np.nan, 'max_log_L': np.nan, 'max_log_Teff': np.nan,
-                    'max_log_R': np.nan, 'first_model_number': np.nan, 'last_model_number': np.nan,
+                    'min_log_L': np.nan, 'min_log_Teff': np.nan,'min_log_R': np.nan,
+                    'max_log_L': np.nan, 'max_log_Teff': np.nan,'max_log_R': np.nan, 
+                    'first_model_number': np.nan, 'last_model_number': np.nan,
                     'first_age_yr': np.nan, 'last_age_yr': np.nan, 'blue_loop_start_age': np.nan,
                     'blue_loop_end_age': np.nan, 'instability_start_age': np.nan,
                     'instability_end_age': np.nan, 'calculated_blue_loop_duration': np.nan,
@@ -308,8 +309,8 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                     df_full_history = get_data_from_history_file(history_file_path)
                     df_full_history['initial_mass'] = current_mass
                     df_full_history['initial_Z'] = current_z
-                    df_full_history['initial_Y'] = current_y # NEW: Add initial_Y to full history DataFrame
-                    df_full_history['run_dir_path'] = run_dir_path # Add run_dir_path to full history DataFrame
+                    df_full_history['initial_Y'] = current_y 
+                    df_full_history['run_dir_path'] = run_dir_path 
 
                     if current_z not in full_history_data_for_plotting:
                         full_history_data_for_plotting[current_z] = {} # Ensure nested dict
@@ -318,7 +319,6 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                     full_history_data_for_plotting[current_z][current_y].append(df_full_history.copy()) # Store by Z and Y
 
                     if analyze_blue_loop:
-                        # --- THIS CALL IS NOW TO THE CORRECTLY IMPORTED FUNCTION WITH 'initial_Y' ---
                         analyzer_output = analyze_blue_loop_and_instability(df_full_history, current_mass, current_z, current_y)
 
                         if not analyzer_output['blue_loop_detail_df'].empty:
@@ -332,7 +332,7 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                                 current_detail_df = bl_df
                             else:
                                 concise_detail_columns_local = [
-                                    'initial_mass', 'initial_Z', 'initial_Y', 'star_age', 'model_number', # NEW: Add initial_Y here
+                                    'initial_mass', 'initial_Z', 'initial_Y', 'star_age', 'model_number',
                                     'log_Teff', 'log_L', 'log_g', 'profile_number',
                                     'run_dir_path'
                                     ]
@@ -340,10 +340,10 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                                 if existing_desired_cols:
                                     current_detail_df = bl_df[existing_desired_cols]
                                 else:
-                                    logger.warning(f"No desired columns found for concise detail for M={current_mass}, Z={current_z}, Y={current_y}. Detail DF for plotting might remain empty.") # Add Y to warning
+                                    logger.warning(f"No desired columns found for concise detail for M={current_mass}, Z={current_z}, Y={current_y}. Detail DF for plotting might remain empty.") 
                                     current_detail_df = pd.DataFrame()
                         else:
-                            logger.info(f"analyzer_output['blue_loop_detail_df'] was empty for M={current_mass}, Z={current_z}, Y={current_y}. No detailed data for this run.") # Add Y to message
+                            logger.info(f"analyzer_output['blue_loop_detail_df'] was empty for M={current_mass}, Z={current_z}, Y={current_y}. No detailed data for this run.")
 
                         if pd.notna(analyzer_output['crossing_count']):
                             analysis_result_summary['blue_loop_crossing_count'] = int(analyzer_output['crossing_count'])
@@ -351,18 +351,21 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                             if analysis_result_summary['blue_loop_crossing_count'] > 0:
                                 state_times = analyzer_output['state_times']
 
+                                # These metrics are calcualted in the blueloop analyzer, so we just copy them
                                 analysis_result_summary['blue_loop_start_age'] = state_times.get('first_is_entry_age', np.nan)
                                 analysis_result_summary['blue_loop_end_age'] = state_times.get('last_is_exit_age', np.nan)
-                                if pd.notna(analysis_result_summary['blue_loop_start_age']) and pd.notna(analysis_result_summary['blue_loop_end_age']):
-                                    analysis_result_summary['calculated_blue_loop_duration'] = analysis_result_summary['blue_loop_end_age'] - analysis_result_summary['blue_loop_start_age']
-                                    analysis_result_summary['blue_loop_duration_yr'] = analysis_result_summary['calculated_blue_loop_duration']
-
+                                analysis_result_summary['calculated_blue_loop_duration'] = analyzer_output.get('calculated_blue_loop_duration', np.nan)
                                 analysis_result_summary['instability_start_age'] = state_times.get('instability_start_age', np.nan)
                                 analysis_result_summary['instability_end_age'] = state_times.get('instability_end_age', np.nan)
-                                if pd.notna(analysis_result_summary['instability_start_age']) and pd.notna(analysis_result_summary['instability_end_age']):
-                                    analysis_result_summary['calculated_instability_duration'] = analysis_result_summary['instability_end_age'] - analysis_result_summary['instability_start_age']
+                                analysis_result_summary['calculated_instability_duration'] = analyzer_output.get('calculated_instability_duration', np.nan)
 
                                 if not current_detail_df.empty:
+                                    analysis_result_summary['min_log_L'] = current_detail_df['log_L'].min()
+                                    analysis_result_summary['min_log_Teff'] = current_detail_df['log_Teff'].min()
+                                    if 'log_R' in current_detail_df.columns:
+                                        analysis_result_summary['min_log_R'] = current_detail_df['log_R'].min()
+                                    elif 'log_R' in df_full_history.columns:
+                                        analysis_result_summary['min_log_R'] = df_full_history['log_R'].min()
                                     analysis_result_summary['max_log_L'] = current_detail_df['log_L'].max()
                                     analysis_result_summary['max_log_Teff'] = current_detail_df['log_Teff'].max()
                                     if 'log_R' in current_detail_df.columns:
@@ -374,11 +377,11 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                                     analysis_result_summary['first_age_yr'] = current_detail_df['star_age'].min()
                                     analysis_result_summary['last_age_yr'] = current_detail_df['star_age'].max()
                                 else:
-                                    logger.warning(f"current_detail_df is empty for M={current_mass}, Z={current_z}, Y={current_y} despite blue loop found (count > 0). Detailed summary metrics will be NaN.") # Add Y to warning
+                                    logger.warning(f"current_detail_df is empty for M={current_mass}, Z={current_z}, Y={current_y} despite blue loop found (count > 0). Detailed summary metrics will be NaN.")
                             else:
-                                logger.info(f"No blue loop found (0 crossings) for M={current_mass}, Z={current_z}, Y={current_y}. Blue loop summary metrics will be NaN.") # Add Y to message
+                                logger.info(f"No blue loop found (0 crossings) for M={current_mass}, Z={current_z}, Y={current_y}. Blue loop summary metrics will be NaN.")
                         else:
-                            logger.warning(f"Blue loop analysis failed for M={current_mass}, Z={current_z}, Y={current_y}. Blue loop summary metrics will be NaN.") # Add Y to warning
+                            logger.warning(f"Blue loop analysis failed for M={current_mass}, Z={current_z}, Y={current_y}. Blue loop summary metrics will be NaN.")
                             current_detail_df = pd.DataFrame()
                     else:
                         logger.info(f"Skipping blue loop analysis for M={current_mass}, Z={current_z}, Y={current_y} as analyze_blue_loop is False.") # Add Y to message
@@ -414,11 +417,13 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                         'initial_Y': current_y, # Ensure Y is recorded even on error
                         'run_dir_path': run_dir_path,
                         'blue_loop_crossing_count': np.nan,
-                        'blue_loop_duration_yr': np.nan, 'max_log_L': np.nan, 'max_log_Teff': np.nan,
-                        'max_log_R': np.nan, 'first_model_number': np.nan, 'last_model_number': np.nan,
-                        'first_age_yr': np.nan, 'last_age_yr': np.nan, 'blue_loop_start_age': np.nan,
-                        'blue_loop_end_age': np.nan, 'instability_start_age': np.nan,
-                        'instability_end_age': np.nan, 'calculated_blue_loop_duration': np.nan,
+                        'min_log_L': np.nan, 'min_log_Teff': np.nan, 'min_log_R': np.nan, 
+                        'max_log_L': np.nan, 'max_log_Teff': np.nan, 'max_log_R': np.nan, 
+                        'first_model_number': np.nan, 'last_model_number': np.nan,
+                        'first_age_yr': np.nan, 'last_age_yr': np.nan, 
+                        'blue_loop_start_age': np.nan, 'blue_loop_end_age': np.nan, 
+                        'instability_start_age': np.nan, 'instability_end_age': np.nan, 
+                        'calculated_blue_loop_duration': np.nan,
                         'calculated_instability_duration': np.nan,
                         'analysis_status': f"Error: {str(err)[:100]}" # Truncate error message
                     }
@@ -448,24 +453,25 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
             # Re-define columns including 'initial_Y'
             summary_df = pd.DataFrame(columns=[
                 'initial_mass', 'initial_Z', 'initial_Y', 'run_dir_path', # Added initial_Y here
-                'blue_loop_crossing_count', 'blue_loop_duration_yr',
+                'blue_loop_crossing_count',
                 'blue_loop_start_age', 'blue_loop_end_age',
                 'instability_start_age', 'instability_end_age',
                 'calculated_blue_loop_duration', 'calculated_instability_duration',
+                'min_log_L', 'min_log_Teff', 'min_log_R',
                 'max_log_L', 'max_log_Teff', 'max_log_R',
                 'first_model_number', 'last_model_number',
                 'first_age_yr', 'last_age_yr', 'analysis_status' # Include analysis_status
-            ], index=pd.MultiIndex.from_tuples([], names=['initial_Z', 'initial_Y', 'initial_mass'])) # Added initial_Y to MultiIndex
+            ], index=pd.MultiIndex.from_tuples([], names=['initial_Z', 'initial_Y', 'initial_mass'])) 
         else:
             summary_df = summary_df_to_save.copy()
             if blue_loop_output_type == 'summary' and analyze_blue_loop:
                 logger.info("Applying 'summary' output type filtering for summary CSV columns.")
                 summary_columns_for_summary_output = [
-                    'blue_loop_crossing_count', 'blue_loop_duration_yr',
+                    'blue_loop_crossing_count',
                     'blue_loop_start_age', 'blue_loop_end_age',
                     'instability_start_age', 'instability_end_age',
                     'calculated_blue_loop_duration', 'calculated_instability_duration',
-                    'run_dir_path', # 'initial_Y' should be part of the index, not listed here as a regular column for summary type
+                    'run_dir_path', 
                     'analysis_status' # Keep status
                 ]
                 existing_summary_cols = [col for col in summary_columns_for_summary_output if col in summary_df.columns]
@@ -552,7 +558,8 @@ def perform_mesa_analysis(args, analysis_results_sub_dir, detail_files_output_di
                                 df_to_save = combined_df_bl[existing_desired_cols]
                                 output_type_label = "selected columns"
 
-                            detail_filename = os.path.join(detail_files_output_dir, f"detail_z{z_val:.4f}_y{y_val:.3f}.csv") # NEW: Include Y in filename
+#                            detail_filename = os.path.join(detail_files_output_dir, f"detail_z{z_val:.4f}_y{y_val:.3f}.csv") 
+                            detail_filename = os.path.join(detail_files_output_dir, f"detail_z{z_val:.4f}.csv") 
                             df_to_save.to_csv(detail_filename, index=False, na_rep='NaN')
                             logger.info(f"Written concatenated detail CSV for Z={z_val}, Y={y_val} with {output_type_label} to {detail_filename}") # Log with Y
 
