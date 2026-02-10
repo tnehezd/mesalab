@@ -69,6 +69,8 @@ Existing tools partially address components of this workflow. For example `py_me
 
 While these tools are powerful, there is currently no widely adopted, end-to-end pipeline that integrates all steps needed for systematic analysis of blue loop evolution in large MESA grids. Each tool alone addresses only part of the workflow, and significant manual effort is required to connect them.
 `mesalab` fills this gap by providing a unified interface that automates the entire post-processing and asteroseismic preparation workflow, from parsing MESA outputs and identifying blue loop models to generating diagrams and executing pulsation calculations. Unlike single-purpose utilities, it enables researchers to efficiently and reproducibly analyze large model grids, reducing manual effort and improving consistency across studies.
+
+# Research Impact Statement
 The pipeline has already been employed within our research group, as demonstrated in a prior study by the author [@TarczayNehezetal2026], and it is actively being used in further studies currently in preparation. This highlights that `mesalab` is both practically effective and a valuable tool for ongoing research in the field of asteroseismology.
 
 
