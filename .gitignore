@@ -38,6 +38,9 @@ docs/_build/
 plot_loop.py
 
 example/MESA_grid/output/
+nad_convos_high_output/
+nad_convos_mid_output/
+nad_convos_low_output/
 nad_conv_high_output/
 nad_conv_mid_output/
 rsp_inlists/
