@@ -1,6 +1,6 @@
 # About `mesalab` pipeline
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18870327.svg)](https://doi.org/10.5281/zenodo.18870327)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18870400.svg)](https://doi.org/10.5281/zenodo.18870400)
 
 
 
