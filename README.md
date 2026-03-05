@@ -1,6 +1,8 @@
 # About `mesalab` pipeline
 
-[![DOI](https://zenodo.org/badge/1020049108.svg)](https://doi.org/10.5281/zenodo.18870209)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18870327.svg)](https://doi.org/10.5281/zenodo.18870327)
+
+
 
 > ⚠️**NOTE:** This project is currently under active development. Features and APIs may change, and new functionalities are continuously being added.
 
