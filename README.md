@@ -32,7 +32,7 @@ Building from Source (Recommended for Developers)
 
 For scientific packages with complex dependencies like mesalab, we highly recommend using a conda environment to build from source. This ensures all binary dependencies are handled correctly, avoiding common compiler errors.
 
-Step 1: Set up the conda environment
+Step 1: Set up the conda environment (Python version between 3.9 and 3.11)
 Create a dedicated environment with all the necessary scientific packages. The conda-forge channel is required for some dependencies.
 ```console
 $ conda create --name mesalab_env python=3.9
