@@ -4,10 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mesalab"
-version = "2.1.0"
+dynamic = ["version"]
 requires-python = ">=3.9, <3.12"
 readme = "README.md"
-
 
 dependencies = [
     "numpy>=1.21.6,<2.0",
@@ -25,3 +24,9 @@ dependencies = [
     "f90nml>=1.4.5",
     "addict",
 ]
+
+[project.scripts]
+mesalab = "mesalab.cli:main"
+
+[tool.setuptools_scm]
+write_to = "mesalab/version.py"
