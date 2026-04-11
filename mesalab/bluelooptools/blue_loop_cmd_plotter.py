@@ -12,6 +12,14 @@ import pkg_resources
 from tqdm.auto import tqdm
 import logging # Import the logging module
 
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+from mesalab.plotting.plot_config import DEFAULT_PLOT_CONFIG as PLOT_CFG
+
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+
+
 # --- Logging Setup for this module ---
 # This ensures that if the module is run directly, it has a basic logging setup.
 # When run via cli.py, the root logger configured in cli.py will take precedence.
@@ -228,63 +236,95 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
     logger.debug(f"Number of non-NaN M_G values after calculation: {combined_df_all_data['M_G'].count()}")
     logger.debug(f"Number of non-NaN G_BP_minus_G_RP values after calculation: {combined_df_all_data['G_BP_minus_G_RP'].count()}")
 
-    # --- HRD Plot ---
+
     logger.info("\nGenerating HRD plot...")
-    fig_hrd, ax_hrd = plt.subplots(figsize=(10, 8))
+    fig_hrd, ax_hrd = plt.subplots(
+        figsize=PLOT_CFG["figure"]["figsize"],
+        dpi=PLOT_CFG["figure"]["dpi"],
+        facecolor=PLOT_CFG["figure"]["facecolor"]
+    )
+
     hrd_plot_df = combined_df_all_data.dropna(subset=['log_Teff', 'log_L', 'initial_Z'])
-    logger.debug(f"HRD plot DataFrame size after dropna for plotting: {len(hrd_plot_df)} rows")
-    
-    # Define min_z and max_z specific to the HRD plot data
+
     if not hrd_plot_df.empty:
         hrd_min_z = hrd_plot_df['initial_Z'].min()
         hrd_max_z = hrd_plot_df['initial_Z'].max()
-        logger.debug(f"HRD Plot Z range (from hrd_plot_df): min_Z={hrd_min_z:.4e}, max_Z={hrd_max_z:.4e}") # Added debug print
-        cmap_hrd = plt.cm.viridis
         norm_hrd = plt.Normalize(vmin=hrd_min_z, vmax=hrd_max_z)
 
-        ax_hrd.scatter(hrd_plot_df['log_Teff'], hrd_plot_df['log_L'],
-                       c=hrd_plot_df['initial_Z'], cmap=cmap_hrd, norm=norm_hrd,
-                       s=1, alpha=0.5) # Increased alpha for better visibility
+        sc = ax_hrd.scatter(
+            hrd_plot_df['log_Teff'],
+            hrd_plot_df['log_L'],
+            c=hrd_plot_df['initial_Z'],
+            cmap=PLOT_CFG["scatter"]["cmap"],
+            norm=norm_hrd,
+            s=PLOT_CFG["scatter"]["s"],
+            alpha=PLOT_CFG["scatter"]["alpha"],
+        )
 
-        # --- Define and add Instability Strip ---
-        # Vertices are in (log_Teff, log_L) coordinates
         instability_strip_vertices = np.array([
-            [3.83, 2.4],   # Top-left (Blue edge, high Teff, low L)
-            [3.76, 4.5],   # Bottom-left (high Teff, high L)
-            [3.65, 4.5],   # Bottom-right (Red edge, low Teff, high L)
-            [3.77, 2.4]    # Top-right (low Teff, low L)
+            [3.83, 2.4],
+            [3.76, 4.5],
+            [3.65, 4.5],
+            [3.77, 2.4]
         ])
-        
-        # Important: The HRD Teff axis is inverted! So the top-left point has the highest log_Teff value.
-        # The Path needs points to connect the polygon in order.
-        # Here, the order is decreasing by Teff, then increasing by L, then increasing by Teff, then decreasing by L.
-        # The instability_strip_vertices points are likely already in the correct order for Path.
-        
         instability_path = Path(instability_strip_vertices)
-        instability_patch = patches.PathPatch(instability_path, facecolor='gray', edgecolor='black', lw=2, alpha=0.3, label='Instability Strip')
+        instability_patch = patches.PathPatch(
+            instability_path, facecolor='gray', edgecolor='black',
+            lw=2, alpha=0.3, label='Instability Strip'
+        )
         ax_hrd.add_patch(instability_patch)
-        # --- End Instability Strip ---
 
         ax_hrd.set_xlabel(r'$\log_{10} T_{\mathrm{eff}}$')
         ax_hrd.set_ylabel(r'$\log_{10} (L/L_{\odot})$')
         ax_hrd.set_title(f'Combined HR Diagram (All Z)')
         ax_hrd.invert_xaxis()
-        fig_hrd.colorbar(plt.cm.ScalarMappable(norm=norm_hrd, cmap=cmap_hrd), ax=ax_hrd, label='Initial Z')
-        ax_hrd.grid(True, linestyle='--', alpha=0.6)
-        ax_hrd.legend(loc='upper right') # Add legend to show instability strip label
-        fig_hrd.tight_layout()
+
+        ax_hrd.grid(
+            PLOT_CFG["axes"]["grid"],
+            linestyle=PLOT_CFG["axes"]["grid_style"],
+            alpha=PLOT_CFG["axes"]["grid_alpha"]
+        )
+
+        ax_hrd.legend(loc='upper right')
+
+        divider = make_axes_locatable(ax_hrd)
+
+        cax = divider.append_axes(
+            "right",
+            size=PLOT_CFG["colorbar"]["size"],
+            pad=PLOT_CFG["colorbar"]["pad"]
+        )
+        cbar = fig_hrd.colorbar(sc, cax=cax)
+        cbar.set_label(
+            "Initial Z",
+            fontsize=PLOT_CFG["colorbar"]["label_size"]
+        )
+
         hrd_path = os.path.join(output_dir, f'HRD_{output_type_label}.png')
-        fig_hrd.savefig(hrd_path, dpi=200)
+#        fig_hrd.subplots_adjust(left=0.06, right=0.98, top=0.96, bottom=0.08)
+
+        fig_hrd.tight_layout()
+
+        fig_hrd.savefig(
+            hrd_path,
+            dpi=PLOT_CFG["figure"]["dpi"],
+            bbox_inches="tight",
+            pad_inches=0.05
+        )
+
         plt.close(fig_hrd)
-        logger.info(f"Saved HRD plot: {hrd_path}")
+        logger.info(f"Saved HRD BLABLAB plot: {hrd_path}")
     else:
         plt.close(fig_hrd)
         logger.warning("No valid HRD plot for combined data after dropping NaNs.")
 
-
     # --- CMD Plot ---
     logger.info("\nGenerating CMD plot...")
-    fig_cmd, ax_cmd = plt.subplots(figsize=(10, 8))
+    fig_cmd, ax_cmd = plt.subplots(
+        figsize=PLOT_CFG["figure"]["figsize"],
+        dpi=PLOT_CFG["figure"]["dpi"],
+        facecolor=PLOT_CFG["figure"]["facecolor"]
+    )
     cmd_plot_df = combined_df_all_data.dropna(subset=['G_BP_minus_G_RP', 'M_G', 'initial_Z'])
     logger.debug(f"CMD plot DataFrame size after dropna for plotting: {len(cmd_plot_df)} rows")
     if not cmd_plot_df.empty:
@@ -292,21 +332,51 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
         cmd_min_z = cmd_plot_df['initial_Z'].min()
         cmd_max_z = cmd_plot_df['initial_Z'].max()
         logger.debug(f"CMD Plot Z range (from cmd_plot_df): min_Z={cmd_min_z:.4e}, max_Z={cmd_max_z:.4e}") # Added debug print
-        cmap_cmd = plt.cm.viridis
+
         norm_cmd = plt.Normalize(vmin=cmd_min_z, vmax=cmd_max_z)
 
-        ax_cmd.scatter(cmd_plot_df['G_BP_minus_G_RP'], cmd_plot_df['M_G'],
-                       c=cmd_plot_df['initial_Z'], cmap=cmap_cmd, norm=norm_cmd,
-                       s=1, alpha=0.5) # Increased alpha for better visibility
+        sc = ax_cmd.scatter(
+            cmd_plot_df['G_BP_minus_G_RP'],
+            cmd_plot_df['M_G'],
+            c=cmd_plot_df['initial_Z'],
+            cmap=PLOT_CFG["scatter"]["cmap"],
+            norm=norm_cmd,
+            s=PLOT_CFG["scatter"]["s"],
+            alpha=PLOT_CFG["scatter"]["alpha"],
+        )
+        
+
         ax_cmd.set_xlabel(r'$M_{BP} - M_{RP}$')
         ax_cmd.set_ylabel(r'$M_G$')
         ax_cmd.set_title(f'Combined CMD (Gaia) (All Z)')
         ax_cmd.invert_yaxis()
-        fig_cmd.colorbar(plt.cm.ScalarMappable(norm=norm_cmd, cmap=cmap_cmd), ax=ax_cmd, label='Initial Z')
-        ax_cmd.grid(True, linestyle='--', alpha=0.6)
-        fig_cmd.tight_layout()
+
+        divider = make_axes_locatable(ax_cmd)
+
+        cax = divider.append_axes(
+            "right",
+            size=PLOT_CFG["colorbar"]["size"],
+            pad=PLOT_CFG["colorbar"]["pad"]
+        )
+        cbar = fig_cmd.colorbar(sc, cax=cax)
+
+        cbar.set_label(
+            "Initial Z",
+            fontsize=PLOT_CFG["colorbar"]["label_size"]
+        )
+
+
         cmd_path = os.path.join(output_dir, f'CMD_Gaia_{output_type_label}.png')
-        fig_cmd.savefig(cmd_path, dpi=200)
+
+        fig_cmd.tight_layout()
+
+        fig_cmd.savefig(
+            cmd_path,
+            dpi=PLOT_CFG["figure"]["dpi"],
+            bbox_inches="tight",
+            pad_inches=0.05
+        )
+
         plt.close(fig_cmd)
         logger.info(f"Saved CMD plot: {cmd_path}")
     else:
@@ -315,7 +385,11 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
 
     # --- LogL vs LogG Plot ---
     logger.info("\nGenerating LogL vs LogG plot...")
-    fig_logg, ax_logg = plt.subplots(figsize=(10, 8))
+    fig_logg, ax_logg = plt.subplots(
+        figsize=PLOT_CFG["figure"]["figsize"],
+        dpi=PLOT_CFG["figure"]["dpi"],
+        facecolor=PLOT_CFG["figure"]["facecolor"]
+    )
     logg_plot_df = combined_df_all_data.dropna(subset=['log_g', 'log_L', 'initial_Z'])
     logger.debug(f"LogL vs LogG plot DataFrame size after dropna for plotting: {len(logg_plot_df)} rows")
     if not logg_plot_df.empty:
@@ -323,21 +397,53 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
         logg_min_z = logg_plot_df['initial_Z'].min()
         logg_max_z = logg_plot_df['initial_Z'].max()
         logger.debug(f"LogL vs LogG Plot Z range (from logg_plot_df): min_Z={logg_min_z:.4e}, max_Z={logg_max_z:.4e}") # Added debug print
-        cmap_logg = plt.cm.viridis
         norm_logg = plt.Normalize(vmin=logg_min_z, vmax=logg_max_z)
 
-        ax_logg.scatter(logg_plot_df['log_g'], logg_plot_df['log_L'],
-                        c=logg_plot_df['initial_Z'], cmap=cmap_logg, norm=norm_logg,
-                        s=1, alpha=0.5) # Increased alpha for better visibility
+
+        sc = ax_logg.scatter(
+            logg_plot_df['log_g'],
+            logg_plot_df['log_L'],
+            c=logg_plot_df['initial_Z'],
+            cmap=PLOT_CFG["scatter"]["cmap"],
+            norm=norm_logg,
+            s=PLOT_CFG["scatter"]["s"],
+            alpha=PLOT_CFG["scatter"]["alpha"],
+        )        
+        
+
+
         ax_logg.set_xlabel(r'$\log_{10} g$')
         ax_logg.set_ylabel(r'$\log_{10} (L/L_{\odot})$')
         ax_logg.set_title(f'Combined LogL vs LogG (All Z)')
         ax_logg.invert_xaxis()
-        fig_logg.colorbar(plt.cm.ScalarMappable(norm=norm_logg, cmap=cmap_logg), ax=ax_logg, label='Initial Z')
-        ax_logg.grid(True, linestyle='--', alpha=0.6)
+
+        divider = make_axes_locatable(ax_cmd)
+
+        cax = divider.append_axes(
+            "right",
+            size=PLOT_CFG["colorbar"]["size"],
+            pad=PLOT_CFG["colorbar"]["pad"]
+        )
+        cbar = fig_logg.colorbar(sc, cax=cax)
+
+        cbar.set_label(
+            "Initial Z",
+            fontsize=PLOT_CFG["colorbar"]["label_size"]
+        )
+
+
         fig_logg.tight_layout()
         logg_path = os.path.join(output_dir, f'LogL_LogG_{output_type_label}.png')
-        fig_logg.savefig(logg_path, dpi=200)
+
+        fig_logg.savefig(
+            logg_path,
+            dpi=PLOT_CFG["figure"]["dpi"],
+            bbox_inches="tight",
+            pad_inches=0.05
+        )
+
+
+
         plt.close(fig_logg)
         logger.info(f"Saved LogL vs LogG plot: {logg_path}")
     else:
