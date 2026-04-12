@@ -8,7 +8,7 @@ DEFAULT_PLOT_CONFIG = {
         "edgecolor": "white",
     },
     "axes": {
-        "title_size": 14,
+        "title_size": 20,
         "label_size": 12,
         "grid": True,
         "grid_style": "--",

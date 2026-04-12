@@ -274,9 +274,9 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
         )
         ax_hrd.add_patch(instability_patch)
 
-        ax_hrd.set_xlabel(r'$\log_{10} T_{\mathrm{eff}}$')
-        ax_hrd.set_ylabel(r'$\log_{10} (L/L_{\odot})$')
-        ax_hrd.set_title(f'Combined HR Diagram (All Z)')
+        ax_hrd.set_xlabel(r'$\log_{10} T_{\mathrm{eff}}$', fontsize=PLOT_CFG["axes"]["label_size"])
+        ax_hrd.set_ylabel(r'$\log_{10} (L/L_{\odot})$', fontsize=PLOT_CFG["axes"]["label_size"])
+        ax_hrd.set_title(f'Combined HR Diagram (All Z)', fontsize=PLOT_CFG["axes"]["title_size"])
         ax_hrd.invert_xaxis()
 
         ax_hrd.grid(
@@ -346,10 +346,10 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
         )
         
 
-        ax_cmd.set_xlabel(r'$M_{BP} - M_{RP}$')
-        ax_cmd.set_ylabel(r'$M_G$')
-        ax_cmd.set_title(f'Combined CMD (Gaia) (All Z)')
-        ax_cmd.invert_yaxis()
+        ax_cmd.set_xlabel(r'$M_{BP} - M_{RP}$', fontsize=PLOT_CFG["axes"]["label_size"])
+        ax_cmd.set_ylabel(r'$M_G$', fontsize=PLOT_CFG["axes"]["label_size"])
+        ax_cmd.set_title(f'Combined CMD (Gaia) (All Z)', fontsize=PLOT_CFG["axes"]["title_size"])
+        ax_cmd.invert_yaxis() 
 
         divider = make_axes_locatable(ax_cmd)
 
@@ -412,9 +412,9 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
         
 
 
-        ax_logg.set_xlabel(r'$\log_{10} g$')
-        ax_logg.set_ylabel(r'$\log_{10} (L/L_{\odot})$')
-        ax_logg.set_title(f'Combined LogL vs LogG (All Z)')
+        ax_logg.set_xlabel(r'$\log_{10} g$', fontsize=PLOT_CFG["axes"]["label_size"])
+        ax_logg.set_ylabel(r'$\log_{10} (L/L_{\odot})$', fontsize=PLOT_CFG["axes"]["label_size"])
+        ax_logg.set_title(f'Combined LogL vs LogG (All Z)', fontsize=PLOT_CFG["axes"]["title_size"])
         ax_logg.invert_xaxis()
 
         divider = make_axes_locatable(ax_cmd)

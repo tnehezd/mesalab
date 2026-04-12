@@ -10,6 +10,8 @@ from matplotlib.colors import ListedColormap, BoundaryNorm
 import logging # Import the logging module
 import sys
 
+from mesalab.plotting.plot_config import DEFAULT_PLOT_CONFIG as PLOT_CFG
+
 # --- Logging Setup for this module ---
 # This ensures that if the module is run directly, it has a basic logging setup.
 # When run via cli.py, the root logger configured in cli.py will take precedence.
@@ -154,21 +156,21 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
     norm = BoundaryNorm(bounds, cmap.N)
 
     # Create the heatmap
-    plt.figure(figsize=(20, 12))
+    plt.figure(figsize=PLOT_CFG["figure"]["figsize"])
     plt.imshow(data_for_heatmap, aspect='auto', origin='lower', cmap=cmap, norm=norm)
 
     # Colorbar settings - showing ticks for 0, 1, 2, 3, 4, 5
     cbar = plt.colorbar(ticks=[0, 1, 2, 3, 4, 5])
-    cbar.set_label("Number of IS Crossings", fontsize=14)
+    cbar.set_label("Number of IS Crossings", fontsize=PLOT_CFG["colorbar"]["label_size"])
     cbar.ax.set_yticklabels(["0", "1", "2", "3", "4", "5"])
     
     # Axis settings
     plt.xticks(np.arange(len(unique_masses_sorted)), [f'{m:.1f}' for m in unique_masses_sorted], rotation=90, fontsize=12)
     metallicity_tick_indices = np.arange(0, len(unique_zs_sorted), 5)
     plt.yticks(metallicity_tick_indices, [f'{unique_zs_sorted[i]:.4f}' for i in metallicity_tick_indices], fontsize=12)
-    plt.xlabel("Mass [M$_\odot$]", fontsize=14)
-    plt.ylabel("Metallicity (Z)", fontsize=14)
-    plt.title(f"Heatmap: Mass vs. Metallicity ({model_name})", fontsize=16)
+    plt.xlabel("Mass [M$_\odot$]", fontsize=PLOT_CFG["axes"]["label_size"])
+    plt.ylabel("Metallicity (Z)", fontsize=PLOT_CFG["axes"]["label_size"])
+    plt.title(f"Heatmap: Mass vs. Metallicity ({model_name})", fontsize=PLOT_CFG["axes"]["title_size"])
 
     # Use a generic filename for the heatmap now
     heatmap_filename = "mesa_grid_blue_loop_heatmap.png"
