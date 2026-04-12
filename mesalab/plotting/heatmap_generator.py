@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__) # Logger for this specific module
 def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_zs, unique_masses,
                                          plots_output_dir, analysis_results_output_dir,
                                          model_name="MESA Grid Analysis", # Kept for potential use in plot titles
-                                         blue_loop_output_type='all', analyze_blue_loop=False):
+                                         blue_loop_output_type='all', analyze_blue_loop=False, plot_cfg=None):
     """
     Generates a heatmap showing the number of instability strip (IS) crossings 
     as a function of initial stellar mass and metallicity, and optionally writes 
@@ -49,7 +49,9 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
         model_name (str): Optional name of the model grid (used in plot title).
         blue_loop_output_type (str): Either 'all' or 'summary'; controls detail level of summary input.
         analyze_blue_loop (bool): If True, the function generates a CSV with phase durations.
-    
+        plot_cfg (dict, optional): A dictionary of plotting configurations. If None,
+                                   default configurations from 'plot_config.py' will be used.
+
     Returns:
         None
 
@@ -99,6 +101,10 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
         ... )
 
     """
+
+    if plot_cfg is None:
+        plot_cfg = PLOT_CFG   # DEFAULT_PLOT_CONFIG
+
 
     if cross_data_df.empty:
         logger.warning("cross_data_df is empty. Cannot generate heatmaps.")
@@ -156,26 +162,26 @@ def generate_heatmaps_and_time_diff_csv(cross_data_df, summary_csv_path, unique_
     norm = BoundaryNorm(bounds, cmap.N)
 
     # Create the heatmap
-    plt.figure(figsize=PLOT_CFG["figure"]["figsize"])
+    plt.figure(figsize=plot_cfg["figure"]["figsize"])
     plt.imshow(data_for_heatmap, aspect='auto', origin='lower', cmap=cmap, norm=norm)
 
     # Colorbar settings - showing ticks for 0, 1, 2, 3, 4, 5
     cbar = plt.colorbar(ticks=[0, 1, 2, 3, 4, 5])
-    cbar.set_label("Number of IS Crossings", fontsize=PLOT_CFG["colorbar"]["label_size"])
+    cbar.set_label("Number of IS Crossings", fontsize=plot_cfg["colorbar"]["label_size"])
     cbar.ax.set_yticklabels(["0", "1", "2", "3", "4", "5"])
     
     # Axis settings
     plt.xticks(np.arange(len(unique_masses_sorted)), [f'{m:.1f}' for m in unique_masses_sorted], rotation=90, fontsize=12)
     metallicity_tick_indices = np.arange(0, len(unique_zs_sorted), 5)
     plt.yticks(metallicity_tick_indices, [f'{unique_zs_sorted[i]:.4f}' for i in metallicity_tick_indices], fontsize=12)
-    plt.xlabel("Mass [M$_\odot$]", fontsize=PLOT_CFG["axes"]["label_size"])
-    plt.ylabel("Metallicity (Z)", fontsize=PLOT_CFG["axes"]["label_size"])
-    plt.title(f"Heatmap: Mass vs. Metallicity ({model_name})", fontsize=PLOT_CFG["axes"]["title_size"])
+    plt.xlabel("Mass [M$_\odot$]", fontsize=plot_cfg["axes"]["label_size"])
+    plt.ylabel("Metallicity (Z)", fontsize=plot_cfg["axes"]["label_size"])
+    plt.title(f"Heatmap: Mass vs. Metallicity ({model_name})", fontsize=plot_cfg["axes"]["title_size"])
 
     # Use a generic filename for the heatmap now
     heatmap_filename = "mesa_grid_blue_loop_heatmap.png"
     plt.tight_layout()
-    plt.savefig(os.path.join(plots_output_dir, heatmap_filename), dpi=300)
+    plt.savefig(os.path.join(plots_output_dir, heatmap_filename), dpi=plot_cfg["figure"]["dpi"])
     plt.close()
     logger.info(f"Generated heatmap: {heatmap_filename}")
 

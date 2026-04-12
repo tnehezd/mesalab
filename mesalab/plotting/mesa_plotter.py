@@ -12,6 +12,8 @@ from .all_hrd_plotter import generate_all_hr_diagrams # Import the HR diagram ge
 # Removed analyze_mesa_grid_directory as it's not used within this file.
 # from ..analyzis.grid_analyzer import analyze_mesa_grid_directory
 
+from mesalab.plotting.plot_config import DEFAULT_PLOT_CONFIG # Import default plot configuration
+
 def handle_heatmap_generation(args, summary_df_for_plotting, plots_sub_dir, analysis_results_sub_dir, input_dir):
     """
     Generate heatmaps showing how often models cross the instability strip.
@@ -83,14 +85,15 @@ def handle_heatmap_generation(args, summary_df_for_plotting, plots_sub_dir, anal
             analysis_results_output_dir=analysis_results_sub_dir,
             model_name=os.path.basename(input_dir),
             blue_loop_output_type=args.blue_loop_analysis.blue_loop_output_type,
-            analyze_blue_loop=args.blue_loop_analysis.analyze_blue_loop
+            analyze_blue_loop=args.blue_loop_analysis.analyze_blue_loop,
+            plot_cfg=args.plot_config  # Pass the plot configuration to the heatmap generator
         )
         logging.info("Heatmaps generated successfully.")
     except Exception as e:
         logging.error(f"Error generating heatmaps: {e}.")
 
 
-def handle_blue_loop_bc_plotting(args, combined_detail_data_for_plotting, blue_loop_plots_bc_sub_dir, detail_files_output_dir):
+def handle_blue_loop_bc_plotting(args, combined_detail_data_for_plotting, blue_loop_plots_bc_sub_dir, detail_files_output_dir, plot_cfg=None):
     """
     Plot blue loop tracks in the color–magnitude diagram with bolometric corrections.
 
@@ -128,7 +131,8 @@ def handle_blue_loop_bc_plotting(args, combined_detail_data_for_plotting, blue_l
             generate_blue_loop_plots_with_bc(
                 combined_df_all_data=combined_detail_data_for_plotting,
                 output_dir=blue_loop_plots_bc_sub_dir,
-                output_type_label="all_blue_loop_data"
+                output_type_label="all_blue_loop_data",
+                plot_cfg=plot_cfg if plot_cfg is not None else args.plot_config
             )
             logging.info("Blue loop specific plots with BCs generated successfully.")
         else:
@@ -138,7 +142,7 @@ def handle_blue_loop_bc_plotting(args, combined_detail_data_for_plotting, blue_l
         logging.error("Please ensure your 'blue_loop_cmd_plotter.py' is updated to expect 'combined_df_all_data' as its first parameter.")
 
 # --- HR diagram generation handler ---
-def handle_hr_diagram_generation(args, plots_sub_dir, full_history_data_for_plotting, drop_zams):
+def handle_hr_diagram_generation(args, plots_sub_dir, full_history_data_for_plotting, drop_zams, plot_cfg=None):
     """
     Generate Hertzsprung–Russell diagrams from full stellar evolutionary tracks.
 
@@ -153,6 +157,8 @@ def handle_hr_diagram_generation(args, plots_sub_dir, full_history_data_for_plot
                                                 a full history for a single MESA run.
                                                 (Updated from dict to list to match all_hrd_plotter.py)
         drop_zams (bool): Whether to skip points before the zero-age main sequence.
+        plot_cfg (dict, optional): A dictionary of plotting configurations. If None,
+                                   default configurations from 'plot_config.py' will be used.
 
     Returns:
         None
@@ -161,7 +167,7 @@ def handle_hr_diagram_generation(args, plots_sub_dir, full_history_data_for_plot
         >>> from mesalab.plotting import mesa_plotter
         >>> data = [df_z004_m1, df_z004_m2, df_z014_m1] # Example: list of DataFrames
         >>> output_dir = "output/plots"
-        >>> mesa_plotter.handle_hr_diagram_generation(args, output_dir, data, drop_zams=True)
+        >>> mesa_plotter.handle_hr_diagram_generation(args, output_dir, data, drop_zams=True, plot_cfg=None)
         HR diagrams saved to output/plots for each metallicity.
     """
     # Note: cli.py passes a boolean for drop_zams, so args.plotting_settings.generate_hr_diagrams
@@ -193,7 +199,8 @@ def handle_hr_diagram_generation(args, plots_sub_dir, full_history_data_for_plot
             logL_blue_edge=logL_blue_edge,
             logT_red_edge=logT_red_edge,
             logL_red_edge=logL_red_edge,
-            drop_zams=drop_zams
+            drop_zams=drop_zams,
+            plot_cfg = args.plot_config
         )
         logging.info("HR diagrams generated successfully.")
     except Exception as e:

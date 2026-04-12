@@ -5,6 +5,8 @@ import sys
 import logging
 from datetime import datetime
 from typing import Union
+
+from mesalab.plotting.plot_config import DEFAULT_PLOT_CONFIG
 from .config_paths import find_mesa_star_dir_in_release, find_mesa_binary_dir, set_environment_variables_for_executables
 from argparse import RawTextHelpFormatter
 import textwrap
@@ -16,6 +18,17 @@ except ImportError:
     sys.exit(1)
 
 logger = logging.getLogger(__name__)
+
+
+def deep_update(original, updates):
+    for key, value in updates.items():
+        if isinstance(value, dict) and key in original:
+            deep_update(original[key], value)
+        else:
+            original[key] = value
+    return original
+
+
 
 def parsing_options(args: Union[list, None] = None):
     """
@@ -144,7 +157,10 @@ def parsing_options(args: Union[list, None] = None):
             'enable_rsp_parallel': False,
             'max_concurrent_rsp_runs': 4,
             'rsp_run_timeout': 900
-        }
+        },
+
+        'plot_config': DEFAULT_PLOT_CONFIG
+
     }
 
     final_config_dict = Dict(default_config)
@@ -153,6 +169,7 @@ def parsing_options(args: Union[list, None] = None):
     user_yaml_config = {}
     config_file_path = cli_args.config
     resolved_config_file_path = os.path.abspath(config_file_path)
+
 
     if os.path.exists(resolved_config_file_path):
         try:
@@ -172,6 +189,10 @@ def parsing_options(args: Union[list, None] = None):
 
     # Merge YAML config into final_config_dict (YAML overrides defaults)
     final_config_dict.update(user_yaml_config)
+
+    # Apply plot_config overrides from YAML
+    if 'plot_config' in user_yaml_config:
+        deep_update(final_config_dict.plot_config, user_yaml_config['plot_config'])
 
     # --- Apply Environment Variables (Override YAML, but overridden by CLI) ---
 

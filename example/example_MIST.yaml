@@ -53,9 +53,6 @@ plotting_settings:
 # HRD/CMD/logg-L plots with bolometric corrections.  
   generate_blue_loop_plots_with_bc: True
 
-  figure:
-    figsize: [12, 6]
-
 
 # --- GYRE Workflow specific settings ---
 # In this case, no .GYRE files are present, so set run_gyre_workflow false

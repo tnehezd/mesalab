@@ -12,11 +12,10 @@ import pkg_resources
 from tqdm.auto import tqdm
 import logging # Import the logging module
 
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-
-from mesalab.plotting.plot_config import DEFAULT_PLOT_CONFIG as PLOT_CFG
 
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+from mesalab.plotting.plot_config import DEFAULT_PLOT_CONFIG 
 
 
 
@@ -102,7 +101,7 @@ def z_to_feh(Z):
         return np.nan
     return np.log10(Z / Z_sun)
 
-def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_type_label="all_blue_loop_data"):
+def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_type_label="all_blue_loop_data", plot_cfg=None):
     """
     Analyzes MESA history data for stellar blue loop characteristics and Instability Strip crossings,
     and generates HRD, CMD, and LogL-LogG plots with bolometric corrections.
@@ -120,6 +119,8 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
                                                 - Other MESA history columns are useful but not strictly required.
         output_dir (str): The directory where the generated plots will be saved.
         output_type_label (str): A label used in the filenames to categorize the output plots.
+        plot_cfg (dict, optional): A dictionary of plotting configurations. If None,
+                                   default configurations from 'plot_config.py' will be used.
 
     Example:
         >>> import pandas as pd
@@ -140,6 +141,13 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
 
 
     """
+
+
+    if plot_cfg is None:
+        from mesalab.plotting.plot_config import DEFAULT_PLOT_CONFIG
+        plot_cfg = DEFAULT_PLOT_CONFIG
+
+
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
         logger.info(f"Created output directory: '{output_dir}'")
@@ -239,9 +247,8 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
 
     logger.info("\nGenerating HRD plot...")
     fig_hrd, ax_hrd = plt.subplots(
-        figsize=PLOT_CFG["figure"]["figsize"],
-        dpi=PLOT_CFG["figure"]["dpi"],
-        facecolor=PLOT_CFG["figure"]["facecolor"]
+        figsize=plot_cfg["figure"]["figsize"],
+        facecolor=plot_cfg["figure"]["facecolor"]
     )
 
     hrd_plot_df = combined_df_all_data.dropna(subset=['log_Teff', 'log_L', 'initial_Z'])
@@ -255,10 +262,10 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
             hrd_plot_df['log_Teff'],
             hrd_plot_df['log_L'],
             c=hrd_plot_df['initial_Z'],
-            cmap=PLOT_CFG["scatter"]["cmap"],
+            cmap=plot_cfg["scatter"]["cmap"],
             norm=norm_hrd,
-            s=PLOT_CFG["scatter"]["s"],
-            alpha=PLOT_CFG["scatter"]["alpha"],
+            s=plot_cfg["scatter"]["dot_size"],
+            alpha=plot_cfg["scatter"]["alpha"],
         )
 
         instability_strip_vertices = np.array([
@@ -274,15 +281,15 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
         )
         ax_hrd.add_patch(instability_patch)
 
-        ax_hrd.set_xlabel(r'$\log_{10} T_{\mathrm{eff}}$', fontsize=PLOT_CFG["axes"]["label_size"])
-        ax_hrd.set_ylabel(r'$\log_{10} (L/L_{\odot})$', fontsize=PLOT_CFG["axes"]["label_size"])
-        ax_hrd.set_title(f'Combined HR Diagram (All Z)', fontsize=PLOT_CFG["axes"]["title_size"])
+        ax_hrd.set_xlabel(r'$\log_{10} T_{\mathrm{eff}}$', fontsize=plot_cfg["axes"]["label_size"])
+        ax_hrd.set_ylabel(r'$\log_{10} (L/L_{\odot})$', fontsize=plot_cfg["axes"]["label_size"])
+        ax_hrd.set_title(f'Combined HR Diagram (All Z)', fontsize=plot_cfg["axes"]["title_size"])
         ax_hrd.invert_xaxis()
 
         ax_hrd.grid(
-            PLOT_CFG["axes"]["grid"],
-            linestyle=PLOT_CFG["axes"]["grid_style"],
-            alpha=PLOT_CFG["axes"]["grid_alpha"]
+            plot_cfg["axes"]["grid"],
+            linestyle=plot_cfg["axes"]["grid_style"],
+            alpha=plot_cfg["axes"]["grid_alpha"]
         )
 
         ax_hrd.legend(loc='upper right')
@@ -291,13 +298,13 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
 
         cax = divider.append_axes(
             "right",
-            size=PLOT_CFG["colorbar"]["size"],
-            pad=PLOT_CFG["colorbar"]["pad"]
+            size=plot_cfg["colorbar"]["size"],
+            pad=plot_cfg["colorbar"]["padding"]
         )
         cbar = fig_hrd.colorbar(sc, cax=cax)
         cbar.set_label(
             "Initial Z",
-            fontsize=PLOT_CFG["colorbar"]["label_size"]
+            fontsize=plot_cfg["colorbar"]["label_size"]
         )
 
         hrd_path = os.path.join(output_dir, f'HRD_{output_type_label}.png')
@@ -307,7 +314,7 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
 
         fig_hrd.savefig(
             hrd_path,
-            dpi=PLOT_CFG["figure"]["dpi"],
+            dpi=plot_cfg["figure"]["dpi"],
             bbox_inches="tight",
             pad_inches=0.05
         )
@@ -321,9 +328,8 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
     # --- CMD Plot ---
     logger.info("\nGenerating CMD plot...")
     fig_cmd, ax_cmd = plt.subplots(
-        figsize=PLOT_CFG["figure"]["figsize"],
-        dpi=PLOT_CFG["figure"]["dpi"],
-        facecolor=PLOT_CFG["figure"]["facecolor"]
+        figsize=plot_cfg["figure"]["figsize"],
+        facecolor=plot_cfg["figure"]["facecolor"]
     )
     cmd_plot_df = combined_df_all_data.dropna(subset=['G_BP_minus_G_RP', 'M_G', 'initial_Z'])
     logger.debug(f"CMD plot DataFrame size after dropna for plotting: {len(cmd_plot_df)} rows")
@@ -339,30 +345,30 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
             cmd_plot_df['G_BP_minus_G_RP'],
             cmd_plot_df['M_G'],
             c=cmd_plot_df['initial_Z'],
-            cmap=PLOT_CFG["scatter"]["cmap"],
+            cmap=plot_cfg["scatter"]["cmap"],
             norm=norm_cmd,
-            s=PLOT_CFG["scatter"]["s"],
-            alpha=PLOT_CFG["scatter"]["alpha"],
+            s=plot_cfg["scatter"]["dot_size"],
+            alpha=plot_cfg["scatter"]["alpha"],
         )
         
 
-        ax_cmd.set_xlabel(r'$M_{BP} - M_{RP}$', fontsize=PLOT_CFG["axes"]["label_size"])
-        ax_cmd.set_ylabel(r'$M_G$', fontsize=PLOT_CFG["axes"]["label_size"])
-        ax_cmd.set_title(f'Combined CMD (Gaia) (All Z)', fontsize=PLOT_CFG["axes"]["title_size"])
+        ax_cmd.set_xlabel(r'$M_{BP} - M_{RP}$', fontsize=plot_cfg["axes"]["label_size"])
+        ax_cmd.set_ylabel(r'$M_G$', fontsize=plot_cfg["axes"]["label_size"])
+        ax_cmd.set_title(f'Combined CMD (Gaia) (All Z)', fontsize=plot_cfg["axes"]["title_size"])
         ax_cmd.invert_yaxis() 
 
         divider = make_axes_locatable(ax_cmd)
 
         cax = divider.append_axes(
             "right",
-            size=PLOT_CFG["colorbar"]["size"],
-            pad=PLOT_CFG["colorbar"]["pad"]
+            size=plot_cfg["colorbar"]["size"],
+            pad=plot_cfg["colorbar"]["padding"]
         )
         cbar = fig_cmd.colorbar(sc, cax=cax)
 
         cbar.set_label(
             "Initial Z",
-            fontsize=PLOT_CFG["colorbar"]["label_size"]
+            fontsize=plot_cfg["colorbar"]["label_size"]
         )
 
 
@@ -372,7 +378,7 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
 
         fig_cmd.savefig(
             cmd_path,
-            dpi=PLOT_CFG["figure"]["dpi"],
+            dpi=plot_cfg["figure"]["dpi"],
             bbox_inches="tight",
             pad_inches=0.05
         )
@@ -386,9 +392,8 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
     # --- LogL vs LogG Plot ---
     logger.info("\nGenerating LogL vs LogG plot...")
     fig_logg, ax_logg = plt.subplots(
-        figsize=PLOT_CFG["figure"]["figsize"],
-        dpi=PLOT_CFG["figure"]["dpi"],
-        facecolor=PLOT_CFG["figure"]["facecolor"]
+        figsize=plot_cfg["figure"]["figsize"],
+        facecolor=plot_cfg["figure"]["facecolor"]
     )
     logg_plot_df = combined_df_all_data.dropna(subset=['log_g', 'log_L', 'initial_Z'])
     logger.debug(f"LogL vs LogG plot DataFrame size after dropna for plotting: {len(logg_plot_df)} rows")
@@ -404,31 +409,31 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
             logg_plot_df['log_g'],
             logg_plot_df['log_L'],
             c=logg_plot_df['initial_Z'],
-            cmap=PLOT_CFG["scatter"]["cmap"],
+            cmap=plot_cfg["scatter"]["cmap"],
             norm=norm_logg,
-            s=PLOT_CFG["scatter"]["s"],
-            alpha=PLOT_CFG["scatter"]["alpha"],
+            s=plot_cfg["scatter"]["dot_size"],
+            alpha=plot_cfg["scatter"]["alpha"],
         )        
         
 
 
-        ax_logg.set_xlabel(r'$\log_{10} g$', fontsize=PLOT_CFG["axes"]["label_size"])
-        ax_logg.set_ylabel(r'$\log_{10} (L/L_{\odot})$', fontsize=PLOT_CFG["axes"]["label_size"])
-        ax_logg.set_title(f'Combined LogL vs LogG (All Z)', fontsize=PLOT_CFG["axes"]["title_size"])
+        ax_logg.set_xlabel(r'$\log_{10} g$', fontsize=plot_cfg["axes"]["label_size"])
+        ax_logg.set_ylabel(r'$\log_{10} (L/L_{\odot})$', fontsize=plot_cfg["axes"]["label_size"])
+        ax_logg.set_title(f'Combined LogL vs LogG (All Z)', fontsize=plot_cfg["axes"]["title_size"])
         ax_logg.invert_xaxis()
 
         divider = make_axes_locatable(ax_cmd)
 
         cax = divider.append_axes(
             "right",
-            size=PLOT_CFG["colorbar"]["size"],
-            pad=PLOT_CFG["colorbar"]["pad"]
+            size=plot_cfg["colorbar"]["size"],
+            pad=plot_cfg["colorbar"]["padding"]
         )
         cbar = fig_logg.colorbar(sc, cax=cax)
 
         cbar.set_label(
             "Initial Z",
-            fontsize=PLOT_CFG["colorbar"]["label_size"]
+            fontsize=plot_cfg["colorbar"]["label_size"]
         )
 
 
@@ -437,7 +442,7 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
 
         fig_logg.savefig(
             logg_path,
-            dpi=PLOT_CFG["figure"]["dpi"],
+            dpi=plot_cfg["figure"]["dpi"],
             bbox_inches="tight",
             pad_inches=0.05
         )

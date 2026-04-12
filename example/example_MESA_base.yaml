@@ -57,6 +57,22 @@ plotting_settings:
   generate_blue_loop_plots_with_bc: True
 
 
+plot_config:
+  figure:
+    figsize: [10, 6]
+    dpi: 150
+  axes:
+    title_size: 16
+  scatter:
+    dot_size: 32
+  colorbar:
+    pad: 0.02
+  all_hrd:
+    figsize: [12, 4]
+    max_cols: 7
+    
+
+
 # --- GYRE Workflow Specific Settings ---
 # This section controls the execution of the GYRE pulsation analysis.
 gyre_workflow:

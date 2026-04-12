@@ -8,6 +8,10 @@ from matplotlib import colors
 import os
 import logging
 import pandas as pd # Ensure pandas is imported as it's used for DataFrames
+from mesalab.plotting.plot_config import DEFAULT_PLOT_CONFIG 
+
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 
 # Configure logging for better feedback during execution
 logging.basicConfig(level=logging.WARNING, format='%(levelname)s: %(message:s)')
@@ -15,7 +19,8 @@ logging.basicConfig(level=logging.WARNING, format='%(levelname)s: %(message:s)')
 def generate_all_hr_diagrams(all_history_data_flat: list, model_name: str, output_dir: str,
                              logT_blue_edge: list, logL_blue_edge: list,
                              logT_red_edge: list, logL_red_edge: list,
-                             drop_zams: bool = False):
+                             drop_zams: bool = False,
+                             plot_cfg: dict = None):
     """
     Generates Hertzsprung-Russell (HR) diagrams for pre-loaded MESA run data,
     grouping plots by metallicity and saving each metallicity's plots
@@ -52,6 +57,8 @@ def generate_all_hr_diagrams(all_history_data_flat: list, model_name: str, outpu
                                     is trimmed from the beginning of the track using
                                     the 'center_h1' drop criterion (or 'log_L' minimum as fallback).
                                     Defaults to False (i.e., full track is plotted).
+        plot_cfg (dict, optional): A dictionary of plotting configurations. If None,
+                                   default configurations from 'plot_config.py' will be used.
 
     Returns:
         None
@@ -105,6 +112,10 @@ def generate_all_hr_diagrams(all_history_data_flat: list, model_name: str, outpu
 
     """
 
+    if plot_cfg is None:
+        from mesalab.plotting.plot_config import DEFAULT_PLOT_CONFIG
+        plot_cfg = DEFAULT_PLOT_CONFIG
+
     logging.info(f"Starting HR diagram generation for model '{model_name}'.")
 
     if not os.path.exists(output_dir):
@@ -149,19 +160,19 @@ def generate_all_hr_diagrams(all_history_data_flat: list, model_name: str, outpu
             logging.warning(f"No runs found for Z={z_value:.4f}. Skipping HR diagram generation for this metallicity.")
             continue
         
-        cols = 4 # Fixed to 4 columns as requested
+#        cols = 4 # Fixed to 4 columns as requested
+        cols = min(num_plots, plot_cfg["all_hrd"]["max_cols"]) # Use max_cols from config, but don't exceed num_plots
+
         rows = math.ceil(num_plots / cols)
 
         # --- Figure Size with 1:2 (Height:Width) Aspect Ratio ---
         # Define base dimensions for a single subplot to achieve 1:2 ratio
-        base_subplot_height = 5  # Height in inches for each subplot
-        base_subplot_width = base_subplot_height * 2 # Ensures 1:2 ratio, so 10 inches
+        
+        fig, axes = plt.subplots(rows, cols,
+            figsize=plot_cfg["all_hrd"]["figsize"],
+            facecolor=plot_cfg["all_hrd"]["facecolor"]
+        )
 
-        fig_width = cols * base_subplot_width
-        fig_height = rows * base_subplot_height
-        
-        fig, axes = plt.subplots(rows, cols, figsize=(fig_width, fig_height), constrained_layout=True)
-        
         # Flatten axes array for easy iteration, even if it's a single subplot (rows=1, cols=1)
         if num_plots == 1:
             axes = np.array([axes]) # Ensure it's an array for consistent indexing
@@ -234,15 +245,12 @@ def generate_all_hr_diagrams(all_history_data_flat: list, model_name: str, outpu
                 continue # Skip to the next run_info
 
             # If we reach here, data is sufficient for plotting
-            ax.set_title(f'{mass:.1f} M$_\odot$', fontsize=15)
+            ax.set_title(f'{mass:.1f} M$_\odot$', fontsize=plot_cfg["all_hrd"]["title_size"])
             
             norm = colors.Normalize(vmin=np.min(model_number), vmax=np.max(model_number))
-            cmap = plt.cm.viridis
 
             # Plot the evolutionary track
-            sc = ax.scatter(log_Teff, log_L, c=model_number, cmap=cmap,
-                            label=f'{mass:.1f} M$_\odot$', s=10, norm=norm, zorder=2)
-
+            sc = ax.scatter(log_Teff, log_L, c=model_number, cmap=plot_cfg["scatter"]["cmap"], norm=norm, s=plot_cfg["scatter"]["dot_size"], alpha=plot_cfg["scatter"]["alpha"], edgecolors='none', zorder=2)
             # Plot instability strip edges
             ax.plot(logT_blue_edge, logL_blue_edge, color='blue', linestyle='dashed', linewidth=1.5, zorder=1, label='Blue Edge')
             ax.plot(logT_red_edge, logL_red_edge, color='red', linestyle='dashed', linewidth=1.5, zorder=1, label='Red Edge')
@@ -262,7 +270,7 @@ def generate_all_hr_diagrams(all_history_data_flat: list, model_name: str, outpu
         for idx, ax_item in enumerate(axes):
             if ax_item.get_visible():
                 if idx % cols == 0:
-                    ax_item.set_ylabel(r'$\log L/L_\odot$', fontsize=15)
+                    ax_item.set_ylabel(r'$\log L/L_\odot$', fontsize=plot_cfg["all_hrd"]["label_size"])
                 else:
                     ax_item.set_yticklabels([])
 
@@ -270,19 +278,36 @@ def generate_all_hr_diagrams(all_history_data_flat: list, model_name: str, outpu
         for idx, ax_item in enumerate(axes):
             if ax_item.get_visible():
                 if idx >= (rows - 1) * cols:
-                    ax_item.set_xlabel(r'$\log T_{\rm eff}$', fontsize=15)
+                    ax_item.set_xlabel(r'$\log T_{\rm eff}$', fontsize=plot_cfg["all_hrd"]["label_size"])
                 else:
                     ax_item.set_xticklabels([])
 
-        fig.suptitle(f'Hertzsprung-Russell Diagram (Z = {z_value:.4f})', fontsize=20, y=1.02)
+        fig.suptitle(f'Hertzsprung-Russell Diagram (Z = {z_value:.4f})', fontsize=plot_cfg["all_hrd"]["title_size"], y=1.02)
 
         if sc is not None:
-            cbar = fig.colorbar(sc, ax=axes.ravel().tolist(), orientation='vertical', fraction=0.02, pad=0.02, label='Model Number (Evolutionary Stage)', aspect=50)
-            cbar.set_label('Model Number (Evolutionary Stage)', fontsize=12)
+            valid_axes = [ax for ax in axes if ax.get_visible()]
+            last_ax = valid_axes[-1]
+
+            divider = make_axes_locatable(last_ax)
+
+            cax = divider.append_axes(
+                "right",
+                size=plot_cfg["colorbar"]["size"],
+                pad=plot_cfg["colorbar"]["padding"]
+            )
+
+            cbar = fig.colorbar(sc, cax=cax)
+            cbar.set_label(
+                "Model Number (evolutionary stage)",
+                fontsize=plot_cfg["colorbar"]["label_size"]
+            )
+
+        fig.tight_layout()
+
 
 
         filename = os.path.join(output_dir, f'HR_diagram_{model_name}_z{z_value:.4f}.png')
-        plt.savefig(filename, bbox_inches='tight', dpi=100)
+        plt.savefig(filename, dpi=plot_cfg["all_hrd"]["dpi"], bbox_inches='tight')
         plt.close(fig)
         logging.info(f"✔ Saved HR diagram: {filename}")
 
