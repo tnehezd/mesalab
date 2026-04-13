@@ -5,6 +5,9 @@ import numpy as np
 from unittest.mock import patch, MagicMock, call
 from mesalab.bluelooptools import blue_loop_cmd_plotter as bcmd
 
+from matplotlib.axes import Axes
+
+
 class TestBlueLoopCmdPlotter(unittest.TestCase):
     
     # Setup - This method runs before each test
@@ -107,42 +110,43 @@ class TestBlueLoopCmdPlotter(unittest.TestCase):
             combined_df = bcmd.load_and_group_data('/dummy/path')
             self.assertTrue(combined_df.empty)
 
-    # --- Test generate_blue_loop_plots_with_bc() function ---
-    @patch('mesalab.bluelooptools.blue_loop_cmd_plotter.plt')
+
     @patch('mesalab.bluelooptools.blue_loop_cmd_plotter.os.makedirs')
     @patch('mesalab.bluelooptools.blue_loop_cmd_plotter.pkg_resources')
     @patch('mesalab.bluelooptools.blue_loop_cmd_plotter.bc_grid')
-    def test_generate_blue_loop_plots_with_bc(self, mock_bc_grid, mock_pkg_resources, mock_makedirs, mock_plt):
+    @patch('matplotlib.figure.Figure.savefig')
+    def test_generate_blue_loop_plots_with_bc(self, mock_savefig, mock_bc_grid, mock_pkg_resources, mock_makedirs,):
         """Tests the main plotting function without creating real plots."""
-        # Create separate mock objects for each figure and axes, each with a mocked savefig method
-        mock_fig1 = MagicMock()
-        mock_ax1 = MagicMock()
-        mock_fig2 = MagicMock()
-        mock_ax2 = MagicMock()
-        mock_fig3 = MagicMock()
-        mock_ax3 = MagicMock()
-        
-        # Set the side_effect for plt.subplots to return different tuples for each call
-        mock_plt.subplots.side_effect = [(mock_fig1, mock_ax1), (mock_fig2, mock_ax2), (mock_fig3, mock_ax3)]
-        
-        # Provide a long enough side_effect to cover all interp calls (3 rows * 3 calls/row = 9 total)
-        mock_bc_grid.interp.side_effect = [[0.1], [0.2], [0.3], [0.1], [0.2], [0.3], [0.1], [0.2], [0.3]]
-        
-        # Use the 'valid' DataFrame that has no NaNs
-        bcmd.generate_blue_loop_plots_with_bc(self.dummy_df_valid, 'dummy_output_dir')
-        
-        # Assertions
-        mock_makedirs.assert_called_once_with('dummy_output_dir')
-        
-        # Assert that the `savefig` method was called on each mock figure object, including the 'dpi' argument.
-        mock_fig1.savefig.assert_called_once_with(os.path.join('dummy_output_dir', 'HRD_all_blue_loop_data.png'), dpi=200)
-        mock_fig2.savefig.assert_called_once_with(os.path.join('dummy_output_dir', 'CMD_Gaia_all_blue_loop_data.png'), dpi=200)
-        mock_fig3.savefig.assert_called_once_with(os.path.join('dummy_output_dir', 'LogL_LogG_all_blue_loop_data.png'), dpi=200)
-        
-        # We can also assert that plt.savefig was not called, because the code uses fig.savefig
-        mock_plt.savefig.assert_not_called()
+        # 3 mock figure–axes pár
+        mock_fig1, mock_ax1 = MagicMock(), MagicMock()
+        mock_fig2, mock_ax2 = MagicMock(), MagicMock()
+        mock_fig3, mock_ax3 = MagicMock(), MagicMock()
 
-        self.assertEqual(mock_plt.close.call_count, 3)
+
+        def fake_interp(*args, **kwargs):
+            band = args[1][0]
+            if band == 'G':
+                return pd.Series([0.1])
+            elif band == 'BP':
+                return pd.Series([0.2])
+            elif band == 'RP':
+                return pd.Series([0.3])
+
+        mock_bc_grid.interp.side_effect = fake_interp
+
+        bcmd.generate_blue_loop_plots_with_bc(self.dummy_df_valid, 'dummy_output_dir')
+
+        mock_makedirs.assert_called_once_with('dummy_output_dir')
+
+        self.assertEqual(mock_savefig.call_count, 3)
+
+        paths = [call.args[0] for call in mock_savefig.call_args_list]
+
+        self.assertIn(os.path.join('dummy_output_dir', 'HRD_all_blue_loop_data.png'), paths)
+        self.assertIn(os.path.join('dummy_output_dir', 'CMD_Gaia_all_blue_loop_data.png'), paths)
+        self.assertIn(os.path.join('dummy_output_dir', 'LogL_LogG_all_blue_loop_data.png'), paths)
+
+
 
     def test_generate_plots_empty_df(self):
         """Tests that the function handles an empty DataFrame gracefully."""

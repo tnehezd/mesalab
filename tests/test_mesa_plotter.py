@@ -163,7 +163,8 @@ class TestMesaPlotter(unittest.TestCase):
             logL_blue_edge=[4.5, 2.4],
             logT_red_edge=[3.65, 3.77],
             logL_red_edge=[4.5, 2.4],
-            drop_zams=True
+            drop_zams=True,
+            plot_cfg=self.mock_args.plot_config
         )
         
     @patch('mesalab.plotting.mesa_plotter.generate_all_hr_diagrams')
