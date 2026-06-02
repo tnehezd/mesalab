@@ -99,15 +99,15 @@ Upon successfull installation, you will see something similar:
       ...
     Building wheels for collected packages: mesalab
       Building editable for mesalab (pyproject.toml) ... done
-      Created wheel for mesalab: filename=mesalab-1.1.0.editable-py3-none-any.whl size=4567 sha256=4743ff9c2aa1d4dfe9976940b9330515421f82c261cd1c4487a2faab7463d1b4
+      Created wheel for mesalab: filename=mesalab-2.2.0.editable-py3-none-any.whl size=4567 sha256=4743ff9c2aa1d4dfe9976940b9330515421f82c261cd1c4487a2faab7463d1b4
       Stored in directory: /tmp/pip-ephem-wheel-cache-3_j9zmho/wheels/63/36/82/a810ed5c505fd0aa9429ceb5fa4bdd5aec5db1b8aa04ffb789
     Successfully built mesalab
     Installing collected packages: mesalab
       Attempting uninstall: mesalab
-        Found existing installation: mesalab 2.1.4.
-        Uninstalling mesalab-2.1.4.
-          Successfully uninstalled mesalab-2.1.4.
-    Successfully installed mesalab-2.1.4.
+        Found existing installation: mesalab 2.2.0.
+        Uninstalling mesalab-2.2.0.
+          Successfully uninstalled mesalab-2.2.0.
+    Successfully installed mesalab-2.2.0.
 
 
 --------------
@@ -164,64 +164,77 @@ provided configuration file:
 
 
     ================================================================================
-                        mesalab CLI - Starting Analysis Workflow
-                                  Version: 2.1.4
+                        mesalab CLI - Starting Analysis Workflow                    
+                                    Version: 2.2.0                                 
     ================================================================================
 
-    2026-06-01 23:12:18,595 - WARNING: PyMultiNest not imported.  MultiNest fits will not work.
+    2026-06-02 15:09:04,785 - WARNING: PyMultiNest not imported.  MultiNest fits will not work.
 
     ======================================================================
-            Starting MESA Analysis Workflow...
+        Starting MESA Analysis Workflow...
     ======================================================================
 
-    Performing MESA Run Analysis: 100% 4/4 [00:02<00:00,  1.92it/s]
+    Performing MESA Run Analysis: 100% 4/4 [00:01<00:00,  3.05it/s]
 
     ======================================================================
-            MESA Analysis Workflow Completed Successfully.
-    ======================================================================
-
-
-    ======================================================================
-            MESA RSP workflow is disabled in configuration.
+        MESA Analysis Workflow Completed Successfully.
     ======================================================================
 
 
     ======================================================================
-            Starting Plotting Workflow...
+        MESA RSP workflow is disabled in configuration.
     ======================================================================
 
 
     ======================================================================
-      Full Instability Strip Crossings Matrix (for Heatmap):
+        Starting Plotting Workflow...
     ======================================================================
-               4.0  5.0
-    initial_Z
+
+
+    ======================================================================
+    Full Instability Strip Crossings Matrix (for Heatmap):
+    ======================================================================
+            4.0  5.0
+    initial_Z          
     0.009      0.0  2.0
     0.010      0.0  2.0
     ======================================================================
 
-    Calculating BCs serially: 100% 373/373 [00:02<00:00, 176.61it/s]
+    Calculating BCs serially: 100% 373/373 [00:01<00:00, 239.75it/s]
+    2026-06-02 15:09:12,549 - WARNING: No valid CMD plots for combined data after dropping NaNs in G_BP_minus_G_RP or M_G.
 
     ======================================================================
-            Plotting Workflow Completed Successfully.
+        Plotting Workflow Completed Successfully.
     ======================================================================
 
 
     ======================================================================
-            GYRE workflow is disabled in configuration.
+        GYRE workflow is disabled in configuration.
     ======================================================================
 
 
     ================================================================================
-    ║                   mesalab Workflow Finished Successfully!                    ║
+    ║                  mesalab Workflow Finished Successfully!                    ║
     ================================================================================
-
 
 
 --------------
 
 3.1. Checking the Ouput
 ^^^^^^^^^^^^^^^^^^^^^^^
+
+.. note::
+
+   ⚠️ **IMPORTANT:** The CMD (Color-Magnitude Diagram) is NOT generated in Google Colab.
+
+   Due to dependency limitations and incomplete `isochrones` compatibility in the Colab environment,
+   the pipeline cannot reliably construct Gaia-based photometric transformations.
+
+   As a result, the CMD step is automatically skipped even in a successful run.
+
+   Instead, the analysis focuses on HR-diagram-based evolutionary tracking and internal stellar parameters.
+
+
 
 After a successful run, you will find the generated plots in the
 ``example/MESA_grid_base_output/plots`` directory. Here are some
@@ -230,12 +243,12 @@ examples of the plots generated for this grid:
 .. code-block:: python
 
     >>> from IPython.display import Image
-    >>> Image(filename='MESA_grid_base_output/plots/CMD_Gaia_all_blue_loop_data.png')
+    >>> Image(filename='MESA_grid_base_output/plots/HRD_all_blue_loop_data.png')
 
 
 
 
-.. image:: mesalab_mesa_grid_base_tutorial_files/mesalab_mesa_grid_base_tutorial_14_0.png
+.. image:: mesalab_mesa_grid_base_tutorial_files/example_HRD.png
 
 
 
