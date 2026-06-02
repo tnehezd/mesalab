@@ -112,10 +112,9 @@ class TestBlueLoopCmdPlotter(unittest.TestCase):
 
 
     @patch('mesalab.bluelooptools.blue_loop_cmd_plotter.os.makedirs')
-    @patch('mesalab.bluelooptools.blue_loop_cmd_plotter.pkg_resources')
     @patch('mesalab.bluelooptools.blue_loop_cmd_plotter.bc_grid')
     @patch('matplotlib.figure.Figure.savefig')
-    def test_generate_blue_loop_plots_with_bc(self, mock_savefig, mock_bc_grid, mock_pkg_resources, mock_makedirs,):
+    def test_generate_blue_loop_plots_with_bc(self, mock_savefig, mock_bc_grid, mock_makedirs,):
         """Tests the main plotting function without creating real plots."""
         # 3 mock figure–axes pár
         mock_fig1, mock_ax1 = MagicMock(), MagicMock()
