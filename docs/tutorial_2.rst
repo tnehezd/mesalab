@@ -104,10 +104,10 @@ Upon successfull installation, you will see something similar:
     Successfully built mesalab
     Installing collected packages: mesalab
       Attempting uninstall: mesalab
-        Found existing installation: mesalab 1.1.0
-        Uninstalling mesalab-1.1.0.:
-          Successfully uninstalled mesalab-1.1.0.
-    Successfully installed mesalab-1.1.0.
+        Found existing installation: mesalab 2.1.4.
+        Uninstalling mesalab-2.1.4.
+          Successfully uninstalled mesalab-2.1.4.
+    Successfully installed mesalab-2.1.4.
 
 
 --------------
@@ -165,10 +165,10 @@ provided configuration file:
 
     ================================================================================
                         mesalab CLI - Starting Analysis Workflow
-                                  Version: 1.1.0
+                                  Version: 2.1.4
     ================================================================================
 
-    2025-08-17 23:12:18,595 - WARNING: PyMultiNest not imported.  MultiNest fits will not work.
+    2026-06-01 23:12:18,595 - WARNING: PyMultiNest not imported.  MultiNest fits will not work.
 
     ======================================================================
             Starting MESA Analysis Workflow...

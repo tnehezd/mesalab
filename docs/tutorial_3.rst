@@ -37,13 +37,13 @@ You can easily run your first example by executing `mesalab` with the provided c
     $ mesalab --config example/example_MESA_gyre.yaml
 
 
-Upon execution, you'll see terminal output similar to this:
+Upon execution, you'll see terminal output featuring a live-updating progress bar followed by a structured final workflow summary:
 
 .. code-block:: console
 
     ================================================================================
                        mesalab CLI - Starting Analysis Workflow
-                                  Version: 1.1.0.
+                                  Version: 2.2.0
     ================================================================================
 
     ======================================================================
@@ -79,15 +79,17 @@ Upon execution, you'll see terminal output similar to this:
         Starting GYRE Workflow...
     ======================================================================
 
-    [2025-07-17 01:41:30] GYRE Pipeline: Initializing GYRE workflow from mesalab configuration...
-    [2025-07-17 01:41:30] GYRE Progress: Processing M=5.0, Z=0.009 from run directory: run_5.0MSUN_z0.0090
-    [2025-07-17 01:41:30] GYRE Progress: Searching profiles in: MESA_grid/run_5.0MSUN_z0.0090/LOGS within model range [2073-2246]
-    # ... (GYRE processing details for individual profiles will appear here, showing progress) ...
-    [2025-07-17 01:41:37] GYRE Progress: **profile00012 - SUCCESS**
-    [2025-07-17 01:41:37] GYRE Progress: **profile00014 - SUCCESS**
-    # ... (more profile successes and other GYRE messages) ...
-    [2025-07-17 01:42:05] GYRE Pipeline: All GYRE runs completed.
-    [2025-07-17 01:42:05] GYRE Pipeline: **GYRE pipeline execution complete.**
+    [2026-06-02 01:04:30] GYRE Pipeline: Initializing GYRE workflow from mesalab configuration...
+    GYRE Pipeline Workflow: 100%|██████████████████████████████████████████| 30/30 [00:45<00:00,  1.50s/it]
+
+    --- GYRE Pipeline Workflow Summary ---
+    Total runs: 30
+    Successful runs: 30
+    Failed runs: 0
+    --------------------------------------
+    Final workflow statistics saved to: example/MESA_grid_output/gyre_outputs/gyre_workflow_summary.json
+
+    [2026-06-02 01:05:15] GYRE Pipeline: All individual GYRE runs completed successfully.
 
     ======================================================================
         GYRE Workflow Completed Successfully.
@@ -96,8 +98,6 @@ Upon execution, you'll see terminal output similar to this:
     ================================================================================
     ║                  mesalab Workflow Finished Successfully!                     ║
     ================================================================================
-
-
 
 
 After the workflow completes, you will find the generated plots in the `example/MESA_grid_output/plots` directory. Here are some examples of the plots generated for this grid:
@@ -123,14 +123,15 @@ After the workflow completes, you will find the generated plots in the `example/
 Understanding GYRE Output
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-After the GYRE workflow is complete, a structured output directory is created to store the run data. The main output folder is ``gyre_outputs``, which contains subdirectories for each MESA stellar model run. The name of each subdirectory is identical to its corresponding input folder (e.g., ``run_5.0MSUN_z0.0090``). Within these directories, the final output GYRE files are placed into separate folders, named after the specific ``profileXX`` files that were previously filtered for analysis.
+After the GYRE workflow is complete, a structured output directory is created to store the run data. To prevent data loss during long grid runs, `mesalab` serializes progress metrics in real time.
 
-The typical structure within each MESA run directory will look like this:
+The main output folder is ``gyre_outputs``. At its root, a live-updated summary file is maintained, followed by separate subdirectories for each MESA stellar model run:
 
 .. code-block::
 
     example/MESA_grid_output/
     └── gyre_output/
+        ├── gyre_workflow_summary.json        # Live-updating global runtime summary
         └── run_5.0MSUN_z0.0090/
              └── profile00018
                  ├── summary.h5
@@ -205,14 +206,14 @@ Similar to the case of GYRE, you can easily run your first example by executing 
     $ mesalab --config example/example_MESA_rsp.yaml
 
 
-Upon successful execution, you'll see terminal output similar to this:
+Upon successful execution, you'll see a clean, modern progress interface followed by a unified performance matrix:
 
 .. code-block:: console
 
 
   ================================================================================
                       mesalab CLI - Starting Analysis Workflow
-                                Version: 1.1.0
+                                Version: 2.2.0
   ================================================================================
 
 
@@ -220,7 +221,7 @@ Upon successful execution, you'll see terminal output similar to this:
           Starting MESA Analysis Workflow...
   ======================================================================
 
-  Performing MESA Run Analysis: 100%|███████████████████████████████████████████████████████████████████████████████████████████████| 4/4 [00:03<00:00,  1.25it/s]
+  Performing MESA Run Analysis: 100%|██████████████████████████████████████████████████████████████████| 4/4 [00:03<00:00,  1.25it/s]
 
   ======================================================================
           MESA Analysis Workflow Completed Successfully.
@@ -231,7 +232,8 @@ Upon successful execution, you'll see terminal output similar to this:
           Starting MESA RSP Workflow...
   ======================================================================
 
-  MESA RSP Workflow: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████| 373/373 [1:45:53<00:00, 17.03s/it]
+  MESA RSP Workflow: 100%|█████████████████████████████████████████████████████████████████████████████| 373/373 [1:45:53<00:00, 17.03s/it]
+  
   --- MESA RSP Workflow Summary ---
   Total runs: 373
   Successful runs: 373
@@ -239,6 +241,7 @@ Upon successful execution, you'll see terminal output similar to this:
   Timed out runs: 0
   Runs with unexpected errors: 0
   ---------------------------------
+  Final workflow statistics saved to: example/MESA_grid_output/rsp_outputs/rsp_workflow_summary.json
 
   ======================================================================
           MESA RSP Workflow Completed.
@@ -266,20 +269,15 @@ Upon successful execution, you'll see terminal output similar to this:
 Understanding RSP Output
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-After the RSP workflow completes, a dedicated ``rsp_outputs`` directory will be created. The directory contains subdirectories for each MESA stellar model run. The name of each subdirectory is identical to its corresponding input folder (e.g., ``run_5.0MSUN_z0.0090``). Within these directories, the final output RSP files are placed into separate folders, named after the specific models (``modelXXXX``) that were previously filtered for analysis. Each ``modelXXXX`` directory contains the final model (e.g., ``rsp_final_M5.0Z0.0090Mod2073.mod``), and the ``LOGS`` and ``photos`` directory. In this example, the first 15 radial modes are calculed. The output ``LINA_eigenXX.data``, ``LINA_workXX.data``, ``LINA_period_growth.data``, ``history.data``, ``profile1.data`` and ``profiles.index`` files are located in the ``LOGS`` directory. For more details about RSP, consult the official `documentation <https://docs.mesastar.org/en/latest/>`_.
+After the RSP workflow completes, a dedicated ``rsp_outputs`` directory is created. Similar to the GYRE layer, progress tracking is handled through real-time state serialization, writing states directly to disk as each model completes to buffer against server interrupts or unexpected runtime timeouts.
 
-.. note::
-    The output filename for the final model is currently hardcoded (e.g., ``rsp_final_M5.0Z0.0090Mod2073.mod``) within the script and is independent of the input filename from the example inlist file.
-
-.. note::
-    The number of output folders in this example may differ from the number of GYRE output folders. This is because GYRE profiles were written out less frequently during the MESA run than the data written to the history file. Since the RSP analysis is based on data from the history file, it may find more models that meet the filtering criteria.
-
-The typical structure within each MESA run directory will look like this:
+The typical directory tree layout within the output workspace now explicitly lists the global intermediate stats file:
 
 .. code-block::
 
     example/MESA_grid_output/
-    └── rsp_outputs/ # Example MESA run directory for profile00030
+    └── rsp_outputs/ 
+        ├── rsp_workflow_summary.json          # Live-updating global runtime summary
         ├── run_5.0MSUN_z0.0090/
         │   ├── model2073
         │   │   ├── LOGS
@@ -297,6 +295,7 @@ The typical structure within each MESA run directory will look like this:
         │   │   └── rsp_final_M5.0Z0.0090Mod2073.mod                        
         │   └── ... (additional model directories as per the run)
         └── ... (additional run directories as per the run)
+
 
 The ``LOGS`` directory contains:
 

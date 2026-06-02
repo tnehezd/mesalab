@@ -44,7 +44,7 @@ Upon execution, you'll see terminal output similar to this:
 
     ================================================================================
                         mesalab CLI - Starting Analysis Workflow                    
-                                  Version: 1.1.0                               
+                                  Version: 2.1.4                               
     ================================================================================
 
 
@@ -52,7 +52,7 @@ Upon execution, you'll see terminal output similar to this:
         Starting MESA Analysis Workflow...
     ======================================================================
 
-    Performing MESA Run Analysis:   5%|███▋                                                                         | 1/21 [00:00<00:06,  3.10it/s]2025-07-17 13:36:53,212 - WARNING: Warning: No hydrogen exhaustion found for M=12.1, Z=0.0449043 (star might be too young or still on MS).
+    Performing MESA Run Analysis:   5%|███▋                                                                         | 1/21 [00:00<00:06,  3.10it/s]2026-06-01 23:12:18,595 - WARNING: Warning: No hydrogen exhaustion found for M=12.1, Z=0.0449043 (star might be too young or still on MS).
     Warning: No hydrogen exhaustion found for M=12.1, Z=0.0449043 (star might be too young or still on MS).                                        
     Performing MESA Run Analysis: 100%|████████████████████████████████████████████████████████████████████████████| 21/21 [00:03<00:00,  6.85it/s]
 

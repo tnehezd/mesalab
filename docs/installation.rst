@@ -21,28 +21,36 @@ You'll know the virtual environment is active when you see ``(mesalab-env)`` pre
 
 ----
 
-Using Conda (Recommended if you already use Conda or manage complex environments)
----------------------------------------------------------------------------------
+Using Mamba or Conda (Recommended for complex environments)
+----------------------------------------------------------
 
-If you have Conda (Miniconda or Anaconda) installed, you can create a dedicated environment for `mesalab`:
+Standard Conda can be slow when resolving large scientific stacks. It is highly recommend using **Mamba** (a fast, C++ based drop-in replacement for Conda) to drastically speed up the installation.
 
-1.  **Create the Conda environment:**
+If you have Mamba or Conda installed, you can create a dedicated environment for `mesalab`:
 
+1.  **Create the environment:**
+
+    **Option A: Using Mamba (Fastest)**
+    
     .. code-block:: bash
 
-        conda create -n mesalab-env python=3.9 # Or your preferred Python version between 3.9 and 3.11
-        conda install -c conda-forge numpy pandas matplotlib scipy pyyaml tqdm numba swifter dask pyarrow h5py astropy
+        mamba create -n mesalab-env python=3.9
+        mamba install -c conda-forge numpy pandas matplotlib scipy pyyaml tqdm numba swifter dask pyarrow h5py astropy addict
 
+    **Option B: Using Conda (Legacy)**
+    
+    .. code-block:: bash
 
-    This command creates an environment named ``mesalab-env`` with the specified Python version.
+        conda create -n mesalab-env python=3.9
+        conda install -c conda-forge numpy pandas matplotlib scipy pyyaml tqdm numba swifter dask pyarrow h5py astropy addict
 
-2.  **Activate the Conda environment:**
+2.  **Activate the environment:**
 
     .. code-block:: bash
 
         conda activate mesalab-env
 
-    You'll know the Conda environment is active when you see ``(mesalab-env)`` preceding your prompt in the terminal.
+    You'll know the environment is active when you see ``(mesalab-env)`` preceding your prompt in the terminal.
 
 
 
