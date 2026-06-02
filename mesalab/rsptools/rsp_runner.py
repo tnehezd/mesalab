@@ -205,8 +205,31 @@ def run_mesa_rsp_workflow(
         tasks.append((path, mesa_binary_dir, num_threads, output_dir, rsp_run_timeout))
     
     
+    # Define the output path for the structured JSON summary file
+    summary_json_path = os.path.join(rsp_output_subdir, "rsp_workflow_summary.json")
+
+    def flush_json_summary():
+        """Helper function to dump current progress to disk (like fflush)."""
+        try:
+            clean_summary = {
+                "total_tasks_submitted": total_runs,
+                "successful_runs": len(results['successful']),
+                "failed_runs": len(results['failed']),
+                "timed_out_runs": len(results['timeout']),
+                "error_runs": len(results['error']),
+                "failed_inlist_paths": [r['inlist'] for r in results['failed']],
+                "timeout_inlist_paths": [r['inlist'] for r in results['timeout']],
+                "error_inlist_paths": [r['inlist'] for r in results['error']]
+            }
+            with open(summary_json_path, 'w', encoding='utf-8') as jf:
+                json.dump(clean_summary, jf, indent=4)
+        except Exception as json_err:
+            logger.error(f"Could not flush JSON summary file: {json_err}")
+
+    import json
+
     if enable_parallel:
-        print(f"Parallel mode enabled. Using a maximum of {max_workers} concurrent processes, each with {num_threads} thread(s).")
+        print(f"Parallel mode enabled. Using a maximum of {max_workers} concurrent processes...")
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             future_to_inlist = {executor.submit(run_mesa_rsp_single, *task): task[0] for task in tasks}
 
@@ -217,30 +240,26 @@ def run_mesa_rsp_workflow(
                     if isinstance(result, dict) and 'status' in result:
                         results[result['status']].append(result)
                     else:
-                        logger.error(f"Invalid result format from {inlist_path}: {result}")
-                        results['error'].append({'status': 'error', 'inlist': inlist_path, 'error': 'Invalid result format', 'raw_result': str(result)})
+                        results['error'].append({'status': 'error', 'inlist': inlist_path, 'error': 'Invalid format'})
                 except Exception as exc:
-                    logger.error(f'Unexpected exception during execution for {inlist_path}: {exc}')
                     results['error'].append({'status': 'error', 'inlist': inlist_path, 'error': str(exc)})
+                
+                # --- FLUSH AFTER EVERY COMPLETED MODEL ---
+                flush_json_summary()
     else:
-        print(f"Sequential mode enabled. Using {num_threads} thread(s) for each run.")
+        print(f"Sequential mode enabled...")
         for task in tqdm(tasks, total=total_runs, desc="MESA RSP Workflow"):
             try:
-                result = run_mesa_rsp_single(
-                    task[0], 
-                    task[1], 
-                    task[2], 
-                    task[3], 
-                    task[4] # The timeout is now the 5th element
-                )
+                result = run_mesa_rsp_single(task[0], task[1], task[2], task[3], task[4])
                 if isinstance(result, dict) and 'status' in result:
                     results[result['status']].append(result)
                 else:
-                    logger.error(f"Invalid result format from {task[0]}: {result}")
-                    results['error'].append({'status': 'error', 'inlist': task[0], 'error': 'Invalid result format', 'raw_result': str(result)})
+                    results['error'].append({'status': 'error', 'inlist': task[0], 'error': 'Invalid format'})
             except Exception as exc:
-                logger.error(f'Unexpected exception during sequential execution for {task[0]}: {exc}')
                 results['error'].append({'status': 'error', 'inlist': task[0], 'error': str(exc)})
+            
+            # --- FLUSH AFTER EVERY COMPLETED MODEL ---
+            flush_json_summary()
 
     successful_count = len(results['successful'])
     failed_count = len(results['failed'])
@@ -254,6 +273,7 @@ def run_mesa_rsp_workflow(
     print(f"Timed out runs: {timeout_count}")
     print(f"Runs with unexpected errors: {error_count}")
     print("---------------------------------")
+    print(f"Final workflow statistics saved to: {summary_json_path}")
     
     return results
 

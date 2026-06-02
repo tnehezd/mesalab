@@ -13,6 +13,7 @@ import logging
 import numpy as np
 import sys
 from datetime import datetime
+import time
 
 # Configure logging for this module.
 gyre_logger = logging.getLogger('GYRE_Pipeline')
@@ -66,7 +67,7 @@ def run_single_gyre_model(
 
     """
 
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Progress: Setting up run for profile: {os.path.basename(model_profile_path)}")
+#    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Progress: Setting up run for profile: {os.path.basename(model_profile_path)}")
 
     os.makedirs(output_dir, exist_ok=True)
 
@@ -113,7 +114,7 @@ def run_single_gyre_model(
         result = subprocess.run(command, capture_output=True, text=True, check=True, cwd=output_dir)
 
         # ONLY print/log SUCCESS if subprocess.run completed without raising an exception
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Progress: **{os.path.basename(output_dir)} - SUCCESS**")
+#        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Progress: **{os.path.basename(output_dir)} - SUCCESS**")
         gyre_logger.info(f"**[{os.path.basename(output_dir)}] GYRE run SUCCESSFUL**!")
         if result.stdout:
             gyre_logger.debug(f"--- Standard Output (stdout) for {os.path.basename(output_dir)} ---")
@@ -466,39 +467,99 @@ def run_gyre_workflow(
         raise ValueError(f"Invalid 'run_mode' specified in config: {gyre_cfg.run_mode}. "
                          f"Accepted values are 'ALL_PROFILES' or 'FILTERED_PROFILES'.")
 
-    # --- Execute GYRE Tasks ---
+    # --- Execute GYRE Tasks with Live JSON Flushing ---
     if not tasks:
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Pipeline: No GYRE tasks were prepared. Skipping GYRE runs.")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Pipeline: No GYRE tasks were prepared.")
         return 0
+    
+    max_concurrent_runs = gyre_cfg.max_concurrent_gyre_runs
+    all_gyre_return_codes = [None] * len(tasks) # Pre-allocate space for codes
+    
+    import json
+    summary_json_path = os.path.join(gyre_session_output_dir, "gyre_workflow_summary.json")
+
+    def flush_gyre_json():
+        """Helper to write intermediate GYRE progress to disk."""
+        try:
+            failed_profiles = []
+            successful_count = 0
+            failed_count = 0
+            
+            for i, code in enumerate(all_gyre_return_codes):
+                if code is None:
+                    continue # Task not finished yet
+                
+                profile_info = {
+                    "profile_path": tasks[i][0],
+                    "output_dir": tasks[i][2],
+                    "exit_code": code
+                }
+                if code == 0:
+                    successful_count += 1
+                else:
+                    failed_count += 1
+                    failed_profiles.append(profile_info)
+                    
+            clean_summary = {
+                "total_tasks_submitted": len(tasks),
+                "successful_runs": successful_count,
+                "failed_runs": failed_count,
+                "failed_profile_details": failed_profiles,
+            }
+            with open(summary_json_path, 'w', encoding='utf-8') as jf:
+                json.dump(clean_summary, jf, indent=4)
+        except Exception as json_err:
+            gyre_logger.error(f"Could not flush GYRE JSON summary file: {json_err}")
+
+    # Execution Mode Logic
+    from tqdm import tqdm
+    
+    if gyre_cfg.enable_gyre_parallel:
+        gyre_logger.info(f"**Parallel GYRE execution enabled.** Running {max_concurrent_runs} job(s) concurrently.")
+        
+        # We use apply_async to harvest results one by one as they finish
+        with multiprocessing.Pool(processes=max_concurrent_runs) as pool:
+            async_results = [pool.apply_async(run_single_gyre_model, task) for task in tasks]
+            
+            # Initialize tqdm progress bar manually for parallel tracking
+            with tqdm(total=len(tasks), desc="GYRE Pipeline Workflow", ncols=80) as pbar:
+                finished_tasks = 0
+                while finished_tasks < len(tasks):
+                    for idx, async_res in enumerate(async_results):
+                        if all_gyre_return_codes[idx] is None and async_res.ready():
+                            all_gyre_return_codes[idx] = async_res.get()
+                            finished_tasks += 1
+                            pbar.update(1)  # Advance progress bar by one
+                            flush_gyre_json()  # Real-time disk flush
+                    time.sleep(0.1)  # Snappy response without hammering the CPU
     else:
-        max_concurrent_runs = gyre_cfg.max_concurrent_gyre_runs
-        all_gyre_return_codes = []
+        gyre_logger.info("**Parallel GYRE execution disabled.** Running jobs sequentially.")
+        # Standard tqdm loop for sequential execution
+        for idx, task in enumerate(tqdm(tasks, total=len(tasks), desc="GYRE Pipeline Workflow", ncols=80)):
+            return_code = run_single_gyre_model(*task)
+            all_gyre_return_codes[idx] = return_code
+            flush_gyre_json()  # Real-time disk flush
 
-        if gyre_cfg.enable_gyre_parallel:
-            if not isinstance(max_concurrent_runs, int) or max_concurrent_runs <= 0:
-                raise ValueError(f"Invalid 'max_concurrent_gyre_runs' in config: {max_concurrent_runs}. Must be a positive integer.")
-            gyre_logger.info(f"**Parallel GYRE execution enabled.** Running {max_concurrent_runs} job(s) concurrently.")
-            with multiprocessing.Pool(processes=max_concurrent_runs) as pool:
-                all_gyre_return_codes = pool.starmap(run_single_gyre_model, tasks)
-        else:
-            gyre_logger.info("**Parallel GYRE execution disabled.** Running jobs sequentially.")
-            for task in tasks:
-                return_code = run_single_gyre_model(*task)
-                all_gyre_return_codes.append(return_code)
+    # Calculate final counts for the summary display
+    successful_count = sum(1 for code in all_gyre_return_codes if code == 0)
+    failed_count = sum(1 for code in all_gyre_return_codes if code != 0)
+    total_runs = len(all_gyre_return_codes)
 
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Pipeline: All GYRE runs completed.")
+    print("\n--- GYRE Pipeline Workflow Summary ---")
+    print(f"Total runs: {total_runs}")
+    print(f"Successful runs: {successful_count}")
+    print(f"Failed runs: {failed_count}")
+    print("--------------------------------------")
+    print(f"Final workflow statistics saved to: {summary_json_path}\n")
 
-        if any(code != 0 for code in all_gyre_return_codes):
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Pipeline: **WARNING: One or more GYRE runs FAILED!**")
-            gyre_logger.warning("GYRE Pipeline: One or more GYRE runs failed. Check individual profile logs for details.")
-            return 1
-        else:
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Pipeline: **All individual GYRE runs completed successfully.**")
-            gyre_logger.info("GYRE Pipeline: All individual GYRE runs completed successfully.")
-            return 0
-
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Pipeline: **GYRE pipeline execution complete.**")
-
+    if failed_count > 0:
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Pipeline: **WARNING: One or more GYRE runs FAILED!**")
+        gyre_logger.warning("GYRE Pipeline: One or more GYRE runs failed. Check individual profile logs for details.")
+        return 1
+    else:
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] GYRE Pipeline: **All individual GYRE runs completed successfully.**")
+        gyre_logger.info("GYRE Pipeline: All individual GYRE runs completed successfully.")
+        return 0
 
 # --- Standalone execution for testing/debugging ---
 if __name__ == "__main__":
