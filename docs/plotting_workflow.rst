@@ -126,4 +126,4 @@ Here's an example of how you can configure your YAML file to enable specific plo
     gyre_workflow:
       run_gyre_workflow: false # Ensure GYRE workflow is disabled
 
-----
+

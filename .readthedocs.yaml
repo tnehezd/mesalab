@@ -1,18 +1,17 @@
-# .readthedocs.yaml
 version: 2
 
 build:
   os: "ubuntu-22.04"
   tools:
-    python: "3.10"
+    python: "3.11"  # Emeljük fel 3.11-re, ahogy a gépeden is van!
 
-sphinx:
-  configuration: docs/conf.py
-
+# A python blokkban szigorúan a requirements fusson le ELŐSZÖR, és csak utána a projekt telepítése
 python:
   install:
-    # Step 1: Install your main project and its dependencies (from setup.py)
+    - requirements: docs/requirements.txt
     - method: pip
       path: .
-    # Step 2: Install your documentation-specific dependencies
-    - requirements: docs/requirements.txt
+
+# A sphinx futtatását hagyjuk a legvégére, amikor már minden fent van
+sphinx:
+  configuration: docs/conf.py

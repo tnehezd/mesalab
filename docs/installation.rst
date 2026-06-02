@@ -22,7 +22,7 @@ You'll know the virtual environment is active when you see ``(mesalab-env)`` pre
 ----
 
 Using Mamba or Conda (Recommended for complex environments)
-----------------------------------------------------------
+-----------------------------------------------------------
 
 Standard Conda can be slow when resolving large scientific stacks. It is highly recommend using **Mamba** (a fast, C++ based drop-in replacement for Conda) to drastically speed up the installation.
 
