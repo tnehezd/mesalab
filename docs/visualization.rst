@@ -11,6 +11,12 @@ Plotting Utilities
     :undoc-members:
     :show-inheritance:
 
+.. automodule:: mesalab.plotting.plot_config
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
 HRD Plotter
 ===========
 
