@@ -35,9 +35,9 @@ For scientific packages with complex dependencies like mesalab, we highly recomm
 Step 1: Set up the conda environment (Python version between 3.9 and 3.11)
 Create a dedicated environment with all the necessary scientific packages. The conda-forge channel is required for some dependencies.
 ```console
-$ conda create --name mesalab_env python=3.9
-$ conda activate mesalab_env
-$ conda install -c conda-forge numpy pandas matplotlib scipy pyyaml tqdm numba swifter dask pyarrow h5py astropy
+$ mamba create --name mesalab_env python=3.11
+$ mamba activate mesalab_env
+$ mamba install -c conda-forge numpy pandas matplotlib scipy pyyaml tqdm numba swifter dask pyarrow h5py astropy
 ```
 
 Step 2: Install mesalab from source
