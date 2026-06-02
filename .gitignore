@@ -49,3 +49,6 @@ rsp_inlists/
 
 example_config.yaml
 no_conv_output
+
+
+config/rsp.inlist_template
