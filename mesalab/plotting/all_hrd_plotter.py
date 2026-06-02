@@ -278,7 +278,7 @@ def generate_all_hr_diagrams(all_history_data_flat: list, model_name: str, outpu
         for idx, ax_item in enumerate(axes):
             if ax_item.get_visible():
                 if idx >= (rows - 1) * cols:
-                    ax_item.set_xlabel(r'$\log T_{\rm eff}$', fontsize=plot_cfg["all_hrd"]["label_size"])
+                    ax_item.set_xlabel(r'$\log (T_{\rm eff}/K)$', fontsize=plot_cfg["all_hrd"]["label_size"])
                 else:
                     ax_item.set_xticklabels([])
 

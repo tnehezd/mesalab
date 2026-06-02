@@ -15,8 +15,8 @@ DEFAULT_PLOT_CONFIG = {
         "grid_alpha": 0.6,
     },
     "scatter": {
-        "dot_size": 10,
-        "alpha": 1.0,
+        "dot_size": 8,
+        "alpha": 0.7,
         "cmap": "viridis",
     },
     "colorbar": {

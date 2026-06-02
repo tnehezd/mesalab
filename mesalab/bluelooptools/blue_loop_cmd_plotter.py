@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.path import Path # Import Path
 from isochrones.mist.bc import MISTBolometricCorrectionGrid
-import pkg_resources
 from tqdm.auto import tqdm
 import logging # Import the logging module
 
@@ -154,9 +153,10 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
     logger.info(f"Generating combined blue loop HRD, CMD, and LogL-LogG plots (with BCs) to '{output_dir}'...")
 
     try:
-        isochrones_version = pkg_resources.get_distribution('isochrones').version
+        from importlib.metadata import version
+        isochrones_version = version('isochrones')
         logger.debug(f"Installed isochrones version: {isochrones_version}")
-    except pkg_resources.DistributionNotFound:
+    except Exception:
         logger.warning("isochrones package not found. Bolometric corrections may be affected.")
 
     if combined_df_all_data.empty:
@@ -281,7 +281,7 @@ def generate_blue_loop_plots_with_bc(combined_df_all_data, output_dir, output_ty
         )
         ax_hrd.add_patch(instability_patch)
 
-        ax_hrd.set_xlabel(r'$\log_{10} T_{\mathrm{eff}}$', fontsize=plot_cfg["axes"]["label_size"])
+        ax_hrd.set_xlabel(r'$\log_{10} (T_{\mathrm{eff}}/K)$', fontsize=plot_cfg["axes"]["label_size"])
         ax_hrd.set_ylabel(r'$\log_{10} (L/L_{\odot})$', fontsize=plot_cfg["axes"]["label_size"])
         ax_hrd.set_title(f'Combined HR Diagram (All Z)', fontsize=plot_cfg["axes"]["title_size"])
         ax_hrd.invert_xaxis()
