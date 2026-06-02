@@ -30,14 +30,24 @@ $ pip install mesalab
 
 Building from Source (Recommended for Developers)
 
-For scientific packages with complex dependencies like mesalab, we highly recommend using a conda environment to build from source. This ensures all binary dependencies are handled correctly, avoiding common compiler errors.
+For scientific packages with complex dependencies like mesalab, we highly recommend using a conda environment to build from source. This ensures all binary dependencies are handled correctly, avoiding common compiler errors. 
+Choose either Step 1a (Mamba/Conda) or Step 1b (Pyenv), depending on your preferred environment manager.
 
-Step 1: Set up the conda environment (Python version between 3.9 and 3.11)
+Step 1a: Set up the conda environment (Python version between 3.9 and 3.11)
 Create a dedicated environment with all the necessary scientific packages. The conda-forge channel is required for some dependencies.
 ```console
 $ mamba create --name mesalab_env python=3.11
 $ mamba activate mesalab_env
 $ mamba install -c conda-forge numpy pandas matplotlib scipy pyyaml tqdm numba swifter dask pyarrow h5py astropy
+```
+
+Step 1b: Set up the pyenv environment (Python version 3.11.9)
+Create and activate a dedicated virtual environment for the project.
+
+```console
+$ pyenv virtualenv 3.11.9 mesalab-env
+$ pyenv local mesalab-env
+$ pip install numpy pandas matplotlib scipy pyyaml tqdm numba swifter dask pyarrow h5py astropy
 ```
 
 Step 2: Install mesalab from source
