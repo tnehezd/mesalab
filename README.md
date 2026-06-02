@@ -1,6 +1,6 @@
 # About `mesalab` pipeline
 
-[![DOI][(https://zenodo.org/badge/DOI/10.5281/zenodo.18874087.svg)]([https://doi.org/10.5281/zenodo.18874087](https://doi.org/10.5281/zenodo.20512505))](https://doi.org/10.5281/zenodo.20512505)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20512505.svg)](https://doi.org/10.5281/zenodo.20512505)
 [![Documentation Status](https://readthedocs.org/projects/mesalab/badge/?version=latest)](https://mesalab.readthedocs.io/en/latest/)
 
 
