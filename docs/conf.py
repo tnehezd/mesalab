@@ -29,7 +29,7 @@ except ImportError:
     project_version = 'unknown' # Fallback if mesalab isn't installed or path is wrong
 
 project = 'mesalab' # Use the name defined in setup.py
-copyright = '2025, Dora Tarczay-Nehez' # Based on your setup.py
+copyright = '2026, Dora Tarczay-Nehez' # Based on your setup.py
 author = 'Dora Tarczay-Nehez' # Based on your setup.py
 release = project_version # Use the version imported from your package
 version = project_version # The short X.Y version
@@ -59,6 +59,10 @@ myst_enable_extensions = [
     # "strikethrough",# For ~~strikethrough~~ text
     # "substitution", # For |name| substitutions
     # "tasklist",     # For - [ ] checkboxes
+]
+
+autodoc_mock_imports = [
+    "isochrones",
 ]
 
 # Set the default role for intersphinx links if you use them
